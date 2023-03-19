@@ -1,0 +1,79 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train",
+      "task_cores": 4,
+      "task_parallelism": 1,
+      "computing_partitions": 2
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 9999
+  },
+  "role": {
+    "arbiter": [
+      10000
+    ],
+    "host": [
+      9998
+    ],
+    "guest": [
+      9999
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "multi_label_0": {
+        "max_iter": 50,
+        "batch_size": 16,
+        "aggregate_every_n_epoch": 2,
+        "lr": 0.005,
+        "pretrained": false,
+        "dataset": "ms-coco",
+        "arch": "alexnet"
+      }
+    },
+    "role": {
+      "host": {
+        "0": {
+          "multi_label_0": {
+            "device": "cpu"
+          },
+          "reader_0": {
+            "table": {
+              "name": "host-train",
+              "namespace": "my-data"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "guest-train",
+              "namespace": "my-data"
+            }
+          }
+        }
+      },
+      "guest": {
+        "0": {
+          "multi_label": {
+            "device": "cpu"
+          },
+          "reader_0": {
+            "table": {
+              "name": "guest-train",
+              "namespace": "my-data"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "host-train",
+              "namespace": "my-data"
+            }
+          }
+        }
+      }
+    }
+  }
+}

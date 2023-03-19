@@ -1,0 +1,34 @@
+1. FakeLinearQuantization对激活单元的统计采用指数滑动平均：https://arxiv.org/abs/1712.05877
+    1.1 在EMA上执行偏差纠正
+2. Dynamic Network Surgery上的一些考虑
+    2.1 文章中使用了两个权重集合: 前向传播阶段使用掩膜的权重来计算损失，而反向传播阶段使用掩膜权重损失计算的梯度来更新未掩膜的权重
+        使用SplicingPruner policy需要设置：use_double_copies：True以及mask_on_forward_only：True
+    2.2 然而实验发现：使用权重的两份拷贝会减小精度，因此，禁用use_double_copies的配置
+    2.3 讨论：为什么某些情况下，即使梯度被掩膜，掩膜掉的权重也会被更新到一个非零值？
+    2.4 为了规避反向传播阶段执行的权重更新，通常在反向传播阶段之后对权重再次掩膜
+    2.5 在参数更新时将数据恢复到未掩膜的版本
+    2.6 在全连接层中，如果一个权重为0，那么其对应的梯度不应该也是0吗？
+3. 结构化剪枝
+    3.1 对权重的剪枝                         # Todo: 对权重的结构化剪枝有相关的论文
+        3.1.1 对通道的剪枝
+        3.1.2 对滤波器的剪枝
+    3.3 对激活单元的剪枝
+        3.3.1 统计APoZ指标的剪枝：https://arxiv.org/abs/1607.03250
+        3.3.2 统计Mean指标的剪枝：https://arxiv.org/abs/1611.06440
+4. 非结构化剪枝
+    4.1 Dynamic Network Surgery
+    4.2 AutoGradualPruning
+    4.3 SensitivityPruner
+
+5. distiller项目有关的一些参考文献
+    5.1 压缩深度学习模型的可靠性评估：https://ieeexplore.ieee.org/document/9069026
+    5.2 基于梯度的正弦自适应正则化神经网络深度量化：https://arxiv.org/abs/2003.00146
+    5.3 用于快速模型推理的神经网络压缩框架：https://arxiv.org/abs/2002.08679
+    5.4 鲁棒量化：One Model to Rule Them All：https://arxiv.org/abs/2002.07686
+    5.5 模型压缩的可编程方法：https://arxiv.org/abs/1911.02497
+    5.6 神经网络压缩的比较研究：https://arxiv.org/abs/1910.11144
+    5.7 使用结构权重共享的跨领域模型压缩：http://openaccess.thecvf.com/content_CVPR_2019/html/Gao_Cross_Domain_Model_Compression_by_Structurally_Weight_Sharing_CVPR_2019_paper.html
+    5.8 神经网络量化的可训练阈值：https://rd.springer.com/chapter/10.1007/978-3-030-20518-8_26
+    5.9 分而治之：利用中间的特征表示进行神经网络量化训练：https://arxiv.org/abs/1906.06033
+    5.10 使用离群通道划分改善神经网络量化：https://arxiv.org/abs/1901.09504
+    5.11 统一神经网络量化的快速适应性阈值：https://arxiv.org/abs/1812.07872
