@@ -143,9 +143,13 @@ README.md
 RELEASE.md
 requirements.txt
 init.sh
-
 fate/python
+!fate/python/federatedml
+
+fate/python/federatedml
 !fate/python/federatedml/components
 !fate/python/federatedml/nn
 !fate/python/federatedml/param
 !fate/python/federatedml/protobuf
+
+
