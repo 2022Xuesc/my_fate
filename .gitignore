@@ -143,6 +143,9 @@ README.md
 RELEASE.md
 requirements.txt
 init.sh
+fate
+!fate/python
+
 fate/python
 !fate/python/federatedml
 
