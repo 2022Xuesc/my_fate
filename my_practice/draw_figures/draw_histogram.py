@@ -3,7 +3,9 @@ import os
 import matplotlib.pyplot as plt
 
 guest_train_dir = '/home/klaus125/research/dataset/ms-coco/guest/train'
+guest_valid_dir = '/home/klaus125/research/dataset/ms-coco/guest/val'
 host_train_dir = '/home/klaus125/research/dataset/ms-coco/host/train'
+host_valid_dir = '/home/klaus125/research/dataset/ms-coco/host/val'
 
 
 
@@ -27,7 +29,8 @@ def get_labels_cnts(data_dir):
 def draw_hist(data_dirs, num_labels=90):
     for data_dir in data_dirs:
         labels_cnts = get_labels_cnts(data_dir)
-        name = data_dir.split('/')[-2]
+        info = data_dir.split('/')
+        role,phase = info[-2],info[-1]
 
         plt.hist(
             labels_cnts,
@@ -36,12 +39,12 @@ def draw_hist(data_dirs, num_labels=90):
             histtype='bar',
             alpha=0.5,
         )
-        plt.title(name + '_label_distribution')
+        plt.title(f'{role}_{phase}_label_distribution')
         plt.xlabel('label_id')
         plt.ylabel('label_occurrence')
 
-        plt.savefig(name + '_distribution.svg', dpi=600, format='svg')
+        plt.savefig(f'{role}_{phase}_distribution.svg', dpi=600, format='svg')
         plt.cla()
 
 
-draw_hist([host_train_dir, guest_train_dir])
+draw_hist([host_train_dir, guest_train_dir,host_valid_dir,guest_valid_dir])
