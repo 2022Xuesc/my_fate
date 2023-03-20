@@ -82,8 +82,11 @@ def draw(path, loss_file=None, train_file=None, valid_file=None):
         draw_loss(path, loss_file)
 
 
-draw(host_path, train_file='train.csv', valid_file='valid.csv')
-draw(guest_path, train_file='train.csv', valid_file='valid.csv')
+# draw(host_path, train_file='train.csv', valid_file='valid.csv')
+# draw(guest_path, train_file='train.csv', valid_file='valid.csv')
+#
+#
+# draw(arbiter_path, loss_file='avgloss.csv')
 
-
-draw(arbiter_path, loss_file='avgloss.csv')
+standalone_path = 'standalone'
+draw(standalone_path,train_file='train.csv',valid_file='valid.csv')

@@ -47,4 +47,7 @@ def draw_hist(data_dirs, num_labels=90):
         plt.cla()
 
 
-draw_hist([host_train_dir, guest_train_dir,host_valid_dir,guest_valid_dir])
+# draw_hist([host_train_dir, guest_train_dir,host_valid_dir,guest_valid_dir])
+
+standalone_dir = '/home/klaus125/research/dataset/ms-coco/src_val'
+draw_hist([standalone_dir])
