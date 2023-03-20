@@ -8,6 +8,7 @@ class MultiLabelParam(BaseParam):
                  aggregate_every_n_epoch: int = 1,
                  max_iter: int = 10,
                  batch_size: int = 32,
+                 sched_dict: dict = None,
                  epochs: int = 500,
                  device: str = 'cpu',
                  pretrained: bool = True,
@@ -23,6 +24,7 @@ class MultiLabelParam(BaseParam):
         self.epochs = epochs
         self.device = device
         self.pretrained = pretrained
+        self.sched_dict = sched_dict
         self.dataset = dataset
         self.arch = arch
         self.lr = lr
@@ -39,6 +41,8 @@ class MultiLabelParam(BaseParam):
         pb.batch_size = self.batch_size
         pb.max_iter = self.max_iter
         pb.num_labels = self.num_labels
+        for sched_info in self.sched_dict:
+            pb.sched_dict.append(json.dumps(sched_info))
 
         pb.device = self.device
         pb.pretrained = self.pretrained
@@ -52,6 +56,8 @@ class MultiLabelParam(BaseParam):
         self.aggregate_every_n_epoch = pb.aggregate_every_n_epoch
         self.max_iter = pb.max_iter
         self.batch_size = pb.batch_size
+        for sched_info in pb.sched_dict:
+            self.sched_dict.append(json.loads(sched_info))
         self.device = pb.device
         self.pretrained = pb.pretrained
         self.dataset = pb.dataset

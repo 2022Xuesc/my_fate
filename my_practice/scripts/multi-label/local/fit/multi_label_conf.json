@@ -4,8 +4,8 @@
     "common": {
       "job_type": "train",
       "task_cores": 4,
-      "task_parallelism": 1,
-      "computing_partitions": 2
+      "task_parallelism": 4,
+      "computing_partitions": 4
     }
   },
   "initiator": {
@@ -26,50 +26,66 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
-        "max_iter": 50,
+        "max_iter": 1000,
         "batch_size": 16,
-        "aggregate_every_n_epoch": 2,
-        "lr": 0.005,
+        "aggregate_every_n_epoch": 10,
+        "lr": 0.1,
         "pretrained": false,
         "dataset": "ms-coco",
-        "arch": "alexnet"
+        "arch": "alexnet",
+        "sched_dict": {
+          "lr_schedulers": {
+            "pruning_lr": {
+              "class": "ExponentialLR",
+              "gamma": 0.99
+            }
+          },
+          "policies": {
+            "lr_scheduler": {
+              "instance_name": "pruning_lr",
+              "starting_epoch": 50,
+              "ending_epoch": 800,
+              "frequency": 5
+            }
+          }
+        }
       }
     },
     "role": {
-      "host": {
+      "guest": {
         "0": {
-          "multi_label_0": {
-            "device": "cpu"
+          "multi_label": {
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
-              "name": "host-train",
-              "namespace": "my-data"
+              "name": "guest-train",
+              "namespace": "ms-coco"
             }
           },
           "reader_1": {
             "table": {
-              "name": "guest-train",
-              "namespace": "my-data"
+              "name": "guest-val",
+              "namespace": "ms-coco"
             }
           }
         }
       },
-      "guest": {
+      "host": {
         "0": {
-          "multi_label": {
-            "device": "cpu"
+          "multi_label_0": {
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
-              "name": "guest-train",
-              "namespace": "my-data"
+              "name": "host-train",
+              "namespace": "ms-coco"
             }
           },
           "reader_1": {
             "table": {
-              "name": "host-train",
-              "namespace": "my-data"
+              "name": "host-val",
+              "namespace": "ms-coco"
             }
           }
         }

@@ -1,8 +1,8 @@
 {
     "engine": "PATH",
-    "namespace": "my-data",
+    "namespace": "ms-coco",
     "name": "guest-train",
     "address": {
-        "path": "/home/klaus125/research/fate/my_practice/my_data/ms-coco/guest/train"
+        "path": "/home/klaus125/research/dataset/ms-coco/guest/train"
     }
 }

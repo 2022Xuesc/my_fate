@@ -1,25 +1,13 @@
-import federatedml.nn.backend.distiller as distiller
+import federatedml.nn.backend.multi_label as multi_label
 # 注意这里的导入语句不可省略
-from federatedml.nn.backend.distiller import *
-from federatedml.nn.backend.distiller.pruning.ranked_structures_pruner import *
-from federatedml.nn.backend.distiller.quantization.range_linear import QuantAwareTrainRangeLinearQuantizer
-from federatedml.nn.backend.distiller.regularization.l1_regularizer import L1Regularizer
-from federatedml.nn.backend.distiller.pruning.splicing_pruner import *
-from federatedml.nn.backend.distiller.utils import filter_kwargs
+from federatedml.nn.backend.multi_label.utils import filter_kwargs
 from torch.optim.lr_scheduler import *
 
 
 # noinspection PyShadowingNames
 def config_scheduler(model, optimizer, sched_dict, scheduler=None):
     if not scheduler:
-        scheduler = distiller.CompressionScheduler(model)
-    pruners = __factory('pruners', model, sched_dict)
-
-    # 配置量化器
-    quantizers = __factory('quantizers', model, sched_dict, optimizer=optimizer)
-
-    # 配置正则项
-    regularizers = __factory('regularizers', model, sched_dict)
+        scheduler = multi_label.Scheduler(model)
 
     lr_policies = []
     policy = None
@@ -27,28 +15,16 @@ def config_scheduler(model, optimizer, sched_dict, scheduler=None):
     policies = sched_dict['policies']
     for policy_type in policies:
         policy_def = policies[policy_type]
-        instance_name, args = __policy_params(policy_def)
-        if 'pruner' == policy_type:
-            pruner = pruners[instance_name]
-            policy = distiller.PruningPolicy(pruner, args)
-        elif 'lr_scheduler' == policy_type:
+        if 'lr_scheduler' == policy_type:
             lr_policies.append(policy_def)
             continue
-        elif 'quantizer' == policy_type:
-            quantizer = quantizers[instance_name]
-            policy = distiller.QuantizationPolicy(quantizer)
-        elif 'regularizer' == policy_type:
-            regularizer = regularizers[instance_name]
-            policy = distiller.RegularizationPolicy(regularizer)
-        if policy:
-            add_policy_to_scheduler(policy, policy_def, scheduler)
     lr_schedulers = __factory('lr_schedulers', model, sched_dict, optimizer=optimizer, last_epoch=-1)
     for policy_def in lr_policies:
         instance_name, args = __policy_params(policy_def)
         assert instance_name in lr_schedulers, "LR-scheduler {} was not defined in the list of lr-schedulers".format(
             instance_name)
         lr_scheduler = lr_schedulers[instance_name]
-        policy = distiller.LRPolicy(lr_scheduler)
+        policy = multi_label.LRPolicy(lr_scheduler)
         add_policy_to_scheduler(policy, policy_def, scheduler)
     return scheduler
 

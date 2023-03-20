@@ -13,8 +13,9 @@ import csv
 import torch
 import torch.nn
 
-from federatedml.nn.backend.distiller.models import create_model
-from federatedml.nn.backend.pytorch.data import VisionDataSet, MultiLabelDataSet
+from federatedml.nn.backend.multi_label.config import config_scheduler
+from federatedml.nn.backend.multi_label.models import create_model
+from federatedml.nn.backend.pytorch.data import MultiLabelDataSet
 from federatedml.nn.homo_nn import _consts
 from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
@@ -25,6 +26,7 @@ from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 log_dir = 'logs'
 stats_dir = os.path.join(os.getcwd(), 'stats')
+LOGGER.warn(stats_dir)
 models_dir = 'models'
 
 if not os.path.exists(stats_dir):
@@ -41,9 +43,6 @@ arbiter_logger = logging.getLogger('arbiter_logger')
 
 buf_size = 1
 # 定义和实验数据记录相关的对象
-sparsity_file = open(os.path.join(stats_dir, 'sparsity.csv'), 'w', buffering=buf_size)
-sparsity_writer = csv.writer(sparsity_file)
-sparsity_writer.writerow(['epoch', 'conv2d_sparsity', 'linear_sparsity', 'avg_sparsity'])
 
 train_file = open(os.path.join(stats_dir, 'train.csv'), 'w', buffering=buf_size)
 train_writer = csv.writer(train_file)
@@ -136,7 +135,10 @@ class FedClientContext(_FedBaseContext):
     def do_aggregation(self, weight, device):
         # 发送全局模型
         self.send_model(self._params, weight)
+        LOGGER.warn("模型发送完毕")
+
         recv_elements: typing.List = self.recv_model()
+        LOGGER.warn("模型接收完毕")
         agg_tensors = []
         for arr in recv_elements:
             agg_tensors.append(torch.from_numpy(arr).to(device))
@@ -300,7 +302,6 @@ class MultiLabelFedAggregator(object):
     def fit(self, loss_callback):
         while not self.context.finished():
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
-
             cur_iteration = self.context.aggregation_iteration
             arbiter_logger.info(f'当前聚合轮次为{cur_iteration},成功接收到客户端的模型参数!')
             LOGGER.warn(f'收到{len(recv_elements)}客户端发送过来的模型')
@@ -313,10 +314,10 @@ class MultiLabelFedAggregator(object):
                     tensor /= total_degree
                     if i != 0:
                         tensors[0][j] += tensor
-            arbiter_logger.info(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
+            LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.context.send_model(tensors[0])
-            arbiter_logger.info(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
+            LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             is_converged, loss = self.context.do_convergence_check()
             loss_callback(self.context.aggregation_iteration, float(loss))
             self.context.increase_aggregation_iteration()
@@ -357,7 +358,7 @@ class MultiLabelFitter(object):
         self._num_data_consumed = 0
         self.context = context
         self.label_mapping = label_mapping
-        (self.model, self.optimizer) = _init_learner(self.param, self.param.device)
+        (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
         self.criterion = torch.nn.BCELoss().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
@@ -424,6 +425,8 @@ class MultiLabelFitter(object):
         precision, recall, loss = self.train_one_epoch(epoch, train_loader)
         if valid_loader:
             precision, recall, loss = self.validate_one_epoch(epoch, valid_loader)
+        if self.scheduler:
+            self.scheduler.on_epoch_end(epoch, self.optimizer)
         return precision, recall, loss
 
 
@@ -452,10 +455,14 @@ def train(train_loader, model, criterion, optimizer, epoch, device):
         total_recall += recall
         total_loss += loss.item() * inputs.size(0)
 
+        # 打印进度
+        LOGGER.warn(
+            f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},precision={precision},recall={recall},loss={loss}')
+
         loss.backward()
         optimizer.step()
 
-    return total_precision / batch_size, total_recall / batch_size, total_loss / total_samples
+    return total_precision / steps_per_epoch, total_recall / steps_per_epoch, total_loss / total_samples
 
 
 def validate(valid_loader, model, criterion, epoch, device):
@@ -477,17 +484,21 @@ def validate(valid_loader, model, criterion, epoch, device):
             output = model(inputs)
             loss = criterion(sigmoid_func(output), target)
             precision, recall = calculate_accuracy_mode1(sigmoid_func(output), target)
-            total_loss += loss
+            total_loss += loss.item()
             total_precision += precision
             total_recall += recall
-    return total_precision / batch_size, total_recall / batch_size, total_loss / total_samples
+        LOGGER.warn(f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
+    return total_precision / total_steps, total_recall / total_steps, total_loss / total_samples
 
 
 def _init_learner(param, device='cpu'):
     # Todo: 将通用部分提取出来
     model = create_model(param.pretrained, param.dataset, param.arch, num_classes=param.num_labels, device=device)
     optimizer = torch.optim.SGD(model.parameters(), lr=param.lr)
-    return model, optimizer
+    scheduler = None
+    if param.sched_dict:
+        scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)
+    return model, scheduler, optimizer
 
 
 def calculate_accuracy_mode1(model_pred, labels):

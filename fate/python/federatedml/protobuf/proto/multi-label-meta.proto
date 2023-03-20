@@ -15,6 +15,7 @@ message MultiLabelParam {
   int32 num_labels = 8;
   int32 aggregate_every_n_epoch = 9;
   int32 max_iter = 10;
+  repeated string sched_dict = 11;
 }
 
 message MultiLabelMetaProto {
