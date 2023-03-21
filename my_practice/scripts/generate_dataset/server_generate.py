@@ -1,16 +1,16 @@
 from dataset_generator import *
 
-# train_path = "/data/projects/dataset/train2014"
-# val_path = "/data/projects/dataset/val2014"
-# test_path = "/data/projects/dataset/test2014"
-train_path = "../../my_data/imagenet/guest/train/images"
-val_path = "../../my_data/imagenet/guest/train/images"
-test_path = "../../my_data/imagenet/guest/train/images"
+train_path = "/data/projects/dataset/train2014"
+val_path = "/data/projects/dataset/val2014"
+test_path = "/data/projects/dataset/test2014"
+# train_path = "../../my_data/imagenet/guest/train/images"
+# val_path = "../../my_data/imagenet/guest/train/images"
+# test_path = "../../my_data/imagenet/guest/train/images"
 
 
 def generate_dataset(n):
-    # my_data_path = "/data/projects/my_dataset"
-    my_data_path = "../../my_data"
+    my_data_path = "/data/projects/my_dataset"
+    # my_data_path = "../../my_data"
     for i in range(1, n + 1):
         client_path = os.path.join(my_data_path, f'client{i}')
         client_train_path = os.path.join(client_path, 'train')
