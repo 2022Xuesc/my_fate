@@ -1,8 +1,0 @@
-{
-    "engine": "PATH",
-    "namespace": "ms-coco-0321",
-    "name": "client8_val",
-    "address": {
-        "path": "/data/projects/my_dataset/client8/val"
-    }
-}

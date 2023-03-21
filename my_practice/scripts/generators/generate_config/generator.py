@@ -1,7 +1,7 @@
 import json
 import os.path
 
-client_num = 8
+client_num = 2
 phases = ['train', 'val']
 
 dir_path = "../../multi-label/server/bind_data"

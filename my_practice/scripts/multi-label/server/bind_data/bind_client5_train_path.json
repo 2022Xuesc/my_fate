@@ -1,8 +1,0 @@
-{
-    "engine": "PATH",
-    "namespace": "ms-coco-0321",
-    "name": "client5_train",
-    "address": {
-        "path": "/data/projects/my_dataset/client5/train"
-    }
-}
