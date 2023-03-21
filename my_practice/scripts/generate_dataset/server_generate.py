@@ -27,9 +27,9 @@ train_annotation_file = os.path.join(annotations_dir, 'instances_train2014.json'
 val_annotation_file = os.path.join(annotations_dir, 'instances_val2014.json')
 test_annotation_file = os.path.join(annotations_dir, 'image_info_test2014.json')
 
-save_image2labels(train_annotation_file, 'train')
-save_image2labels(val_annotation_file, 'val')
-save_image2labels((test_annotation_file, 'test'))
+#save_image2labels(train_annotation_file, 'train')
+#save_image2labels(val_annotation_file, 'val')
+save_image2labels(test_annotation_file, 'test')
 
 # 为每个文件夹生成标注数据以及config.yaml文件
 # generate_dataset(8)
