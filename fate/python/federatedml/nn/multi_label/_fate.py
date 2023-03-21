@@ -1,9 +1,11 @@
 # 服务器与客户端的通用逻辑
 import copy
+from collections import OrderedDict
 
 import numpy as np
 import typing
 import torchvision.transforms as transforms
+import torchnet.meter as tnt
 
 import math
 import os
@@ -178,7 +180,7 @@ class FedClientContext(_FedBaseContext):
 # 创建服务器端的上下文
 class FedServerContext(_FedBaseContext):
     # Todo: 这里的name关系到FATE架构的通信，不能随便更改
-    def __init__(self, max_num_aggregation, name="default"):
+    def __init__(self, max_num_aggregation, eps=0.0, name="default"):
         super(FedServerContext, self).__init__(
             max_num_aggregation=max_num_aggregation, name=name
         )
@@ -187,7 +189,7 @@ class FedServerContext(_FedBaseContext):
         self.random_padding_cipher = random_padding_cipher.Server(
             self.transfer_variable.random_padding_cipher_trans_var
         )
-        # self._eps = eps
+        self._eps = eps
         self._loss = math.inf
 
     def init(self, init_aggregation_iteration=0):
@@ -234,8 +236,7 @@ class FedServerContext(_FedBaseContext):
 
         avgloss_writer.writerow([self.aggregation_iteration, mean_precision, mean_recall, mean_loss])
 
-        # is_converged = abs(mean_loss - self._loss) < self._eps
-        is_converged = False
+        is_converged = abs(mean_loss - self._loss) < self._eps
 
         self.send_convergence_status(mean_precision, mean_recall, is_converged)
 
@@ -248,7 +249,7 @@ class FedServerContext(_FedBaseContext):
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
-        # eps=param.early_stop_eps
+        eps=param.early_stop_eps
     )
     context.init(init_aggregation_iteration=init_iteration)
     fed_aggregator = MultiLabelFedAggregator(context)
@@ -369,7 +370,7 @@ class MultiLabelFitter(object):
     def fit(self, train_loader, valid_loader):
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
-            precision, recall, loss = self.train_validate(epoch, train_loader, valid_loader)
+            precision, recall, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
             fate_logger.info(f'已完成一轮训练+验证')
             LOGGER.warn(f'epoch={epoch}/{self.end_epoch},precision={precision},recall={recall},loss={loss}')
             self.on_fit_epoch_end(epoch, valid_loader, precision, recall, loss)
@@ -401,15 +402,16 @@ class MultiLabelFitter(object):
             self.context.increase_aggregation_iteration()
 
     # 执行拟合逻辑的编写
-    def train_one_epoch(self, epoch, train_loader):
+    def train_one_epoch(self, epoch, train_loader, scheduler):
         precision, recall, loss = train(train_loader, self.model, self.criterion, self.optimizer,
-                                        epoch, self.param.device)
+                                        epoch, self.param.device, scheduler)
         fate_logger.info(f'训练阶段结束,epoch = {epoch},平均loss = {loss}')
         train_writer.writerow([epoch, precision, recall, loss])
         return precision, recall, loss
 
-    def validate_one_epoch(self, epoch, valid_loader):
-        precision, recall, loss = validate(valid_loader, self.model, self.criterion, epoch, self.param.device)
+    def validate_one_epoch(self, epoch, valid_loader, scheduler):
+        precision, recall, loss = validate(valid_loader, self.model, self.criterion, epoch, self.param.device,
+                                           scheduler)
         fate_logger.info(f'验证阶段结束,epoch = {epoch},precision = {precision},recall = {recall},平均loss = {loss}')
         valid_writer.writerow([epoch, precision, recall, loss])
         return precision, recall, loss
@@ -421,16 +423,16 @@ class MultiLabelFitter(object):
         # 发送模型并接收聚合后的模型
         self.context.do_aggregation(weight=self._num_data_consumed, device=self.param.device)
 
-    def train_validate(self, epoch, train_loader, valid_loader):
-        precision, recall, loss = self.train_one_epoch(epoch, train_loader)
+    def train_validate(self, epoch, train_loader, valid_loader, scheduler):
+        precision, recall, loss = self.train_one_epoch(epoch, train_loader, scheduler)
         if valid_loader:
-            precision, recall, loss = self.validate_one_epoch(epoch, valid_loader)
+            precision, recall, loss = self.validate_one_epoch(epoch, valid_loader, scheduler)
         if self.scheduler:
             self.scheduler.on_epoch_end(epoch, self.optimizer)
         return precision, recall, loss
 
 
-def train(train_loader, model, criterion, optimizer, epoch, device):
+def train(train_loader, model, criterion, optimizer, epoch, device, scheduler):
     total_samples = len(train_loader.sampler)
     batch_size = train_loader.batch_size
     steps_per_epoch = math.ceil(total_samples / batch_size)
@@ -439,36 +441,56 @@ def train(train_loader, model, criterion, optimizer, epoch, device):
     sigmoid_func = torch.nn.Sigmoid()
 
     model.train()
-    total_loss = 0.0
-    total_precision = 0.0
-    total_recall = 0.0
+    precisions = tnt.AverageValueMeter()
+    recalls = tnt.AverageValueMeter()
+
+    # 对Loss进行更新
+    OVERALL_LOSS_KEY = 'Overall Loss'
+    OBJECTIVE_LOSS_KEY = 'Objective Loss'
+    losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
+                          (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
+
     for train_step, (inputs, target) in enumerate(train_loader):
         inputs = inputs.to(device)
         target = target.to(device)
-        optimizer.zero_grad()
 
         output = model(inputs)
-        # Todo: 这里是否需要加上sigmoid？
         loss = criterion(sigmoid_func(output), target)
+        losses[OBJECTIVE_LOSS_KEY].add(loss.item())
         precision, recall = calculate_accuracy_mode1(sigmoid_func(output), target)
-        total_precision += precision
-        total_recall += recall
-        total_loss += loss.item() * inputs.size(0)
+        precisions.add(precision)
+        recalls.add(recall)
 
+        if scheduler:
+            agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
+            loss = agg_loss.overall_loss
+            losses[OVERALL_LOSS_KEY].add(loss.item())
+            for lc in agg_loss.loss_components:
+                if lc.name not in losses:
+                    losses[lc.name] = tnt.AverageValueMeter()
+                losses[lc.name].add(lc.value.item())
+        else:
+            losses[OVERALL_LOSS_KEY].add(loss.item())
         # 打印进度
         LOGGER.warn(
             f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},precision={precision},recall={recall},loss={loss}')
-
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-    return total_precision / steps_per_epoch, total_recall / steps_per_epoch, total_loss / total_samples
+    return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
 
 
-def validate(valid_loader, model, criterion, epoch, device):
-    total_loss = 0.0
-    total_precision = 0.0
-    total_recall = 0.0
+def validate(valid_loader, model, criterion, epoch, device, scheduler):
+    # 这里
+    precisions = tnt.AverageValueMeter()
+    recalls = tnt.AverageValueMeter()
+    # 对Loss进行更新
+    OVERALL_LOSS_KEY = 'Overall Loss'
+    OBJECTIVE_LOSS_KEY = 'Objective Loss'
+    losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
+                          (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
+
     total_samples = len(valid_loader.sampler)
     batch_size = valid_loader.batch_size
 
@@ -484,11 +506,21 @@ def validate(valid_loader, model, criterion, epoch, device):
             output = model(inputs)
             loss = criterion(sigmoid_func(output), target)
             precision, recall = calculate_accuracy_mode1(sigmoid_func(output), target)
-            total_loss += loss.item()
-            total_precision += precision
-            total_recall += recall
-        LOGGER.warn(f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
-    return total_precision / total_steps, total_recall / total_steps, total_loss / total_samples
+            precisions.add(precision)
+            recalls.add(recall)
+            if scheduler:
+                agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
+                loss = agg_loss.overall_loss
+                losses[OVERALL_LOSS_KEY].add(loss.item())
+                for lc in agg_loss.loss_components:
+                    if lc.name not in losses:
+                        losses[lc.name] = tnt.AverageValueMeter()
+                    losses[lc.name].add(lc.value.item())
+            else:
+                losses[OVERALL_LOSS_KEY].add(loss.item())
+        LOGGER.warn(
+            f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
+    return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
 
 
 def _init_learner(param, device='cpu'):

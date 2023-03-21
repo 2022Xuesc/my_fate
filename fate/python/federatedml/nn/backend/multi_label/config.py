@@ -2,12 +2,16 @@ import federatedml.nn.backend.multi_label as multi_label
 # 注意这里的导入语句不可省略
 from federatedml.nn.backend.multi_label.utils import filter_kwargs
 from torch.optim.lr_scheduler import *
+from federatedml.nn.backend.multi_label.regularization.l1_regularizer import *
+from federatedml.nn.backend.multi_label.regularization.l2_regularizer import *
 
 
 # noinspection PyShadowingNames
 def config_scheduler(model, optimizer, sched_dict, scheduler=None):
     if not scheduler:
         scheduler = multi_label.Scheduler(model)
+    # 配置正则项
+    regularizers = __factory('regularizers', model, sched_dict)
 
     lr_policies = []
     policy = None
@@ -15,9 +19,17 @@ def config_scheduler(model, optimizer, sched_dict, scheduler=None):
     policies = sched_dict['policies']
     for policy_type in policies:
         policy_def = policies[policy_type]
+        instance_name, args = __policy_params(policy_def)
         if 'lr_scheduler' == policy_type:
             lr_policies.append(policy_def)
             continue
+        elif 'regularizer' == policy_type:
+            regularizer = regularizers[instance_name]
+            policy = multi_label.RegularizationPolicy(regularizer)
+        if policy:
+            add_policy_to_scheduler(policy,policy_def,scheduler)
+
+    # 将学习率调度器延迟配置
     lr_schedulers = __factory('lr_schedulers', model, sched_dict, optimizer=optimizer, last_epoch=-1)
     for policy_def in lr_policies:
         instance_name, args = __policy_params(policy_def)

@@ -1,5 +1,7 @@
 import torch
 
+from federatedml.nn.backend.multi_label.policy import PolicyLoss, LossComponent
+
 
 class Scheduler(object):
     """Responsible for scheduling pruning and masking parameters.
@@ -59,3 +61,32 @@ class Scheduler(object):
             meta['current_epoch'] = epoch
             meta['optimizer'] = optimizer
             policy.on_epoch_end(self.model, meta, **kwargs)
+
+    # 在反向传播前计算损失，以便于进行优化?
+    def before_backward_pass(self,epoch, loss, return_loss_components=False):
+        overall_loss = loss
+        loss_components = []
+        if epoch in self.policies:
+            for policy in self.policies[epoch]:
+                policy_loss = policy.before_backward_pass(self.model, epoch,
+                                                          overall_loss)
+                if policy_loss is not None:
+                    cur_loss_components = self.verify_policy_loss(policy_loss)
+                    overall_loss = policy_loss.overall_loss
+                    loss_components += cur_loss_components
+        if return_loss_components:
+            return PolicyLoss(overall_loss, loss_components)
+        return overall_loss
+
+    @staticmethod
+    def verify_policy_loss(policy_loss):
+        if not isinstance(policy_loss, PolicyLoss):
+            raise TypeError("A Policy's before_backward_pass must return either None or an instance of " +
+                            PolicyLoss.__name__)
+        cur_loss_components = policy_loss.loss_components
+        if not isinstance(cur_loss_components, list):
+            cur_loss_components = [cur_loss_components]
+        if not all(isinstance(lc, LossComponent) for lc in cur_loss_components):
+            raise TypeError("Expected an instance of " + LossComponent.__name__ +
+                            " or a list of such instances")
+        return cur_loss_components

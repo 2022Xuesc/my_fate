@@ -13,6 +13,7 @@ class MultiLabelParam(BaseParam):
                  device: str = 'cpu',
                  pretrained: bool = True,
                  dataset: str = 'ms-coco',
+                 early_stop_eps: float = 0.,
                  arch: str = 'alexnet',
                  lr: float = 0.005,
                  num_labels: int = 90,
@@ -28,6 +29,7 @@ class MultiLabelParam(BaseParam):
         self.dataset = dataset
         self.arch = arch
         self.lr = lr
+        self.early_stop_eps = early_stop_eps
         self.num_labels = num_labels
 
     def check(self):
@@ -48,6 +50,7 @@ class MultiLabelParam(BaseParam):
         pb.pretrained = self.pretrained
         pb.dataset = self.dataset
         pb.arch = self.arch
+        pb.early_stop_eps = self.early_stop_eps
         pb.lr = self.lr
         return pb
 
@@ -62,6 +65,7 @@ class MultiLabelParam(BaseParam):
         self.pretrained = pb.pretrained
         self.dataset = pb.dataset
         self.arch = pb.arch
+        self.early_stop_eps = pb.early_stop_eps
         self.lr = pb.lr
         self.num_labels = pb.num_labels
         return pb

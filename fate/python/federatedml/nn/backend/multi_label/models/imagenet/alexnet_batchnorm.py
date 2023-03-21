@@ -28,6 +28,8 @@ import torch.nn as nn
 __all__ = ['AlexNetBN', 'alexnet_bn']
 
 
+# Todo: 全连接层后添加了DropOut层
+
 class AlexNetBN(nn.Module):
 
     def __init__(self, num_classes=1000):
@@ -58,9 +60,11 @@ class AlexNetBN(nn.Module):
             nn.Linear(256 * 6 * 6, 4096, bias=False),       # fc0
             nn.BatchNorm1d(4096, eps=1e-4, momentum=0.9),   # bnfc0
             nn.ReLU(inplace=True),
+            nn.Dropout(),
             nn.Linear(4096, 4096, bias=False),              # fc1
             nn.BatchNorm1d(4096, eps=1e-4, momentum=0.9),   # bnfc1
             nn.ReLU(inplace=True),
+            nn.Dropout(),
             nn.Linear(4096, num_classes),                   # fct
         )
 
