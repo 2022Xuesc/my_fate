@@ -2,13 +2,10 @@ import json
 import os
 import shutil
 
-json_path = '../dataset/ms-coco/annotations/instances_val2014.json'
 
-
-def save_image2labels():
+def save_image2labels(json_path, phase):
     with open(json_path) as f:
         data = json.load(f)
-
 
     image2labels = {}
 
@@ -28,14 +25,14 @@ def save_image2labels():
         image2labels[image_id] = list(image2labels[image_id])
 
     # 将image2labels进行持久化
-    image2labels_path = 'image2labels.json'
+    image2labels_path = phase + '_image2labels.json'
     json_str = json.dumps(image2labels, indent=4)
     with open(image2labels_path, 'w') as json_file:
         json_file.write(json_str)
 
 
-def get_image2labels():
-    with open('image2labels.json') as f:
+def get_image2labels(phase):
+    with open(phase + '_image2labels.json') as f:
         return json.load(f)
 
 
@@ -60,7 +57,6 @@ def generate_2014(src_dir, left, right, target_dir):
     for filename in files[int(left * cnt):int(right * cnt)]:
         fullpath = os.path.join(src_dir, filename)
         shutil.copy(fullpath, target_dir)
-
 
 
 # 为每个数据集生成标签
@@ -91,7 +87,8 @@ def generate_labels(dir_paths):
 
         labels = []
         files = os.listdir(dir_path)
-        image2labels = get_image2labels()
+        # 解析phase
+        image2labels = get_image2labels(dir_path.split('/')[-1])
         for filename in files:
             # 字典json本地存储后,键改为了str类型
             image_id = str(get_image_id(filename))
@@ -105,4 +102,3 @@ def generate_labels(dir_paths):
                 labels.append(label)
         # Todo: 将labels写入文件中
         write_labels(labels, labels_path)
-
