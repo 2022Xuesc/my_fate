@@ -1,5 +1,4 @@
 # Byte-compiled / optimized / DLL files
-__pycache__/
 *.py[cod]
 *$py.class
 
@@ -155,4 +154,4 @@ fate/python/federatedml
 !fate/python/federatedml/param
 !fate/python/federatedml/protobuf
 
-
+**/__pycache__
