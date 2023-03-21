@@ -44,9 +44,12 @@ def get_image_id(image_name):
 
 
 def clear_dir(dir_path):
-    files = os.listdir(dir_path)
-    for file in files:
-        os.remove(os.path.join(dir_path, file))
+    if os.path.exists(dir_path):
+        files = os.listdir(dir_path)
+        for file in files:
+            os.remove(os.path.join(dir_path, file))
+    else:
+        os.makedirs(dir_path)
 
 
 def generate_2014(src_dir, left, right, target_dir):
