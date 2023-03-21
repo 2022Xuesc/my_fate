@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.webank.ai.fate.core.mlmodel.buffer;
+option java_outer_classname = "MultiLabelMetaProto";
+
+message MultiLabelParam {
+  int32 batch_size = 1;
+  int32 epochs = 2;
+
+  string device = 3;
+  bool pretrained = 4;
+  string dataset = 5;
+  string arch = 6;
+  string lr = 7;
+  int32 num_labels = 8;
+  int32 aggregate_every_n_epoch = 9;
+  int32 max_iter = 10;
+  repeated string sched_dict = 11;
+}
+
+message MultiLabelMetaProto {
+  string module = 1;
+  MultiLabelParam params = 100;
+}

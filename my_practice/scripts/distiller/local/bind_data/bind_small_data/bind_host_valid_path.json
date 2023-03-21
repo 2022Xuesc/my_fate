@@ -1,0 +1,8 @@
+{
+  "engine": "PATH",
+  "namespace": "small_experiment",
+  "name": "imagenet_host_valid",
+  "address": {
+    "path": "/home/klaus125/research/data.imagenet/iid10/host/valid"
+  }
+}
