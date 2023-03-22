@@ -102,107 +102,107 @@
               "name": "client2_val",
               "namespace": "ms-coco-0321"
             }
+          }
+        },
+        "1": {
+          "multi_label_0": {
+            "device": "cuda:3"
           },
-          "1": {
-            "multi_label_0": {
-              "device": "cuda:3"
-            },
-            "reader_0": {
-              "table": {
-                "name": "client3_train",
-                "namespace": "ms-coco-0321"
-              }
-            },
-            "reader_1": {
-              "table": {
-                "name": "client3_val",
-                "namespace": "ms-coco-0321"
-              }
+          "reader_0": {
+            "table": {
+              "name": "client3_train",
+              "namespace": "ms-coco-0321"
             }
           },
-          "2": {
-            "multi_label_0": {
-              "device": "cuda:3"
-            },
-            "reader_0": {
-              "table": {
-                "name": "client4_train",
-                "namespace": "ms-coco-0321"
-              }
-            },
-            "reader_1": {
-              "table": {
-                "name": "client4_val",
-                "namespace": "ms-coco-0321"
-              }
+          "reader_1": {
+            "table": {
+              "name": "client3_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "2": {
+          "multi_label_0": {
+            "device": "cuda:3"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client4_train",
+              "namespace": "ms-coco-0321"
             }
           },
-          "3": {
-            "multi_label_0": {
-              "device": "cuda:4"
-            },
-            "reader_0": {
-              "table": {
-                "name": "client5_train",
-                "namespace": "ms-coco-0321"
-              }
-            },
-            "reader_1": {
-              "table": {
-                "name": "client5_val",
-                "namespace": "ms-coco-0321"
-              }
+          "reader_1": {
+            "table": {
+              "name": "client4_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "3": {
+          "multi_label_0": {
+            "device": "cuda:4"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client5_train",
+              "namespace": "ms-coco-0321"
             }
           },
-          "4": {
-            "multi_label_0": {
-              "device": "cuda:4"
-            },
-            "reader_0": {
-              "table": {
-                "name": "client6_train",
-                "namespace": "ms-coco-0321"
-              }
-            },
-            "reader_1": {
-              "table": {
-                "name": "client6_val",
-                "namespace": "ms-coco-0321"
-              }
+          "reader_1": {
+            "table": {
+              "name": "client5_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "4": {
+          "multi_label_0": {
+            "device": "cuda:4"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client6_train",
+              "namespace": "ms-coco-0321"
             }
           },
-          "5": {
-            "multi_label_0": {
-              "device": "cuda:5"
-            },
-            "reader_0": {
-              "table": {
-                "name": "client7_train",
-                "namespace": "ms-coco-0321"
-              }
-            },
-            "reader_1": {
-              "table": {
-                "name": "client7_val",
-                "namespace": "ms-coco-0321"
-              }
+          "reader_1": {
+            "table": {
+              "name": "client6_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "5": {
+          "multi_label_0": {
+            "device": "cuda:5"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client7_train",
+              "namespace": "ms-coco-0321"
             }
           },
-          "6": {
-            "multi_label_0": {
-              "device": "cuda:5"
-            },
-            "reader_0": {
-              "table": {
-                "name": "client8_train",
-                "namespace": "ms-coco-0321"
-              }
-            },
-            "reader_1": {
-              "table": {
-                "name": "client8_val",
-                "namespace": "ms-coco-0321"
-              }
+          "reader_1": {
+            "table": {
+              "name": "client7_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "6": {
+          "multi_label_0": {
+            "device": "cuda:5"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client8_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client8_val",
+              "namespace": "ms-coco-0321"
             }
           }
         }
