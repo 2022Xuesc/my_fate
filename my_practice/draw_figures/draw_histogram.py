@@ -2,35 +2,22 @@ import os
 
 import matplotlib.pyplot as plt
 
-guest_train_dir = '/home/klaus125/research/dataset/ms-coco/guest/train'
-guest_valid_dir = '/home/klaus125/research/dataset/ms-coco/guest/val'
-host_train_dir = '/home/klaus125/research/dataset/ms-coco/host/train'
-host_valid_dir = '/home/klaus125/research/dataset/ms-coco/host/val'
+from my_practice.draw_figures.labels_cnts_getter import get_labels_cnts
 
+local_path = '/home/klaus125/research/dataset/ms-coco'
+server_path = '/data/projects/my_dataset'
 
-
-
-def get_labels_cnts(data_dir):
-    labels_path = os.path.join(data_dir, 'labels.txt')
-    fp = open(labels_path, 'r')
-    labels = []
-    for line in fp:
-        line.strip('\n')
-        info = line.split(',')
-        for index in range(1, len(info)):
-            if info[index] == '1':
-                labels.append(index - 1)
-    return labels
-
-
-
+guest_train_dir = os.path.join(local_path, 'guest/train')
+guest_valid_dir = os.path.join(local_path, 'guest/val')
+host_train_dir = os.path.join(local_path, 'host_train')
+host_valid_dir = os.path.join(local_path, 'host_valid')
 
 
 def draw_hist(data_dirs, num_labels=90):
     for data_dir in data_dirs:
         labels_cnts = get_labels_cnts(data_dir)
         info = data_dir.split('/')
-        role,phase = info[-2],info[-1]
+        role, phase = info[-2], info[-1]
 
         plt.hist(
             labels_cnts,
@@ -49,5 +36,8 @@ def draw_hist(data_dirs, num_labels=90):
 
 # draw_hist([host_train_dir, guest_train_dir,host_valid_dir,guest_valid_dir])
 
-standalone_dir = '/home/klaus125/research/dataset/ms-coco/src_val'
-draw_hist([standalone_dir])
+client_nums = 8
+for i in range(1, client_nums + 1):
+    client_train_path = os.path.join(server_path, f'client{i}/train')
+    client_valid_path = os.path.join(server_path, f'client{i}/val')
+    draw_hist([client_train_path, client_valid_path])
