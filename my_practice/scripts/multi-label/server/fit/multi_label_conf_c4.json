@@ -100,22 +100,22 @@
               "name": "client2_val",
               "namespace": "ms-coco-0321"
             }
+          }
+        },
+        "1": {
+          "multi_label_0": {
+            "device": "cuda:3"
           },
-          "1": {
-            "multi_label_0": {
-              "device": "cuda:3"
-            },
-            "reader_0": {
-              "table": {
-                "name": "client3_train",
-                "namespace": "ms-coco-0321"
-              }
-            },
-            "reader_1": {
-              "table": {
-                "name": "client3_val",
-                "namespace": "ms-coco-0321"
-              }
+          "reader_0": {
+            "table": {
+              "name": "client3_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client3_val",
+              "namespace": "ms-coco-0321"
             }
           }
         }
