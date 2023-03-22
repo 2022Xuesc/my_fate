@@ -93,7 +93,7 @@ total_labels = []
 for i in range(1, client_nums + 1):
     client_train_path = os.path.join(server_path, f'client{i}/train')
     client_valid_path = os.path.join(server_path, f'client{i}/val')
-    draw_hist([client_train_path, client_valid_path])
+    # draw_hist([client_train_path, client_valid_path])
 
     labels = get_labels_cnts(client_train_path)
     labels_vec = [0] * 90
@@ -101,5 +101,5 @@ for i in range(1, client_nums + 1):
         labels_vec[label_id] += 1
     total_labels.append(labels_vec)
 
-#div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(labels_vec))
-#draw_heatmap(div_frame)
+div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
+draw_heatmap(div_frame)
