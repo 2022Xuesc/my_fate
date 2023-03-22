@@ -3,9 +3,9 @@
   "job_parameters": {
     "common": {
       "job_type": "train",
-      "task_cores": 4,
-      "task_parallelism": 4,
-      "computing_partitions": 4
+      "task_cores": 1,
+      "task_parallelism": 1,
+      "computing_partitions": 1
     }
   },
   "initiator": {
@@ -72,7 +72,7 @@
     "role": {
       "guest": {
         "0": {
-          "multi_label": {
+          "multi_label_0": {
             "device": "cuda:2"
           },
           "reader_0": {
@@ -83,7 +83,7 @@
           },
           "reader_1": {
             "table": {
-              "name": "client1-val",
+              "name": "client1_val",
               "namespace": "ms-coco-0321"
             }
           }

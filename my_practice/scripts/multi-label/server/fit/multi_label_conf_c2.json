@@ -4,7 +4,7 @@
     "common": {
       "job_type": "train",
       "task_cores": 4,
-      "task_parallelism": 4,
+      "task_parallelism": 1,
       "computing_partitions": 4
     }
   },
@@ -27,7 +27,7 @@
     "common": {
       "multi_label_0": {
         "max_iter": 100,
-        "batch_size": 2,
+        "batch_size": 32,
         "aggregate_every_n_epoch": 10,
         "lr": 0.1,
         "pretrained": false,
