@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 import pandas as pd
+from collections import Counter
 
 sns.set(font_scale=1.5)
 
@@ -81,17 +82,12 @@ def draw_hist(data_dirs, num_labels=90):
 
 
 client_nums = 8
+class_nums = 90
 server_path = '/data/projects/my_dataset'
 
 client_names = [f'client{i}' for i in range(1, client_nums + 1)]
-# 统计各个客户端的标签变量
-labels = [get_labels_cnts(os.path.join(server_path, f'client{i}/train')) for i in range(1, client_nums + 1)]
 
-div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(labels))
-
-
-draw_heatmap(div_frame)
-
+total_labels = []
 
 # 画直方图
 for i in range(1, client_nums + 1):
@@ -99,3 +95,11 @@ for i in range(1, client_nums + 1):
     client_valid_path = os.path.join(server_path, f'client{i}/val')
     draw_hist([client_train_path, client_valid_path])
 
+    labels = get_labels_cnts(client_train_path)
+    labels_vec = [0] * 90
+    for label_id in labels:
+        labels_vec[label_id] += 1
+    total_labels.append(labels_vec)
+
+div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(labels_vec))
+draw_heatmap(div_frame)
