@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "ms-coco",
+    "name": "host-train",
+    "address": {
+        "path": "/home/klaus125/research/dataset/ms-coco/host/train"
+    }
+}
