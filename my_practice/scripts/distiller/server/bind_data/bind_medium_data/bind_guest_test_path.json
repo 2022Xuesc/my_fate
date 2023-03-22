@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "medium_experiment",
+    "name": "imagenet_guest_test",
+    "address": {
+        "path": "/data/projects/data.imagenet/iid/guest/test"
+    }
+}
