@@ -155,3 +155,5 @@ fate/python/federatedml
 !fate/python/federatedml/protobuf
 
 **/__pycache__
+docker-entrypoint.sh
+packages_md5.txt
