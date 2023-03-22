@@ -2,9 +2,7 @@
   "dsl_version": 2,
   "job_parameters": {
     "common": {
-      "job_type": "train",
-      "task_cores": 40,
-      "task_parallelism": 1
+      "job_type": "train"
     }
   },
   "initiator": {
