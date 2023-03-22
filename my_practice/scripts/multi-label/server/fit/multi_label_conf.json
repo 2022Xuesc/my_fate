@@ -3,9 +3,8 @@
   "job_parameters": {
     "common": {
       "job_type": "train",
-      "task_cores": 1,
-      "task_parallelism": 1,
-      "computing_partitions": 1
+      "task_cores": 40,
+      "task_parallelism": 1
     }
   },
   "initiator": {
@@ -108,23 +107,6 @@
           },
           "1": {
             "multi_label_0": {
-              "device": "cuda:2"
-            },
-            "reader_0": {
-              "table": {
-                "name": "client2_train",
-                "namespace": "ms-coco-0321"
-              }
-            },
-            "reader_1": {
-              "table": {
-                "name": "client2_val",
-                "namespace": "ms-coco-0321"
-              }
-            }
-          },
-          "2": {
-            "multi_label_0": {
               "device": "cuda:3"
             },
             "reader_0": {
@@ -140,7 +122,7 @@
               }
             }
           },
-          "3": {
+          "2": {
             "multi_label_0": {
               "device": "cuda:3"
             },
@@ -157,7 +139,7 @@
               }
             }
           },
-          "4": {
+          "3": {
             "multi_label_0": {
               "device": "cuda:4"
             },
@@ -174,7 +156,7 @@
               }
             }
           },
-          "5": {
+          "4": {
             "multi_label_0": {
               "device": "cuda:4"
             },
@@ -191,7 +173,7 @@
               }
             }
           },
-          "6": {
+          "5": {
             "multi_label_0": {
               "device": "cuda:5"
             },
@@ -208,7 +190,7 @@
               }
             }
           },
-          "7": {
+          "6": {
             "multi_label_0": {
               "device": "cuda:5"
             },
