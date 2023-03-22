@@ -101,5 +101,5 @@ for i in range(1, client_nums + 1):
         labels_vec[label_id] += 1
     total_labels.append(labels_vec)
 
-div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(labels_vec))
-draw_heatmap(div_frame)
+#div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(labels_vec))
+#draw_heatmap(div_frame)
