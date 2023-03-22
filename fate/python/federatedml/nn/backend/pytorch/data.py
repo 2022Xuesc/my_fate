@@ -21,7 +21,7 @@ from PIL import Image
 from ruamel import yaml
 from torch.utils.data import Dataset
 
-__all__ = ["TableDataSet", "VisionDataSet", "MyDataSet"]
+__all__ = ["TableDataSet", "VisionDataSet", "MultiLabelDataSet"]
 
 from fate_arch.session import computing_session
 from fate_arch.abc import CTableABC
