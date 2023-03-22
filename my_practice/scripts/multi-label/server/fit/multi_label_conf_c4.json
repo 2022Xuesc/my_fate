@@ -4,7 +4,8 @@
     "common": {
       "job_type": "train",
       "task_cores": 8,
-      "task_parallelism": 1
+      "task_parallelism": 1,
+      "computing_partitions": 8
     }
   },
   "initiator": {
