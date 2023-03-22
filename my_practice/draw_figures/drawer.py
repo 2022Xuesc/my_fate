@@ -7,9 +7,20 @@ import torch
 import torch.nn.functional as F
 import pandas as pd
 
-from my_practice.draw_figures.labels_cnts_getter import get_labels_cnts
-
 sns.set(font_scale=1.5)
+
+
+def get_labels_cnts(data_dir):
+    labels_path = os.path.join(data_dir, 'labels.txt')
+    fp = open(labels_path, 'r')
+    labels = []
+    for line in fp:
+        line.strip('\n')
+        info = line.split(',')
+        for index in range(1, len(info)):
+            if info[index] == '1':
+                labels.append(index - 1)
+    return labels
 
 
 def learn_heatmap():
@@ -48,8 +59,28 @@ def calc_kl_divergence(client_names, label_tensors):
     return div_frame
 
 
-client_nums = 8
+def draw_hist(data_dirs, num_labels=90):
+    for data_dir in data_dirs:
+        labels_cnts = get_labels_cnts(data_dir)
+        info = data_dir.split('/')
+        role, phase = info[-2], info[-1]
 
+        plt.hist(
+            labels_cnts,
+            bins=list(range(num_labels + 1)),
+            edgecolor='b',
+            histtype='bar',
+            alpha=0.5,
+        )
+        plt.title(f'{role}_{phase}_label_distribution')
+        plt.xlabel('label_id')
+        plt.ylabel('label_occurrence')
+
+        plt.savefig(f'{role}_{phase}_distribution.svg', dpi=600, format='svg')
+        plt.cla()
+
+
+client_nums = 8
 server_path = '/data/projects/my_dataset'
 
 client_names = [f'client{i}' for i in range(1, client_nums + 1)]
@@ -57,7 +88,14 @@ client_names = [f'client{i}' for i in range(1, client_nums + 1)]
 labels = [get_labels_cnts(os.path.join(server_path, f'client{i}/train')) for i in range(1, client_nums + 1)]
 
 div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(labels))
-data = sns.load_dataset('flights') \
-    .pivot('year', 'month', 'passengers')
+
+
 draw_heatmap(div_frame)
-# learn_heatmap()
+
+
+# 画直方图
+for i in range(1, client_nums + 1):
+    client_train_path = os.path.join(server_path, f'client{i}/train')
+    client_valid_path = os.path.join(server_path, f'client{i}/val')
+    draw_hist([client_train_path, client_valid_path])
+
