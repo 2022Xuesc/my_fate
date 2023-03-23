@@ -35,7 +35,7 @@ def learn_heatmap():
 
 def draw_heatmap(save_dir, data):
     sns.set_context({"figure.figsize": (8, 8)})
-    sns.heatmap(data=data, square=True)
+    sns.heatmap(data=data, vmin=0.0, vmax=2.0, square=True)
     plt.savefig(f'{save_dir}/heatmap.svg', dpi=600, format='svg')
 
 
@@ -90,9 +90,10 @@ def get_labels_feature(labels):
 
 client_nums = 8
 class_nums = 90
-# server_path = '/data/projects/my_dataset'
-server_path = '/data/projects/clustered_dataset'
-save_dir = 'clusters_distribution'
+server_path = '/data/projects/my_dataset'
+save_dir = '.'
+# server_path = '/data/projects/clustered_dataset'
+# save_dir = 'clusters_distribution'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
@@ -104,7 +105,7 @@ total_labels = []
 for i in range(1, client_nums + 1):
     client_train_path = os.path.join(server_path, f'client{i}/train')
     client_valid_path = os.path.join(server_path, f'client{i}/val')
-    draw_hist(save_dir, [client_train_path, client_valid_path])
+    # draw_hist(save_dir, [client_train_path, client_valid_path])
 
     labels = get_labels_cnts(client_train_path)
 
