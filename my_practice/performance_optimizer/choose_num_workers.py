@@ -66,7 +66,7 @@ train_data_set = MultiLabelDataSet(train_path,
                                    train_transforms)
 
 print(f"num of CPU: {mp.cpu_count()}")
-device = 'cuda:5'
+device = 'cuda:1'
 batch_size = 128
 
 for num_workers in range(0, mp.cpu_count(), 2):
@@ -74,9 +74,11 @@ for num_workers in range(0, mp.cpu_count(), 2):
         train_loader = torch.utils.data.DataLoader(train_data_set, shuffle=True, num_workers=num_workers,
                                                    batch_size=batch_size, pin_memory=(pin == 0))
         start = time()
-        for epoch in range(1, 3):
-            for i, (inputs, target) in enumerate(train_loader, 0):
-                inputs = inputs.to(device)
-                target = target.to(device)
+        steps = len(train_loader.sampler) / batch_size
+        # 输出一些日志信息
+        for step, (inputs, target) in enumerate(train_loader, 0):
+            inputs = inputs.to(device)
+            target = target.to(device)
+            print(f'progress: {step}/{steps}')
         end = time()
         print("Finish with:{} second, num_workers={},pin_memory = {}".format(end - start, num_workers, pin == 0))
