@@ -81,6 +81,13 @@ def draw_hist(data_dirs, num_labels=90):
         plt.cla()
 
 
+def get_labels_feature(labels):
+    labels_vec = [0] * 90
+    for label_id in labels:
+        labels_vec[label_id] += 1
+    return labels_vec
+
+
 client_nums = 8
 class_nums = 90
 server_path = '/data/projects/my_dataset'
@@ -96,10 +103,8 @@ for i in range(1, client_nums + 1):
     # draw_hist([client_train_path, client_valid_path])
 
     labels = get_labels_cnts(client_train_path)
-    labels_vec = [0] * 90
-    for label_id in labels:
-        labels_vec[label_id] += 1
-    total_labels.append(labels_vec)
+
+    total_labels.append(get_labels_feature(labels))
 
 div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
 draw_heatmap(div_frame)
