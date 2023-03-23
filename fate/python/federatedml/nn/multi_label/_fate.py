@@ -518,8 +518,7 @@ def validate(valid_loader, model, criterion, epoch, device, scheduler):
                     losses[lc.name].add(lc.value.item())
             else:
                 losses[OVERALL_LOSS_KEY].add(loss.item())
-        LOGGER.warn(
-            f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
+            LOGGER.warn(f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
     return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
 
 

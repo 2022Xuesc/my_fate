@@ -32,6 +32,10 @@ def save_image2labels(json_path, phase):
 
 
 def get_image2labels(phase):
+    if phase.startswith('train'):
+        phase = 'train'
+    else:
+        phase = 'val'
     with open(phase + '_image2labels.json') as f:
         return json.load(f)
 
@@ -90,9 +94,13 @@ def generate_labels(dir_paths):
 
         labels = []
         files = os.listdir(dir_path)
+        files_cnt = len(files)
+        cur = 0
         # 解析phase
         image2labels = get_image2labels(dir_path.split('/')[-1])
         for filename in files:
+            if filename in ['labels.txt', 'config.yaml']:
+                continue
             # 字典json本地存储后,键改为了str类型
             image_id = str(get_image_id(filename))
             # 有些图片可能未被标注
@@ -103,5 +111,11 @@ def generate_labels(dir_paths):
                 for id_index in image2labels[image_id]:
                     label[id_index] = '1'
                 labels.append(label)
+            print(f'progress: {cur}/{files_cnt}')
         # Todo: 将labels写入文件中
         write_labels(labels, labels_path)
+        print('Done')
+
+
+src_path = '/data/projects/dataset/train2014'
+generate_labels(src_path)
