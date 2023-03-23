@@ -117,8 +117,10 @@ km = kmodes.KModes(n_clusters=num_clients)
 train_vec2names, train_vecs = get_label_vecs(train_dir)
 # 转为array数组
 train_data = np.array(train_vecs)
+print(f'训练数据的维度为：{train_data.shape}')
+print('开始训练聚类模型并预测')
 train_clusters = km.fit_predict(train_data)
-
+print('训练完成')
 copy_file_to_cluster(train_dir, clustered_dir, train_clusters, train_data,
                      'train', train_vec2names, train_vecs)
 
