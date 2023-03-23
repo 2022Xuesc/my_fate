@@ -1,0 +1,212 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train"
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 2
+  },
+  "role": {
+    "arbiter": [
+      1
+    ],
+    "host": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "guest": [
+      2
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "multi_label_0": {
+        "max_iter": 100,
+        "batch_size": 128,
+        "aggregate_every_n_epoch": 10,
+        "lr": 0.1,
+        "pretrained": true,
+        "dataset": "ms-coco",
+        "arch": "alexnet",
+        "sched_dict": {
+          "lr_schedulers": {
+            "pruning_lr": {
+              "class": "ExponentialLR",
+              "gamma": 0.99
+            }
+          },
+          "regularizers": {
+            "l2_regularizer": {
+              "class": "L2Regularizer",
+              "lamda": 0.1
+            }
+          },
+          "policies": {
+            "lr_scheduler": {
+              "instance_name": "pruning_lr",
+              "starting_epoch": 100,
+              "ending_epoch": 800,
+              "frequency": 5
+            },
+            "regularizer": {
+              "instance_name": "l2_regularizer",
+              "starting_epoch": 0,
+              "ending_epoch": 800,
+              "frequency": 1
+            }
+          }
+        }
+      }
+    },
+    "role": {
+      "guest": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:2"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client1_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client1_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        }
+      },
+      "host": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:2"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client2_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client2_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "1": {
+          "multi_label_0": {
+            "device": "cuda:3"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client3_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client3_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "2": {
+          "multi_label_0": {
+            "device": "cuda:3"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client4_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client4_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "3": {
+          "multi_label_0": {
+            "device": "cuda:4"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client5_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client5_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "4": {
+          "multi_label_0": {
+            "device": "cuda:4"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client6_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client6_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "5": {
+          "multi_label_0": {
+            "device": "cuda:5"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client7_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client7_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        },
+        "6": {
+          "multi_label_0": {
+            "device": "cuda:5"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client8_train",
+              "namespace": "ms-coco-0321"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client8_val",
+              "namespace": "ms-coco-0321"
+            }
+          }
+        }
+      }
+    }
+  }
+}

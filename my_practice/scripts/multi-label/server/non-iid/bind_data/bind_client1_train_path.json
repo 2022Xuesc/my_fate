@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "ms-coco-non-iid",
+    "name": "client1_train",
+    "address": {
+        "path": "/data/projects/clustered_dataset/client1/train"
+    }
+}

@@ -30,7 +30,7 @@
     "common": {
       "multi_label_0": {
         "max_iter": 100,
-        "batch_size": 128,
+        "batch_size": 64,
         "aggregate_every_n_epoch": 10,
         "lr": 0.1,
         "pretrained": true,
@@ -39,7 +39,7 @@
         "sched_dict": {
           "lr_schedulers": {
             "pruning_lr": {
-              "class": "StepLR",
+              "class": "ExponentialLR",
               "gamma": 0.99
             }
           },
@@ -75,13 +75,13 @@
           "reader_0": {
             "table": {
               "name": "client1_train",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           },
           "reader_1": {
             "table": {
               "name": "client1_val",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           }
         }
@@ -94,13 +94,13 @@
           "reader_0": {
             "table": {
               "name": "client2_train",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           },
           "reader_1": {
             "table": {
               "name": "client2_val",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           }
         },
@@ -111,13 +111,13 @@
           "reader_0": {
             "table": {
               "name": "client3_train",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           },
           "reader_1": {
             "table": {
               "name": "client3_val",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           }
         },
@@ -128,13 +128,13 @@
           "reader_0": {
             "table": {
               "name": "client4_train",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           },
           "reader_1": {
             "table": {
               "name": "client4_val",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           }
         },
@@ -145,13 +145,13 @@
           "reader_0": {
             "table": {
               "name": "client5_train",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           },
           "reader_1": {
             "table": {
               "name": "client5_val",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           }
         },
@@ -162,47 +162,47 @@
           "reader_0": {
             "table": {
               "name": "client6_train",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           },
           "reader_1": {
             "table": {
               "name": "client6_val",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           }
         },
         "5": {
           "multi_label_0": {
-            "device": "cuda:5"
+            "device": "cuda:1"
           },
           "reader_0": {
             "table": {
               "name": "client7_train",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           },
           "reader_1": {
             "table": {
               "name": "client7_val",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           }
         },
         "6": {
           "multi_label_0": {
-            "device": "cuda:5"
+            "device": "cuda:1"
           },
           "reader_0": {
             "table": {
               "name": "client8_train",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           },
           "reader_1": {
             "table": {
               "name": "client8_val",
-              "namespace": "ms-coco-0321"
+              "namespace": "ms-coco-non-iid"
             }
           }
         }
