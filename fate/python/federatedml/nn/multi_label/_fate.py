@@ -280,12 +280,13 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
         batch_size = len(train_dataset)
     shuffle = False
     drop_last = False
+    num_workers = 32
     train_loader = torch.utils.data.DataLoader(
-        dataset=train_dataset, batch_size=batch_size, num_workers=0,
+        dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
         drop_last=drop_last, shuffle=shuffle
     )
     valid_loader = torch.utils.data.DataLoader(
-        dataset=valid_dataset, batch_size=batch_size, num_workers=0,
+        dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
         drop_last=drop_last, shuffle=shuffle
     )
     fitter = MultiLabelFitter(param, epochs, context=context)
@@ -518,14 +519,15 @@ def validate(valid_loader, model, criterion, epoch, device, scheduler):
                     losses[lc.name].add(lc.value.item())
             else:
                 losses[OVERALL_LOSS_KEY].add(loss.item())
-            LOGGER.warn(f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
+            LOGGER.warn(
+                f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
     return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
 
 
 def _init_learner(param, device='cpu'):
     # Todo: 将通用部分提取出来
     model = create_model(param.pretrained, param.dataset, param.arch, num_classes=param.num_labels, device=device)
-    optimizer = torch.optim.SGD(model.parameters(), lr=param.lr)
+    optimizer = torch.optim.SGD(model.parameters(), lr=param.lr, momentum=0.9)
     scheduler = None
     if param.sched_dict:
         scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)

@@ -33,13 +33,13 @@
         "batch_size": 128,
         "aggregate_every_n_epoch": 10,
         "lr": 0.1,
-        "pretrained": false,
+        "pretrained": true,
         "dataset": "ms-coco",
         "arch": "alexnet",
         "sched_dict": {
           "lr_schedulers": {
             "pruning_lr": {
-              "class": "ExponentialLR",
+              "class": "StepLR",
               "gamma": 0.99
             }
           },

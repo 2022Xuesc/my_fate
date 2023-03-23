@@ -117,5 +117,5 @@ def generate_labels(dir_paths):
         print('Done')
 
 
-src_path = '/data/projects/dataset/train2014'
-generate_labels(src_path)
+# src_path = '/data/projects/dataset/train2014'
+# generate_labels(src_path)
