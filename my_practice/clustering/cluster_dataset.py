@@ -94,6 +94,7 @@ def get_label_vecs(data_dir, num_classes=90):
 
 def copy_file_to_cluster(src_dir, clustered_dir, clusters, data, phase, vec2names, vecs):
     for i in range(data.shape[0]):
+	i = i + 1
         target_dir = os.path.join(clustered_dir, f'client{clusters[i]}/{phase}')
         os.makedirs(target_dir, exist_ok=True)
         for filename in vec2names[tuple(vecs[i])]:
