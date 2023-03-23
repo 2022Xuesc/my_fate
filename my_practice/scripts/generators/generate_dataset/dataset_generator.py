@@ -9,8 +9,6 @@ def save_image2labels(json_path, phase):
 
     image2labels = {}
 
-    total_cnt = len(data['annotations'])
-    cur = 0
     for annotation in data['annotations']:
         image_id = annotation['image_id']
         category_id = annotation['category_id']
@@ -18,9 +16,6 @@ def save_image2labels(json_path, phase):
         if image_id not in image2labels.keys():
             image2labels[image_id] = set()
         image2labels[image_id].add(category_id)
-        cur = cur + 1
-        print('progress: {}/{}'.format(cur, total_cnt))
-
 
     for image_id in image2labels.keys():
         image2labels[image_id] = list(image2labels[image_id])
@@ -99,7 +94,7 @@ def generate_labels(dir_paths):
         labels = []
         files = os.listdir(dir_path)
         files_cnt = len(files)
-        cur = 0
+        cur = 1
         # 解析phase
         image2labels = get_image2labels(dir_path.split('/')[-1])
         for filename in files:
@@ -116,6 +111,7 @@ def generate_labels(dir_paths):
                     label[id_index] = '1'
                 labels.append(label)
             print(f'progress: {cur}/{files_cnt}')
+            cur = cur + 1
         # Todo: 将labels写入文件中
         write_labels(labels, labels_path)
         print('Done')
