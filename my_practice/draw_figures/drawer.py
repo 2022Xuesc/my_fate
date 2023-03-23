@@ -33,10 +33,10 @@ def learn_heatmap():
     plt.show()
 
 
-def draw_heatmap(data):
+def draw_heatmap(save_dir, data):
     sns.set_context({"figure.figsize": (8, 8)})
     sns.heatmap(data=data, square=True)
-    plt.savefig('heatmap.svg', dpi=600, format='svg')
+    plt.savefig(f'{save_dir}/heatmap.svg', dpi=600, format='svg')
 
 
 def prob_log(label):
@@ -60,7 +60,7 @@ def calc_kl_divergence(client_names, label_tensors):
     return div_frame
 
 
-def draw_hist(data_dirs, num_labels=90):
+def draw_hist(target_dir, data_dirs, num_labels=90):
     for data_dir in data_dirs:
         labels_cnts = get_labels_cnts(data_dir)
         info = data_dir.split('/')
@@ -77,7 +77,7 @@ def draw_hist(data_dirs, num_labels=90):
         plt.xlabel('label_id')
         plt.ylabel('label_occurrence')
 
-        plt.savefig(f'{role}_{phase}_distribution.svg', dpi=600, format='svg')
+        plt.savefig(f'{save_dir}/{role}_{phase}_distribution.svg', dpi=600, format='svg')
         plt.cla()
 
 
@@ -90,7 +90,11 @@ def get_labels_feature(labels):
 
 client_nums = 8
 class_nums = 90
-server_path = '/data/projects/my_dataset'
+# server_path = '/data/projects/my_dataset'
+server_path = '/data/projects/clustered_dataset'
+save_dir = 'clusters_distribution'
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
 
 client_names = [f'client{i}' for i in range(1, client_nums + 1)]
 
@@ -100,11 +104,11 @@ total_labels = []
 for i in range(1, client_nums + 1):
     client_train_path = os.path.join(server_path, f'client{i}/train')
     client_valid_path = os.path.join(server_path, f'client{i}/val')
-    # draw_hist([client_train_path, client_valid_path])
+    draw_hist(save_dir, [client_train_path, client_valid_path])
 
     labels = get_labels_cnts(client_train_path)
 
     total_labels.append(get_labels_feature(labels))
 
 div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
-draw_heatmap(div_frame)
+draw_heatmap(save_dir, div_frame)
