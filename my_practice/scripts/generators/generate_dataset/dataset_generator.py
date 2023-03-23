@@ -10,7 +10,7 @@ def save_image2labels(json_path, phase):
     image2labels = {}
 
     total_cnt = len(data['annotations'])
-    cur = 1
+    cur = 0
     for annotation in data['annotations']:
         image_id = annotation['image_id']
         category_id = annotation['category_id']
@@ -18,8 +18,9 @@ def save_image2labels(json_path, phase):
         if image_id not in image2labels.keys():
             image2labels[image_id] = set()
         image2labels[image_id].add(category_id)
-        print('progress: {}/{}'.format(cur, total_cnt))
         cur = cur + 1
+        print('progress: {}/{}'.format(cur, total_cnt))
+
 
     for image_id in image2labels.keys():
         image2labels[image_id] = list(image2labels[image_id])
