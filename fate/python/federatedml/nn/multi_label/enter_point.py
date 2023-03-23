@@ -51,7 +51,8 @@ class MultiLabelServer(MultiLabelBase):
 
     # 定义服务器端的拟合逻辑
     def fit(self, train_data, valid_data):
-        self.callback_list.on_train_begin({train_data, valid_data}, None)
+        # Todo: 服务器端
+        # self.callback_list.on_train_begin({train_data, valid_data}, None)
         from federatedml.nn.multi_label._fate import build_aggregator
         self.aggregator = build_aggregator(self.param, init_iteration=self._init_iteration)
         # 数据集对齐
@@ -72,7 +73,7 @@ class MultiLabelClient(MultiLabelBase):
 
     # Todo: 查看train_data的格式
     def fit(self, train_data, valid_data):
-        self.callback_list.on_train_begin({train_data, valid_data}, None)
+        # self.callback_list.on_train_begin({train_data, valid_data}, None)
         from federatedml.nn.multi_label._fate import build_fitter
         self._fitter = None
         self._fitter, train_loader, valid_loader = build_fitter(
