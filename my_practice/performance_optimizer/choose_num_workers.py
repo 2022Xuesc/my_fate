@@ -69,10 +69,10 @@ print(f"num of CPU: {mp.cpu_count()}")
 device = 'cuda:1'
 batch_size = 128
 
-for num_workers in range(0, mp.cpu_count(), 2):
-    for pin in range(0, 2):
+for num_workers in range(4, 32, 2):
+    for pin in range(0, 1):
         train_loader = torch.utils.data.DataLoader(train_data_set, shuffle=True, num_workers=num_workers,
-                                                   batch_size=batch_size, pin_memory=(pin == 0))
+                                                   batch_size=batch_size, pin_memory=(pin != 0))
         start = time()
         steps = len(train_loader.sampler) / batch_size
         # 输出一些日志信息
