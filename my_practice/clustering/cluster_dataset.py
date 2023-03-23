@@ -107,7 +107,7 @@ def copy_file_to_cluster(src_dir, clustered_dir, clusters, data, phase, vec2name
 # draw('dist',K,res[1])
 # draw('sse', K, res[2])
 
-num_clients = 2
+num_clients = 8
 # 1. 读取训练数据集，根据标签之间的距离对数据集进行聚类
 train_dir = '/data/projects/dataset/train2014'
 val_dir = '/data/projects/dataset/val2014'
