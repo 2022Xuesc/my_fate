@@ -44,7 +44,9 @@ def get_image2labels(phase):
 # COCO_val2014_000000000042
 
 def get_image_id(image_name):
+    #print(image_name)
     return int(image_name.split('.')[0][-12:])
+
 
 
 def clear_dir(dir_path):
@@ -87,6 +89,8 @@ def generate_configs(dir_paths):
 
 
 def generate_labels(dir_paths):
+    if not isinstance(dir_paths,list):
+        dir_paths = [dir_paths]
     for dir_path in dir_paths:
         labels_path = os.path.join(dir_path, 'labels.txt')
         if os.path.exists(labels_path):
