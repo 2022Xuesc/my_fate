@@ -7,7 +7,7 @@ type = 'non-iid'
 
 client_num = 8
 phases = ['train', 'val']
-dir_path = f"../../multi-label/server/{type}/bind_data"
+dir_path = f"../../multi-label/server/bind_data/{type}"
 if not os.path.exists(dir_path):
     os.makedirs(dir_path)
 
