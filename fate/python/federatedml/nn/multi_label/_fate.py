@@ -293,8 +293,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     return fitter, train_loader, valid_loader
 
 
-def make_dataset(data, transforms, **kwargs):
-    return MultiLabelDataSet(data.path, transforms, **kwargs)
+def make_dataset(data, transforms):
+    return MultiLabelDataSet(data.path, transforms)
 
 
 class MultiLabelFedAggregator(object):
