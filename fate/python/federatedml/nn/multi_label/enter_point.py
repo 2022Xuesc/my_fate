@@ -20,7 +20,6 @@ class MultiLabelBase(ModelBase):
         self.param = param
 
 
-
 class MultiLabelServer(MultiLabelBase):
     def __init__(self, trans_var):
         super().__init__(trans_var=trans_var)

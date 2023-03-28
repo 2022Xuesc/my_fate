@@ -308,14 +308,21 @@ class MultiLabelFedAggregator(object):
             arbiter_logger.info(f'当前聚合轮次为{cur_iteration},成功接收到客户端的模型参数!')
             LOGGER.warn(f'收到{len(recv_elements)}客户端发送过来的模型')
             tensors = [party_tuple[0] for party_tuple in recv_elements]
+
+            # Todo: 这里还需要分析权重
             degrees = [party_tuple[1] for party_tuple in recv_elements]
-            total_degree = sum(degrees)
-            for i in range(len(tensors)):
-                for j, tensor in enumerate(tensors[i]):
-                    tensor *= degrees[i]
-                    tensor /= total_degree
-                    if i != 0:
-                        tensors[0][j] += tensor
+
+            # 如果聚合权重是一个list，则分别聚合
+            if isinstance(degrees[0], list):
+                self.aggregate_by_labels(tensors, degrees)
+            else:
+                total_degree = sum(degrees)
+                for i in range(len(tensors)):
+                    for j, tensor in enumerate(tensors[i]):
+                        tensor *= degrees[i]
+                        tensor /= total_degree
+                        if i != 0:
+                            tensors[0][j] += tensor
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.context.send_model(tensors[0])
@@ -325,6 +332,35 @@ class MultiLabelFedAggregator(object):
             self.context.increase_aggregation_iteration()
             if is_converged:
                 break
+
+    # 分标签聚合
+    def aggregate_by_labels(self, tensors, degrees):
+        # degrees是91个元素的列表，前90个元素是最后一层各个类别的聚合权重，而最后一个元素是之前层的聚合权重
+        # 先聚合之前的特征层，聚合权重为degrees[i][-1]
+        # 将degree转为array
+        degrees = np.array(degrees)
+        degrees_sum = degrees.sum(axis=0)
+        # i表示第i个客户端
+        for i in range(len(tensors)):
+            for j, tensor in enumerate(tensors[i]):
+                # 如果是最后两层
+                if j == len(tensors[i]) - 2 or j == len(tensors[i]) - 1:
+                    # 对每个列向量进行聚合
+                    for k in range(len(tensor)):
+                        # 对col_vec进行聚合
+                        tensor[k] *= degrees[i][k]
+                        if degrees_sum[k] == 0:
+                            continue
+                        tensor[k] /= degrees_sum[k]
+                        if i != 0:
+                            tensors[0][j][k] += tensor[k]
+                else:
+                    tensor *= degrees[i][-1]
+                    tensor /= degrees_sum[-1]
+                    if i != 0:
+                        tensors[0][j] += tensor
+        # 聚合后的权重即为tensors[0]
+        return tensors[0]
 
     def export_model(self, param):
         param_pb = nn_model_param_pb2.NNModelParam()
@@ -357,12 +393,20 @@ class MultiLabelFitter(object):
         self.param = copy.deepcopy(param)
         self._all_consumed_data_aggregated = True
         self.best_precision = 0
-        self._num_data_consumed = 0
         self.context = context
         self.label_mapping = label_mapping
         (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
         self.criterion = torch.nn.BCELoss().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
+
+        # 聚合策略的相关参数
+        # 1. 按照训练使用的总样本数进行聚合
+        self._num_data_consumed = 0
+        # Todo: 以下两种参数需要知道确切的标签信息，因此，在训练的批次迭代中进行更新
+        # 2. 按照训练使用的标签数进行聚合，对应FLAG论文
+        self._num_label_consumed = 0
+        # 3. 按照每个标签所包含的样本数进行聚合，维护一个list，对应Partial Supervised论文
+        self._num_per_labels = [0] * self.param.num_labels
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -399,13 +443,17 @@ class MultiLabelFitter(object):
             if status:
                 self.context.set_converged()
             self._all_consumed_data_aggregated = True
+
             self._num_data_consumed = 0
+            self._num_label_consumed = 0
+            self._num_per_labels = [0] * self.param.num_labels
+
             self.context.increase_aggregation_iteration()
 
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
-        precision, recall, loss = train(train_loader, self.model, self.criterion, self.optimizer,
-                                        epoch, self.param.device, scheduler)
+        precision, recall, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
+                                             epoch, self.param.device, scheduler)
         fate_logger.info(f'训练阶段结束,epoch = {epoch},平均loss = {loss}')
         train_writer.writerow([epoch, precision, recall, loss])
         return precision, recall, loss
@@ -422,7 +470,15 @@ class MultiLabelFitter(object):
         self.context.configure_aggregation_params(self.optimizer)
         # 调用上下文执行聚合
         # 发送模型并接收聚合后的模型
-        self.context.do_aggregation(weight=self._num_data_consumed, device=self.param.device)
+
+        # FedAvg聚合策略
+        # self.context.do_aggregation(weight=self._num_data_consumed, device=self.param.device)
+        # Flag聚合策略
+        # self.context.do_aggregation(weight=self._num_label_consumed, device=self.param.device)
+        # Partial Supervised聚合策略
+        weight_list = list(self._num_per_labels)
+        weight_list.append(self._num_data_consumed)
+        self.context.do_aggregation(weight=weight_list, device=self.param.device)
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         precision, recall, loss = self.train_one_epoch(epoch, train_loader, scheduler)
@@ -432,54 +488,58 @@ class MultiLabelFitter(object):
             self.scheduler.on_epoch_end(epoch, self.optimizer)
         return precision, recall, loss
 
+    def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
+        total_samples = len(train_loader.sampler)
+        batch_size = train_loader.batch_size
+        steps_per_epoch = math.ceil(total_samples / batch_size)
+        fate_logger.info(f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
 
-def train(train_loader, model, criterion, optimizer, epoch, device, scheduler):
-    total_samples = len(train_loader.sampler)
-    batch_size = train_loader.batch_size
-    steps_per_epoch = math.ceil(total_samples / batch_size)
-    fate_logger.info(f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
+        sigmoid_func = torch.nn.Sigmoid()
 
-    sigmoid_func = torch.nn.Sigmoid()
+        model.train()
+        precisions = tnt.AverageValueMeter()
+        recalls = tnt.AverageValueMeter()
 
-    model.train()
-    precisions = tnt.AverageValueMeter()
-    recalls = tnt.AverageValueMeter()
+        # 对Loss进行更新
+        OVERALL_LOSS_KEY = 'Overall Loss'
+        OBJECTIVE_LOSS_KEY = 'Objective Loss'
+        losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
+                              (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-    # 对Loss进行更新
-    OVERALL_LOSS_KEY = 'Overall Loss'
-    OBJECTIVE_LOSS_KEY = 'Objective Loss'
-    losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
-                          (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
+        for train_step, (inputs, target) in enumerate(train_loader):
+            inputs = inputs.to(device)
+            target = target.to(device)
 
-    for train_step, (inputs, target) in enumerate(train_loader):
-        inputs = inputs.to(device)
-        target = target.to(device)
+            self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
-        output = model(inputs)
-        loss = criterion(sigmoid_func(output), target)
-        losses[OBJECTIVE_LOSS_KEY].add(loss.item())
-        precision, recall = calculate_accuracy_mode1(sigmoid_func(output), target)
-        precisions.add(precision)
-        recalls.add(recall)
+            # 也可在聚合时候统计，这里为明了起见，之间统计
+            self._num_label_consumed += target.sum().item()
 
-        if scheduler:
-            agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
-            loss = agg_loss.overall_loss
-            losses[OVERALL_LOSS_KEY].add(loss.item())
-            for lc in agg_loss.loss_components:
-                if lc.name not in losses:
-                    losses[lc.name] = tnt.AverageValueMeter()
-                losses[lc.name].add(lc.value.item())
-        else:
-            losses[OVERALL_LOSS_KEY].add(loss.item())
-        # 打印进度
-        LOGGER.warn(
-            f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},precision={precision},recall={recall},loss={loss}')
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            output = model(inputs)
+            loss = criterion(sigmoid_func(output), target)
+            losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+            precision, recall = calculate_accuracy_mode1(sigmoid_func(output), target)
+            precisions.add(precision)
+            recalls.add(recall)
 
-    return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
+            if scheduler:
+                agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
+                loss = agg_loss.overall_loss
+                losses[OVERALL_LOSS_KEY].add(loss.item())
+                for lc in agg_loss.loss_components:
+                    if lc.name not in losses:
+                        losses[lc.name] = tnt.AverageValueMeter()
+                    losses[lc.name].add(lc.value.item())
+            else:
+                losses[OVERALL_LOSS_KEY].add(loss.item())
+            # 打印进度
+            LOGGER.warn(
+                f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},precision={precision},recall={recall},loss={loss}')
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
 
 
 def validate(valid_loader, model, criterion, epoch, device, scheduler):
