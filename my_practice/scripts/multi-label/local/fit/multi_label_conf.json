@@ -27,8 +27,8 @@
     "common": {
       "multi_label_0": {
         "max_iter": 1000,
-        "batch_size": 2,
-        "aggregate_every_n_epoch": 10,
+        "batch_size": 8,
+        "aggregate_every_n_epoch": 1,
         "lr": 0.1,
         "pretrained": false,
         "dataset": "ms-coco",
@@ -67,18 +67,18 @@
       "guest": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:0"
+            "device": "cpu"
           },
           "reader_0": {
             "table": {
               "name": "guest-train",
-              "namespace": "ms-coco"
+              "namespace": "ms-coco-mini"
             }
           },
           "reader_1": {
             "table": {
               "name": "guest-val",
-              "namespace": "ms-coco"
+              "namespace": "ms-coco-mini"
             }
           }
         }
@@ -86,18 +86,18 @@
       "host": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:0"
+            "device": "cpu"
           },
           "reader_0": {
             "table": {
               "name": "host-train",
-              "namespace": "ms-coco"
+              "namespace": "ms-coco-mini"
             }
           },
           "reader_1": {
             "table": {
               "name": "host-val",
-              "namespace": "ms-coco"
+              "namespace": "ms-coco-mini"
             }
           }
         }

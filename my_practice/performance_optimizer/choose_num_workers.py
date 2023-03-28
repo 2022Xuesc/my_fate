@@ -48,8 +48,8 @@ class MultiLabelDataSet:
         return len(self.images)
 
 
-train_path = '/data/projects/my_dataset/client1/train'
-# train_path = '/home/klaus125/research/dataset/ms-coco/guest/train'
+# train_path = '/data/projects/my_dataset/client1/train'
+train_path = '/home/klaus125/research/dataset/ms-coco/guest/train'
 train_transforms = transforms.Compose([
     # 将图像缩放为256*256
     transforms.Resize(256),
@@ -66,13 +66,13 @@ train_data_set = MultiLabelDataSet(train_path,
                                    train_transforms)
 
 print(f"num of CPU: {mp.cpu_count()}")
-device = 'cuda:1'
+device = 'cuda:0'
 batch_size = 128
 
-for num_workers in range(16, mp.cpu_count(), 2):
+for num_workers in range(4, mp.cpu_count() * 2, 2):
     for pin in range(0, 1):
         train_loader = torch.utils.data.DataLoader(train_data_set, shuffle=True, num_workers=num_workers,
-                                                   batch_size=batch_size, pin_memory=(pin != 0))
+                                                   batch_size=batch_size, pin_memory=(pin == 0))
         start = time()
         steps = len(train_loader.sampler) / batch_size
         # 输出一些日志信息
@@ -81,3 +81,4 @@ for num_workers in range(16, mp.cpu_count(), 2):
             target = target.to(device)
         end = time()
         print("Finish with:{} second, num_workers={},pin_memory = {}".format(end - start, num_workers, pin == 0))
+
