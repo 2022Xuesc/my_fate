@@ -2,9 +2,15 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd
 
-arbiter_path = 'arbiter'
-guest_path = 'guest'
-host_path = 'host'
+path = '8clients_non_iid'
+
+clients_path = []
+
+clients_path.append(os.path.join(path, 'guest/2'))
+for i in range(3, 10):
+    clients_path.append(os.path.join(path, f'host/{i}'))
+
+arbiter_path = os.path.join(path,'arbiter/1')
 
 
 def draw_loss(path, file):
@@ -42,11 +48,12 @@ def draw_loss(path, file):
 def do_draw(path, file):
     file_path = os.path.join(path, file)
     data = pd.read_csv(file_path)
+    phase = file.split('.')[0]
 
     epochs = data['epoch']
     precisions = data['precision']
     recalls = data['recall']
-    losses = data['loss']
+    losses = data[f'{phase}_loss']
 
     fig = plt.figure(figsize=(8, 6))
 
@@ -72,14 +79,17 @@ def do_draw(path, file):
     # plt.show()
 
 
-def draw(path, loss_file=None, train_file=None, valid_file=None):
-    # 绘制
-    if train_file:
-        do_draw(path, train_file)
-    if valid_file:
-        do_draw(path, valid_file)
-    if loss_file:
-        draw_loss(path, loss_file)
+def draw(paths, loss_file=None, train_file=None, valid_file=None):
+    if not isinstance(paths,list):
+        paths = [paths]
+    for path in paths:
+        # 绘制
+        if train_file:
+            do_draw(path, train_file)
+        if valid_file:
+            do_draw(path, valid_file)
+        if loss_file:
+            draw_loss(path, loss_file)
 
 
 # draw(host_path, train_file='train.csv', valid_file='valid.csv')
@@ -88,5 +98,7 @@ def draw(path, loss_file=None, train_file=None, valid_file=None):
 #
 # draw(arbiter_path, loss_file='avgloss.csv')
 
-standalone_path = 'standalone'
-draw(standalone_path,train_file='train.csv',valid_file='valid.csv')
+draw(clients_path,train_file='train.csv',valid_file='valid.csv')
+
+
+# draw(arbiter_path,loss_file='avgloss.csv')
