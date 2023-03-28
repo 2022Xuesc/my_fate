@@ -22,7 +22,7 @@ client_num = 8
 # 当前目录为xxx/task_executor，进入到[子目录/stats]中，拷贝其中的avgloss.csv,train.csv,valid.csv文件
 def mv_files(dir_path, target_path):
     files = os.listdir(dir_path)
-    files_dir = os.path.join(files[0], 'stats')
+    files_dir = os.path.join(dir_path, f'{files[0]}/stats')
     filenames = ['avgloss.csv', 'train.csv', 'valid.csv']
     for filename in filenames:
         file_path = os.path.join(files_dir, filename)
