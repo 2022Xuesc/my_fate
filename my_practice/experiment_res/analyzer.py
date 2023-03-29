@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd
 
-path = '8clients_non_iid'
+path = '8clients_non_iid_agg'
 
 clients_path = []
 
@@ -101,4 +101,4 @@ def draw(paths, loss_file=None, train_file=None, valid_file=None):
 draw(clients_path,train_file='train.csv',valid_file='valid.csv')
 
 
-# draw(arbiter_path,loss_file='avgloss.csv')
+draw(arbiter_path,loss_file='avgloss.csv')
