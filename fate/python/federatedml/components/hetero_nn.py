@@ -29,13 +29,21 @@ def hetero_nn_param():
 
 @hetero_nn_cpn_meta.bind_runner.on_guest
 def hetero_nn_guest_runner():
+<<<<<<< HEAD
     from federatedml.nn.hetero_nn.hetero_nn_guest import HeteroNNGuest
+=======
+    from federatedml.nn.hetero.guest import HeteroNNGuest
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     return HeteroNNGuest
 
 
 @hetero_nn_cpn_meta.bind_runner.on_host
 def hetero_nn_host_runner():
+<<<<<<< HEAD
     from federatedml.nn.hetero_nn.hetero_nn_host import HeteroNNHost
+=======
+    from federatedml.nn.hetero.host import HeteroNNHost
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     return HeteroNNHost

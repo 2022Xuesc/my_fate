@@ -17,7 +17,11 @@
 #  limitations under the License.
 #
 import copy
+<<<<<<< HEAD
 
+=======
+from federatedml.param.base_param import deprecated_param
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 from federatedml.param.glm_param import LinearModelParam
 from federatedml.param.callback_param import CallbackParam
 from federatedml.param.cross_validation_param import CrossValidationParam
@@ -39,6 +43,7 @@ class LogisticParam(LinearModelParam):
     penalty : {'L2', 'L1' or None}
         Penalty method used in LR. Please note that, when using encrypted version in HomoLR,
         'L1' is not supported.
+<<<<<<< HEAD
 
     tol : float, default: 1e-4
         The tolerance of convergence
@@ -49,10 +54,19 @@ class LogisticParam(LinearModelParam):
     optimizer : {'rmsprop', 'sgd', 'adam', 'nesterov_momentum_sgd', 'adagrad'}, default: 'rmsprop'
         Optimize method.
 
+=======
+    tol : float, default: 1e-4
+        The tolerance of convergence
+    alpha : float, default: 1.0
+        Regularization strength coefficient.
+    optimizer : {'rmsprop', 'sgd', 'adam', 'nesterov_momentum_sgd', 'adagrad'}, default: 'rmsprop'
+        Optimize method.
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     batch_strategy : str, {'full', 'random'}, default: "full"
         Strategy to generate batch data.
             a) full: use full data to generate batch_data, batch_nums every iteration is ceil(data_size /  batch_size)
             b) random: select data randomly from full data, batch_num will be 1 every iteration.
+<<<<<<< HEAD
 
     batch_size : int, default: -1
         Batch size when updating model. -1 means use all data in a batch. i.e. Not to use mini-batch strategy.
@@ -69,6 +83,18 @@ class LogisticParam(LinearModelParam):
     max_iter : int, default: 100
         The maximum iteration for training.
 
+=======
+    batch_size : int, default: -1
+        Batch size when updating model. -1 means use all data in a batch. i.e. Not to use mini-batch strategy.
+    shuffle : bool, default: True
+        Work only in hetero logistic regression, batch data will be shuffle in every iteration.
+    masked_rate: int, float: default: 5
+        Use masked data to enhance security of hetero logistic regression
+    learning_rate : float, default: 0.01
+        Learning rate
+    max_iter : int, default: 100
+        The maximum iteration for training.
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     early_stop : {'diff', 'weight_diff', 'abs'}, default: 'diff'
         Method used to judge converge or not.
             a)	diff： Use difference of loss between two iterations to judge whether converge.
@@ -76,11 +102,16 @@ class LogisticParam(LinearModelParam):
             c)	abs: Use the absolute value of loss to judge whether converge. i.e. if loss < eps, it is converged.
 
             Please note that for hetero-lr multi-host situation, this parameter support "weight_diff" only.
+<<<<<<< HEAD
 
+=======
+            In homo-lr, weight_diff is not supported
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     decay: int or float, default: 1
         Decay rate for learning rate. learning rate will follow the following decay schedule.
         lr = lr0/(1+decay*t) if decay_sqrt is False. If decay_sqrt is True, lr = lr0 / sqrt(1+decay*t)
         where t is the iter number.
+<<<<<<< HEAD
 
     decay_sqrt: bool, default: True
         lr = lr0/(1+decay*t) if decay_sqrt is False, otherwise, lr = lr0 / sqrt(1+decay*t)
@@ -106,14 +137,37 @@ class LogisticParam(LinearModelParam):
     early_stopping_rounds: int, default: None
         Will stop training if one metric doesn’t improve in last early_stopping_round rounds
 
+=======
+    decay_sqrt: bool, default: True
+        lr = lr0/(1+decay*t) if decay_sqrt is False, otherwise, lr = lr0 / sqrt(1+decay*t)
+    encrypt_param: EncryptParam object, default: default EncryptParam object
+        encrypt param
+    predict_param: PredictParam object, default: default PredictParam object
+        predict param
+    callback_param: CallbackParam object
+        callback param
+    cv_param: CrossValidationParam object, default: default CrossValidationParam object
+        cv param
+    multi_class: {'ovr'}, default: 'ovr'
+        If it is a multi_class task, indicate what strategy to use. Currently, support 'ovr' short for one_vs_rest only.
+    validation_freqs: int or list or tuple or set, or None, default None
+        validation frequency during training.
+    early_stopping_rounds: int, default: None
+        Will stop training if one metric doesn’t improve in last early_stopping_round rounds
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     metrics: list or None, default: None
         Indicate when executing evaluation during train process, which metrics will be used. If set as empty,
         default metrics for specific task type will be used. As for binary classification, default metrics are
         ['auc', 'ks']
+<<<<<<< HEAD
 
     use_first_metric_only: bool, default: False
         Indicate whether use the first metric only for early stopping judgement.
 
+=======
+    use_first_metric_only: bool, default: False
+        Indicate whether use the first metric only for early stopping judgement.
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     floating_point_precision: None or integer
         if not None, use floating_point_precision-bit to speed up calculation,
         e.g.: convert an x to round(x * 2**floating_point_precision) during Paillier operation, divide
@@ -165,12 +219,23 @@ class LogisticParam(LinearModelParam):
         descr = "logistic_param's"
         super(LogisticParam, self).check()
         self.predict_param.check()
+<<<<<<< HEAD
         if self.encrypt_param.method not in [consts.PAILLIER, None]:
             raise ValueError(
                 "logistic_param's encrypted method support 'Paillier' or None only")
         self.multi_class = self.check_and_change_lower(self.multi_class, ["ovr"], f"{descr}")
         if not isinstance(self.masked_rate, (float, int)) or self.masked_rate < 0:
             raise ValueError("masked rate should be non-negative numeric number")
+=======
+        if self.encrypt_param.method not in [consts.PAILLIER, consts.PAILLIER_IPCL, None]:
+            raise ValueError(
+                "logistic_param's encrypted method support 'Paillier' or None only")
+        self.multi_class = self.check_and_change_lower(
+            self.multi_class, ["ovr"], f"{descr}")
+        if not isinstance(self.masked_rate, (float, int)) or self.masked_rate < 0:
+            raise ValueError(
+                "masked rate should be non-negative numeric number")
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         if not isinstance(self.batch_strategy, str) or self.batch_strategy.lower() not in ["full", "random"]:
             raise ValueError("batch strategy should be full or random")
         self.batch_strategy = self.batch_strategy.lower()
@@ -183,6 +248,7 @@ class HomoLogisticParam(LogisticParam):
     """
     Parameters
     ----------
+<<<<<<< HEAD
     re_encrypt_batches : int, default: 2
         Required when using encrypted version HomoLR. Since multiple batch updating coefficient may cause
         overflow error. The model need to be re-encrypt for every several batches. Please be careful when setting
@@ -198,12 +264,17 @@ class HomoLogisticParam(LogisticParam):
     mu: float, default 0.1
         To scale the proximal term
 
+=======
+    aggregate_iters : int, default: 1
+        Indicate how many iterations are aggregated once.
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     """
 
     def __init__(self, penalty='L2',
                  tol=1e-4, alpha=1.0, optimizer='rmsprop',
                  batch_size=-1, learning_rate=0.01, init_param=InitParam(),
                  max_iter=100, early_stop='diff',
+<<<<<<< HEAD
                  encrypt_param=EncryptParam(method=None), re_encrypt_batches=2,
                  predict_param=PredictParam(), cv_param=CrossValidationParam(),
                  decay=1, decay_sqrt=True,
@@ -214,10 +285,20 @@ class HomoLogisticParam(LogisticParam):
                  use_proximal=False,
                  mu=0.1, callback_param=CallbackParam()
                  ):
+=======
+                 predict_param=PredictParam(), cv_param=CrossValidationParam(),
+                 decay=1, decay_sqrt=True,
+                 aggregate_iters=1, multi_class='ovr', validation_freqs=None,
+                 metrics=['auc', 'ks'],
+                 callback_param=CallbackParam()
+                 ):
+
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         super(HomoLogisticParam, self).__init__(penalty=penalty, tol=tol, alpha=alpha, optimizer=optimizer,
                                                 batch_size=batch_size,
                                                 learning_rate=learning_rate,
                                                 init_param=init_param, max_iter=max_iter, early_stop=early_stop,
+<<<<<<< HEAD
                                                 encrypt_param=encrypt_param, predict_param=predict_param,
                                                 cv_param=cv_param, multi_class=multi_class,
                                                 validation_freqs=validation_freqs,
@@ -240,11 +321,25 @@ class HomoLogisticParam(LogisticParam):
             raise ValueError(
                 "logistic_param's re_encrypt_batches must be greater or equal to 0")
 
+=======
+                                                predict_param=predict_param,
+                                                cv_param=cv_param, multi_class=multi_class,
+                                                validation_freqs=validation_freqs,
+                                                decay=decay, decay_sqrt=decay_sqrt,
+                                                metrics=metrics,
+                                                callback_param=callback_param)
+        self.aggregate_iters = aggregate_iters
+
+    def check(self):
+
+        super().check()
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         if not isinstance(self.aggregate_iters, int):
             raise ValueError(
                 "logistic_param's aggregate_iters {} not supported, should be int type".format(
                     self.aggregate_iters))
 
+<<<<<<< HEAD
         if self.encrypt_param.method == consts.PAILLIER:
             if self.optimizer != 'sgd':
                 raise ValueError("Paillier encryption mode supports 'sgd' optimizer method only.")
@@ -252,6 +347,8 @@ class HomoLogisticParam(LogisticParam):
             if self.penalty == consts.L1_PENALTY:
                 raise ValueError("Paillier encryption mode supports 'L2' penalty or None only.")
 
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         return True
 
 
@@ -285,7 +382,12 @@ class HeteroLogisticParam(LogisticParam):
                                                   use_first_metric_only=use_first_metric_only,
                                                   stepwise_param=stepwise_param,
                                                   callback_param=callback_param)
+<<<<<<< HEAD
         self.encrypted_mode_calculator_param = copy.deepcopy(encrypted_mode_calculator_param)
+=======
+        self.encrypted_mode_calculator_param = copy.deepcopy(
+            encrypted_mode_calculator_param)
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         self.sqn_param = copy.deepcopy(sqn_param)
 
     def check(self):

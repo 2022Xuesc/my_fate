@@ -2,10 +2,14 @@
   "dsl_version": 2,
   "job_parameters": {
     "common": {
+<<<<<<< HEAD
       "job_type": "train",
       "task_cores": 4,
       "task_parallelism": 4,
       "computing_partitions": 4
+=======
+      "job_type": "train"
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     }
   },
   "initiator": {
@@ -26,9 +30,15 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
+<<<<<<< HEAD
         "max_iter": 1000,
         "batch_size": 8,
         "aggregate_every_n_epoch": 1,
+=======
+        "max_iter": 100,
+        "batch_size": 8,
+        "aggregate_every_n_epoch": 2,
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         "lr": 0.1,
         "pretrained": false,
         "dataset": "ms-coco",
@@ -43,7 +53,11 @@
           "regularizers": {
             "l2_regularizer": {
               "class": "L2Regularizer",
+<<<<<<< HEAD
               "lamda": 0.1
+=======
+              "lamda": 0.002
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
             }
           },
           "policies": {
@@ -67,18 +81,30 @@
       "guest": {
         "0": {
           "multi_label_0": {
+<<<<<<< HEAD
             "device": "cpu"
+=======
+            "device": "cuda:0"
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
           },
           "reader_0": {
             "table": {
               "name": "guest-train",
+<<<<<<< HEAD
               "namespace": "ms-coco-mini"
+=======
+              "namespace": "ms-coco"
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
             }
           },
           "reader_1": {
             "table": {
               "name": "guest-val",
+<<<<<<< HEAD
               "namespace": "ms-coco-mini"
+=======
+              "namespace": "ms-coco"
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
             }
           }
         }
@@ -86,18 +112,30 @@
       "host": {
         "0": {
           "multi_label_0": {
+<<<<<<< HEAD
             "device": "cpu"
+=======
+            "device": "cuda:0"
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
           },
           "reader_0": {
             "table": {
               "name": "host-train",
+<<<<<<< HEAD
               "namespace": "ms-coco-mini"
+=======
+              "namespace": "ms-coco"
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
             }
           },
           "reader_1": {
             "table": {
               "name": "host-val",
+<<<<<<< HEAD
               "namespace": "ms-coco-mini"
+=======
+              "namespace": "ms-coco"
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
             }
           }
         }

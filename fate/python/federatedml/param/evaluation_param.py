@@ -30,6 +30,7 @@ class EvaluateParam(BaseParam):
         support 'binary' for HomoLR, HeteroLR and Secureboosting,
         support 'regression' for Secureboosting,
         'multi' is not support these version
+<<<<<<< HEAD
 
     unfold_multi_result : bool
         unfold multi result and get several one-vs-rest binary classification results
@@ -37,6 +38,12 @@ class EvaluateParam(BaseParam):
     pos_label : int or float or str
         specify positive label type, depend on the data's label. this parameter effective only for 'binary'
 
+=======
+    unfold_multi_result : bool
+        unfold multi result and get several one-vs-rest binary classification results
+    pos_label : int or float or str
+        specify positive label type, depend on the data's label. this parameter effective only for 'binary'
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     need_run: bool, default True
         Indicate if this module needed to be run
     """
@@ -141,8 +148,11 @@ class EvaluateParam(BaseParam):
 
         self.metrics = self._check_valid_metric(self.metrics)
 
+<<<<<<< HEAD
         LOGGER.info("Finish evaluation parameter check!")
 
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         return True
 
     def check_single_value_default_metric(self):

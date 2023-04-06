@@ -69,6 +69,7 @@ def get_default_target_framework(model_contents: dict,
     if module_name == "HomoLR":
         framework_name = "sklearn"
     elif module_name == 'HomoNN':
+<<<<<<< HEAD
         if model_contents['HomoNNModelMeta'].params.config_type == "pytorch":
             framework_name = "pytorch"
         else:
@@ -77,6 +78,19 @@ def get_default_target_framework(model_contents: dict,
         framework_name = 'lightgbm'
     else:
         LOGGER.debug(f"Module {module_name} is not a supported homogeneous model")
+=======
+        # in FATE-1.10 currently support pytorch only
+        framework_name = "pytorch"
+        # if model_contents['HomoNNModelMeta'].params.config_type == "pytorch":
+        #     framework_name = "pytorch"
+        # else:
+        #     framework_name = "tf_keras"
+    elif module_name.lower() == 'homosecureboost':
+        framework_name = 'lightgbm'
+    else:
+        LOGGER.debug(
+            f"Module {module_name} is not a supported homogeneous model")
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     return framework_name
 
 
@@ -95,6 +109,7 @@ def model_convert(model_contents: dict,
     """
 
     if not framework_name:
+<<<<<<< HEAD
         framework_name = get_default_target_framework(model_contents, module_name)
         if not framework_name:
             return None, None
@@ -103,6 +118,20 @@ def model_convert(model_contents: dict,
         LOGGER.warn(f"Module {module_name} cannot be converted to framework {framework_name}")
         return None, None
     LOGGER.info(f"Converting {module_name} module to a model of framework {target_framework}")
+=======
+        framework_name = get_default_target_framework(
+            model_contents, module_name)
+        if not framework_name:
+            return None, None
+    target_framework, component_converter = _get_component_converter(
+        module_name, framework_name)
+    if not component_converter:
+        LOGGER.warn(
+            f"Module {module_name} cannot be converted to framework {framework_name}")
+        return None, None
+    LOGGER.info(
+        f"Converting {module_name} module to a model of framework {target_framework}")
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     return target_framework, component_converter.convert(model_contents)
 
@@ -155,5 +184,10 @@ def load_converted_model(framework_name: str,
     _, load, src_filename = _get_model_saver_loader(framework_name)
     src = os.path.join(base_dir, src_filename)
     if not os.path.exists(src):
+<<<<<<< HEAD
         raise FileNotFoundError("expected file or folder {} doesn't exist".format(src))
+=======
+        raise FileNotFoundError(
+            "expected file or folder {} doesn't exist".format(src))
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     return load(src)

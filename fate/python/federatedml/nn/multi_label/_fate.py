@@ -6,7 +6,10 @@ import numpy as np
 import typing
 import torchvision.transforms as transforms
 import torchnet.meter as tnt
+<<<<<<< HEAD
 
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 import math
 import os
 import logging
@@ -21,7 +24,10 @@ from federatedml.nn.backend.pytorch.data import MultiLabelDataSet
 from federatedml.nn.homo_nn import _consts
 from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
+<<<<<<< HEAD
 from federatedml.protobuf.generated import nn_model_meta_pb2, nn_model_param_pb2
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
@@ -50,6 +56,13 @@ train_file = open(os.path.join(stats_dir, 'train.csv'), 'w', buffering=buf_size)
 train_writer = csv.writer(train_file)
 train_writer.writerow(['epoch', 'precision', 'recall', 'train_loss'])
 
+<<<<<<< HEAD
+=======
+loss_file = open(os.path.join(stats_dir, 'loss.csv'), 'w', buffering=buf_size)
+loss_writer = csv.writer(loss_file)
+loss_writer.writerow(['epoch', 'obj_loss', 'reg_loss', 'overall_loss'])
+
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 valid_file = open(os.path.join(stats_dir, 'valid.csv'), 'w', buffering=buf_size)
 valid_writer = csv.writer(valid_file)
 valid_writer.writerow(['epoch', 'precision', 'recall', 'valid_loss'])
@@ -279,8 +292,13 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     if batch_size < 0:
         batch_size = len(train_dataset)
     shuffle = False
+<<<<<<< HEAD
     drop_last = False
     num_workers = 32
+=======
+    drop_last = True
+    num_workers = 8
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
         drop_last=drop_last, shuffle=shuffle
@@ -363,6 +381,7 @@ class MultiLabelFedAggregator(object):
         return tensors[0]
 
     def export_model(self, param):
+<<<<<<< HEAD
         param_pb = nn_model_param_pb2.NNModelParam()
         param_pb.api_version = param.api_version
 
@@ -374,6 +393,13 @@ class MultiLabelFedAggregator(object):
     @classmethod
     def load_model(cls, model_obj, meta_obj, param):
         param.restore_from_pb(meta_obj.params)
+=======
+        pass
+
+    @classmethod
+    def load_model(cls, model_obj, meta_obj, param):
+        pass
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     @staticmethod
     def dataset_align():
@@ -492,7 +518,12 @@ class MultiLabelFitter(object):
         total_samples = len(train_loader.sampler)
         batch_size = train_loader.batch_size
         steps_per_epoch = math.ceil(total_samples / batch_size)
+<<<<<<< HEAD
         fate_logger.info(f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
+=======
+        fate_logger.info(
+            f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
         sigmoid_func = torch.nn.Sigmoid()
 
@@ -532,6 +563,13 @@ class MultiLabelFitter(object):
                     losses[lc.name].add(lc.value.item())
             else:
                 losses[OVERALL_LOSS_KEY].add(loss.item())
+<<<<<<< HEAD
+=======
+
+            loss_writer.writerow(
+                [epoch, losses['Objective Loss'].mean, losses['L2Regularizer_loss'].mean, losses[OVERALL_LOSS_KEY].mean])
+
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
             # 打印进度
             LOGGER.warn(
                 f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},precision={precision},recall={recall},loss={loss}')

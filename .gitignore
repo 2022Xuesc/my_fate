@@ -142,6 +142,7 @@ README.md
 RELEASE.md
 requirements.txt
 init.sh
+<<<<<<< HEAD
 fate
 !fate/python
 
@@ -153,6 +154,22 @@ fate/python/federatedml
 !fate/python/federatedml/nn
 !fate/python/federatedml/param
 !fate/python/federatedml/protobuf
+=======
+fate/
+!fate/python/
+
+fate/python/
+!fate/python/federatedml/
+
+fate/python/federatedml/
+!fate/python/federatedml/components/
+!fate/python/federatedml/nn/
+!fate/python/federatedml/param/
+!fate/python/federatedml/protobuf/
+
+Dockerfile
+
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
 **/__pycache__
 docker-entrypoint.sh

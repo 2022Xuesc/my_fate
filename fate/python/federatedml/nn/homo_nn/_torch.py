@@ -35,7 +35,10 @@ from federatedml.nn.backend.pytorch.loss import get_loss_fn
 from federatedml.nn.backend.pytorch.optimizer import get_optimizer
 from federatedml.nn.homo_nn import _consts
 from federatedml.param import HomoNNParam
+<<<<<<< HEAD
 from federatedml.protobuf.generated import nn_model_meta_pb2, nn_model_param_pb2
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 from pytorch_lightning.callbacks import Callback
@@ -399,6 +402,7 @@ class PyTorchFederatedTrainer(object):
         return pred_tbl, classes
 
     def export_model(self, param):
+<<<<<<< HEAD
 
         param_pb = nn_model_param_pb2.NNModelParam()
 
@@ -428,6 +432,9 @@ class PyTorchFederatedTrainer(object):
         meta_pb.aggregate_iter = self.context.aggregation_iteration
 
         return {_consts.MODEL_META_NAME: meta_pb, _consts.MODEL_PARAM_NAME: param_pb}
+=======
+        pass
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     @classmethod
     def load_model(cls, model_obj, meta_obj, param):
@@ -590,6 +597,7 @@ class PytorchFederatedAggregator(object):
 
     def export_model(self, param):
 
+<<<<<<< HEAD
         param_pb = nn_model_param_pb2.NNModelParam()
 
         # save api_version
@@ -600,6 +608,9 @@ class PytorchFederatedAggregator(object):
         meta_pb.aggregate_iter = self.context.aggregation_iteration
 
         return {_consts.MODEL_META_NAME: meta_pb, _consts.MODEL_PARAM_NAME: param_pb}
+=======
+        pass
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     @classmethod
     def load_model(cls, model_obj, meta_obj, param):

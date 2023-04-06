@@ -28,6 +28,7 @@ class ScorecardParam(BaseParam):
 
     Parameters
     ----------
+<<<<<<< HEAD
 
     method : {"credit"}, default: 'credit'
         score method, currently only supports "credit"
@@ -47,6 +48,20 @@ class ScorecardParam(BaseParam):
     lower_limit_value : int or float, default: 0
         lower bound for result score
 
+=======
+    method : {"credit"}, default: 'credit'
+        score method, currently only supports "credit"
+    offset : int or float, default: 500
+        score baseline
+    factor : int or float, default: 20
+        scoring step, when odds double, result score increases by this factor
+    factor_base : int or float, default: 2
+        factor base, value ln(factor_base) is used for calculating result score
+    upper_limit_ratio : int or float, default: 3
+        upper bound for odds, credit score upper bound is upper_limit_ratio * offset
+    lower_limit_value : int or float, default: 0
+        lower bound for result score
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     need_run : bool, default: True
         Indicate if this module needs to be run.
 

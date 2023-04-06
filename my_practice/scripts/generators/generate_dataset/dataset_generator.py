@@ -96,7 +96,12 @@ def generate_labels(dir_paths):
         files_cnt = len(files)
         cur = 1
         # 解析phase
+<<<<<<< HEAD
         image2labels = get_image2labels(dir_path.split('/')[-1])
+=======
+        # image2labels = get_image2labels(dir_path.split('/')[-1])
+        image2labels = get_image2labels('val')
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         for filename in files:
             if filename in ['labels.txt', 'config.yaml']:
                 continue

@@ -43,6 +43,10 @@ message FeatureSelectionParam{
     repeated string col_names = 3;
     repeated HostColNames host_col_names = 4;
     repeated string header = 5;
+<<<<<<< HEAD
+=======
+    map<string, string> col_name_to_anonym_dict = 6;
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 }
 
 message HostColNames{

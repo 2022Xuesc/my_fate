@@ -26,7 +26,11 @@ class SampleParam(BaseParam):
 
     Parameters
     ----------
+<<<<<<< HEAD
     mode: {'random', 'stratified'}'
+=======
+    mode: {'random', 'stratified', 'exact_by_weight'}'
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         specify sample to use, default: 'random'
 
     method: {'downsample', 'upsample'}, default: 'downsample'
@@ -34,7 +38,12 @@ class SampleParam(BaseParam):
 
     fractions: None or float or list
         if mode equals to random, it should be a float number greater than 0,
+<<<<<<< HEAD
         otherwise a list of elements of pairs like [label_i, sample_rate_i], e.g. [[0, 0.5], [1, 0.8], [2, 0.3]]. default: None
+=======
+        otherwise a list of elements of pairs like [label_i, sample_rate_i],
+        e.g. [[0, 0.5], [1, 0.8], [2, 0.3]]. default: None
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     random_state: int, RandomState instance or None, default: None
         random state
@@ -43,8 +52,13 @@ class SampleParam(BaseParam):
         Indicate if this module needed to be run
     """
 
+<<<<<<< HEAD
     def __init__(self, mode="random", method="downsample", fractions=None, random_state=None, task_type="hetero",
                  need_run=True):
+=======
+    def __init__(self, mode="random", method="downsample", fractions=None,
+                 random_state=None, task_type="hetero", need_run=True):
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         self.mode = mode
         self.method = method
         self.fractions = fractions
@@ -55,7 +69,11 @@ class SampleParam(BaseParam):
     def check(self):
         descr = "sample param"
         self.mode = self.check_and_change_lower(self.mode,
+<<<<<<< HEAD
                                                 ["random", "stratified"],
+=======
+                                                ["random", "stratified", "exact_by_weight"],
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
                                                 descr)
 
         self.method = self.check_and_change_lower(self.method,

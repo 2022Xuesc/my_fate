@@ -27,6 +27,7 @@ class LabelTransformParam(BaseParam):
 
     Parameters
     ----------
+<<<<<<< HEAD
 
     label_encoder : None or dict, default : None
         Specify (label, encoded label) key-value pairs for transforming labels to new values.
@@ -37,6 +38,17 @@ class LabelTransformParam(BaseParam):
         length should match key count in label_encoder
         e.g. ["Yes", "No"]
 
+=======
+    label_encoder : None or dict, default : None
+        Specify (label, encoded label) key-value pairs for transforming labels to new values.
+        e.g. {"Yes": 1, "No": 0};
+        **new in ver 1.9: during training, input labels not found in `label_encoder` will retain its original value
+    label_list : None or list, default : None
+        List all input labels, used for matching types of original keys in label_encoder dict,
+        length should match key count in label_encoder, e.g. ["Yes", "No"];
+        **new in ver 1.9: given non-emtpy `label_encoder`, when `label_list` not provided,
+        module will inference label types from input data
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     need_run: bool, default: True
         Specify whether to run label transform
 
@@ -56,12 +68,24 @@ class LabelTransformParam(BaseParam):
         if self.label_encoder is not None:
             if not isinstance(self.label_encoder, dict):
                 raise ValueError(f"{model_param_descr} label_encoder should be dict type")
+<<<<<<< HEAD
+=======
+            if len(self.label_encoder) == 0:
+                self.label_encoder = None
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
         if self.label_list is not None:
             if not isinstance(self.label_list, list):
                 raise ValueError(f"{model_param_descr} label_list should be list type")
+<<<<<<< HEAD
             if self.label_encoder and len(self.label_list) != len(self.label_encoder.keys()):
                 raise ValueError(f"label_list length should match label_encoder key count")
+=======
+            if self.label_encoder and self.label_list and len(self.label_list) != len(self.label_encoder.keys()):
+                raise ValueError(f"label_list's length not matching label_encoder key count.")
+            if len(self.label_list) == 0:
+                self.label_list = None
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
         LOGGER.debug("Finish label transformer parameter check!")
         return True

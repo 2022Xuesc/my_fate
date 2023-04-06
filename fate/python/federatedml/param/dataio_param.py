@@ -31,6 +31,7 @@ class DataIOParam(BaseParam):
             dense input format data should be set to "dense",
             svm-light input format data should be set to "sparse",
             tag or tag:value input format data should be set to "tag".
+<<<<<<< HEAD
 
     delimitor : str
         the delimitor of data input, default: ','
@@ -53,6 +54,23 @@ class DataIOParam(BaseParam):
     missing_fill : bool
         need to fill missing value or not, accepted only True/False, default: False
 
+=======
+    delimitor : str
+        the delimitor of data input, default: ','
+    data_type : {'float64', 'float', 'int', 'int64', 'str', 'long'}
+        the data type of data input
+    exclusive_data_type : dict
+        the key of dict is col_name, the value is data_type, use to specified special data type
+        of some features.
+    tag_with_value: bool
+        use if input_format is 'tag', if tag_with_value is True,
+        input column data format should be tag[delimitor]value, otherwise is tag only
+    tag_value_delimitor: str
+        use if input_format is 'tag' and 'tag_with_value' is True,
+        delimitor of tag[delimitor]value column value.
+    missing_fill : bool
+        need to fill missing value or not, accepted only True/False, default: False
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     default_value : None or object or list
         the value to replace missing value.
             if None, it will use default value define in federatedml/feature/imputer.py,
@@ -60,6 +78,7 @@ class DataIOParam(BaseParam):
             if list, it's length should be the sample of input data' feature dimension,
                 means that if some column happens to have missing values, it will replace it
                 the value by element in the identical position of this list.
+<<<<<<< HEAD
 
     missing_fill_method : {None, 'min', 'max', 'mean', 'designated'}
         the method to replace missing value
@@ -76,6 +95,18 @@ class DataIOParam(BaseParam):
     outlier_impute: None or list
         element of list can be any type, which values should be regard as missing value, default: None
 
+=======
+    missing_fill_method : {None, 'min', 'max', 'mean', 'designated'}
+        the method to replace missing value
+    missing_impute: None or list
+        element of list can be any type, or auto generated if value is None, define which values to be consider as missing
+    outlier_replace: bool
+        need to replace outlier value or not, accepted only True/False, default: True
+    outlier_replace_method : {None, 'min', 'max', 'mean', 'designated'}
+        the method to replace missing value
+    outlier_impute: None or list
+        element of list can be any type, which values should be regard as missing value, default: None
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     outlier_replace_value : None or object or list
         the value to replace outlier.
             if None, it will use default value define in federatedml/feature/imputer.py,
@@ -83,6 +114,7 @@ class DataIOParam(BaseParam):
             if list, it's length should be the sample of input data' feature dimension,
                 means that if some column happens to have outliers, it will replace it
                 the value by element in the identical position of this list.
+<<<<<<< HEAD
 
     with_label : bool
         True if input data consist of label, False otherwise. default: 'false'
@@ -96,6 +128,16 @@ class DataIOParam(BaseParam):
     output_format : {'dense', 'sparse'}
         output format
 
+=======
+    with_label : bool
+        True if input data consist of label, False otherwise. default: 'false'
+    label_name : str
+        column_name of the column where label locates, only use in dense-inputformat. default: 'y'
+    label_type : {'int', 'int64', 'float', 'float64', 'long', 'str'}
+        use when with_label is True.
+    output_format : {'dense', 'sparse'}
+        output format
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     """
 
     def __init__(self, input_format="dense", delimitor=',', data_type='float64',

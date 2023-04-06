@@ -27,7 +27,11 @@ def column_expand_param():
     return ColumnExpandParam
 
 
+<<<<<<< HEAD
 @column_expand_cpn_meta.bind_runner.on_guest
+=======
+@column_expand_cpn_meta.bind_runner.on_guest.on_host
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 def column_expand_runner():
     from federatedml.feature.column_expand import ColumnExpand
 

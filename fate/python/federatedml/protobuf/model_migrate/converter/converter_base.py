@@ -18,7 +18,11 @@
 
 from abc import ABC, abstractmethod
 from typing import Dict, Tuple
+<<<<<<< HEAD
 from federatedml.util.anonymous_generator import generate_anonymous
+=======
+from federatedml.util.anonymous_generator_util import Anonymous
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 from federatedml.util import consts
 
 
@@ -30,12 +34,17 @@ class AutoReplace(object):
             consts.HOST: host_mapping,
             consts.ARBITER: arbiter_mapping
         }
+<<<<<<< HEAD
+=======
+        self._anonymous_generator = Anonymous(migrate_mapping=self._mapping)
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     def get_mapping(self, role: str):
         if role not in self._mapping:
             raise ValueError('this role contains no site name {}'.format(role))
         return self._mapping[role]
 
+<<<<<<< HEAD
     def anonymous_format(self, string: str):
         """{role}_{party_id}_{idx}"""
         role, party_id, idx = string.split('_')
@@ -43,6 +52,8 @@ class AutoReplace(object):
         new_party_id = mapping[int(party_id)]
         return generate_anonymous(idx, new_party_id, role)
 
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     def party_tuple_format(self, string: str):
         """({role},{party_id})"""
         role, party_id = string.strip("()").split(",")
@@ -56,9 +67,15 @@ class AutoReplace(object):
         return role + ':' + str(new_party_id)
 
     def maybe_anonymous_format(self, string: str):
+<<<<<<< HEAD
         try:
             return self.anonymous_format(string)
         except Exception:
+=======
+        if self._anonymous_generator.is_anonymous(string):
+            return self.migrate_anonymous_header([string])[0]
+        else:
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
             return string
 
     def plain_replace(self, old_party_id, role):
@@ -68,12 +85,24 @@ class AutoReplace(object):
             return str(mapping[int(old_party_id)])
         return str(old_party_id)
 
+<<<<<<< HEAD
+=======
+    def migrate_anonymous_header(self, anonymous_header):
+        if isinstance(anonymous_header, list):
+            return self._anonymous_generator.migrate_anonymous(anonymous_header)
+        else:
+            return self._anonymous_generator.migrate_anonymous([anonymous_header])[0]
+
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     def replace(self, string):
 
         if ':' in string:
             return self.colon_format(string)
+<<<<<<< HEAD
         elif '_' in string:
             return self.anonymous_format(string)
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         else:
             # nothing to replace
             return string

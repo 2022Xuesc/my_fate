@@ -37,6 +37,7 @@ class HeteroSSHELinRParam(LinearModelParam):
     penalty : {'L2' or 'L1'}
         Penalty method used in LinR. Please note that, when using encrypted version in HeteroLinR,
         'L1' is not supported.
+<<<<<<< HEAD
 
     tol : float, default: 1e-4
         The tolerance of convergence
@@ -59,11 +60,28 @@ class HeteroSSHELinRParam(LinearModelParam):
     init_param: InitParam object, default: default InitParam object
         Init param method object.
 
+=======
+    tol : float, default: 1e-4
+        The tolerance of convergence
+    alpha : float, default: 1.0
+        Regularization strength coefficient.
+    optimizer : {'sgd', 'rmsprop', 'adam', 'adagrad'}
+        Optimize method
+    batch_size : int, default: -1
+        Batch size when updating model. -1 means use all data in a batch. i.e. Not to use mini-batch strategy.
+    learning_rate : float, default: 0.01
+        Learning rate
+    max_iter : int, default: 20
+        The maximum iteration for training.
+    init_param: InitParam object, default: default InitParam object
+        Init param method object.
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     early_stop : {'diff', 'abs', 'weight_dff'}
         Method used to judge convergence.
             a)	diff： Use difference of loss between two iterations to judge whether converge.
             b)	abs: Use the absolute value of loss to judge whether converge. i.e. if loss < tol, it is converged.
             c)  weight_diff: Use difference between weights of two consecutive iterations
+<<<<<<< HEAD
 
     encrypt_param: EncryptParam object, default: default EncryptParam object
         encrypt param
@@ -74,10 +92,19 @@ class HeteroSSHELinRParam(LinearModelParam):
     cv_param: CrossValidationParam object, default: default CrossValidationParam object
         cv param
 
+=======
+    encrypt_param: EncryptParam object, default: default EncryptParam object
+        encrypt param
+    encrypted_mode_calculator_param: EncryptedModeCalculatorParam object, default: default EncryptedModeCalculatorParam object
+        encrypted mode calculator param
+    cv_param: CrossValidationParam object, default: default CrossValidationParam object
+        cv param
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     decay: int or float, default: 1
         Decay rate for learning rate. learning rate will follow the following decay schedule.
         lr = lr0/(1+decay*t) if decay_sqrt is False. If decay_sqrt is True, lr = lr0 / sqrt(1+decay*t)
         where t is the iter number.
+<<<<<<< HEAD
 
     decay_sqrt: Bool, default: True
         lr = lr0/(1+decay*t) if decay_sqrt is False, otherwise, lr = lr0 / sqrt(1+decay*t)
@@ -94,6 +121,18 @@ class HeteroSSHELinRParam(LinearModelParam):
         The performance will be better as well since the algorithm process is simplified.
 
 
+=======
+    decay_sqrt: Bool, default: True
+        lr = lr0/(1+decay*t) if decay_sqrt is False, otherwise, lr = lr0 / sqrt(1+decay*t)
+    callback_param: CallbackParam object
+        callback param
+    reveal_strategy: str, "respectively", "encrypted_reveal_in_host", default: "respectively"
+        "respectively": Means guest and host can reveal their own part of weights only.
+        "encrypted_reveal_in_host": Means host can be revealed his weights in encrypted mode, and guest can be revealed in normal mode.
+    reveal_every_iter: bool, default: False
+        Whether reconstruct model weights every iteration. If so, Regularization is available.
+        The performance will be better as well since the algorithm process is simplified.
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     """
 
     def __init__(self, penalty='L2',
