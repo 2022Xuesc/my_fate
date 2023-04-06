@@ -44,7 +44,11 @@ class HeteroSBTConverter(ProtoConverterBase):
         for fp in feat_importance_list:
             fp.sitename = replacer.replace(fp.sitename)
             if fp.fullname not in feature_fid_mapping:
+<<<<<<< HEAD
                 fp.fullname = replacer.replace(fp.fullname)
+=======
+                fp.fullname = replacer.migrate_anonymous_header(fp.fullname)
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
         for tree in tree_list:
             tree_nodes = list(tree.tree_)

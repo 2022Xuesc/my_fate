@@ -38,7 +38,11 @@ class HeteroFeatureSelectionConverter(ProtoConverterBase):
             col_names = list(col_obj.col_names)
 
             for idx, col_name in enumerate(col_names):
+<<<<<<< HEAD
                 col_obj.col_names[idx] = replacer.replace(col_name)
+=======
+                col_obj.col_names[idx] = replacer.migrate_anonymous_header(col_name)
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
         filter_results = list(param.results)
         new_results = []
@@ -47,14 +51,23 @@ class HeteroFeatureSelectionConverter(ProtoConverterBase):
             new_feature_value_list = []
             for this_host in host_feature_values:
                 feature_values = dict(this_host.feature_values)
+<<<<<<< HEAD
                 new_feature_values = {replacer.replace(k): v for k, v in feature_values.items()}
+=======
+                new_feature_values = {replacer.migrate_anonymous_header(k): v for k, v in feature_values.items()}
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
                 new_feature_value_list.append(FeatureValue(feature_values=new_feature_values))
 
             left_col_list = list(result.host_left_cols)
             new_host_left_col = []
             for left_col_obj in left_col_list:
+<<<<<<< HEAD
                 original_cols = [replacer.replace(x) for x in left_col_obj.original_cols]
                 left_cols = {replacer.replace(k): v for k, v in dict(left_col_obj.left_cols).items()}
+=======
+                original_cols = [replacer.migrate_anonymous_header(x) for x in left_col_obj.original_cols]
+                left_cols = {replacer.migrate_anonymous_header(k): v for k, v in dict(left_col_obj.left_cols).items()}
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
                 new_host_left_col.append(LeftCols(original_cols=original_cols,
                                                   left_cols=left_cols))
             new_result = FeatureSelectionFilterParam(feature_values=result.feature_values,
@@ -63,6 +76,7 @@ class HeteroFeatureSelectionConverter(ProtoConverterBase):
                                                      host_left_cols=new_host_left_col,
                                                      filter_name=result.filter_name)
             new_results.append(new_result)
+<<<<<<< HEAD
         param = FeatureSelectionParam(
             results=new_results,
             final_left_cols=param.final_left_cols,
@@ -71,3 +85,26 @@ class HeteroFeatureSelectionConverter(ProtoConverterBase):
             header=param.header
         )
         return param, meta
+=======
+        del param.results[:]
+        param.results.extend(new_results)
+
+        try:
+            for col_name, anonym in dict(param.col_name_to_anonym_dict).items():
+                new_anonym = replacer.migrate_anonymous_header(anonym)
+                # del param.col_name_to_anonym_dict[col_name]
+                param.col_name_to_anonym_dict[col_name] = new_anonym
+
+            """param = FeatureSelectionParam(
+                            results=new_results,
+                            final_left_cols=param.final_left_cols,
+                            col_names=param.col_names,
+                            host_col_names=param.host_col_names,
+                            header=param.header,
+                            col_name_to_anonym_dict=param.col_name_to_anonym_dict
+            )"""
+
+            return param, meta
+        except AttributeError:
+            return param, meta
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e

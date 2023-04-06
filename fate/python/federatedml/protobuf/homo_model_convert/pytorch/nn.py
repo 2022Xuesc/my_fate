@@ -15,8 +15,13 @@
 #
 
 import io
+<<<<<<< HEAD
 import torch
 
+=======
+import torch as t
+import tempfile
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 from ..component_converter import ComponentConverterBase
 
 
@@ -27,6 +32,7 @@ class NNComponentConverter(ComponentConverterBase):
         return ['HomoNN']
 
     def convert(self, model_dict):
+<<<<<<< HEAD
         param_obj = model_dict["HomoNNModelParam"]
         meta_obj = model_dict["HomoNNModelMeta"]
         if meta_obj.params.config_type != "pytorch":
@@ -39,3 +45,18 @@ class NNComponentConverter(ComponentConverterBase):
             else:
                 pytorch_nn_model = torch.load(model_bytes)
             return pytorch_nn_model
+=======
+
+        param_obj = model_dict["HomoNNParam"]
+        meta_obj = model_dict["HomoNNMeta"]
+
+        if not hasattr(param_obj, 'model_bytes'):
+            raise ValueError("Did not find model_bytes in model param protobuf")
+
+        with tempfile.TemporaryFile() as f:
+            f.write(param_obj.model_bytes)
+            f.seek(0)
+            model_dict = t.load(f)
+
+        return model_dict
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e

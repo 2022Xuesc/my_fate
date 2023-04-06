@@ -26,7 +26,10 @@ class FeatureImputationParam(BaseParam):
 
     Parameters
     ----------
+<<<<<<< HEAD
 
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     default_value : None or single object type or list
         the value to replace missing value.
         if None, it will use default value defined in federatedml/feature/imputer.py,
@@ -34,14 +37,20 @@ class FeatureImputationParam(BaseParam):
         if list, it's length should be the same as input data' feature dimension,
             means that if some column happens to have missing values, it will replace it
             the value by element in the identical position of this list.
+<<<<<<< HEAD
 
     missing_fill_method : [None, 'min', 'max', 'mean', 'designated']
         the method to replace missing value
 
+=======
+    missing_fill_method : [None, 'min', 'max', 'mean', 'designated']
+        the method to replace missing value
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     col_missing_fill_method: None or dict of (column name, missing_fill_method) pairs
         specifies method to replace missing value for each column;
         any column not specified will take missing_fill_method,
         if missing_fill_method is None, unspecified column will not be imputed;
+<<<<<<< HEAD
 
     missing_impute : None or list
         element of list can be any type, or auto generated if value is None, define which values to be consider as missing, default: None
@@ -49,10 +58,20 @@ class FeatureImputationParam(BaseParam):
     need_run: bool, default True
         need run or not
 
+=======
+    missing_impute : None or list
+        element of list can be any type, or auto generated if value is None, define which values to be consider as missing, default: None
+    need_run: bool, default True
+        need run or not
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     """
 
     def __init__(self, default_value=0, missing_fill_method=None, col_missing_fill_method=None,
                  missing_impute=None, need_run=True):
+<<<<<<< HEAD
+=======
+        super(FeatureImputationParam, self).__init__()
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         self.default_value = default_value
         self.missing_fill_method = missing_fill_method
         self.col_missing_fill_method = col_missing_fill_method

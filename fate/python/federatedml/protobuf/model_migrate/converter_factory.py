@@ -6,6 +6,10 @@ from federatedml.protobuf.model_migrate.converter.feature_selection_model_conver
     HeteroFeatureSelectionConverter
 from federatedml.protobuf.model_migrate.converter.pearson_model_converter import HeteroPearsonConverter
 from federatedml.protobuf.model_migrate.converter.tree_model_converter import HeteroSBTConverter
+<<<<<<< HEAD
+=======
+from federatedml.protobuf.model_migrate.converter.data_transform_converter import DataTransformConverter
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
 
 def converter_factory(module_name: str) -> typing.Optional[ProtoConverterBase]:
@@ -19,5 +23,10 @@ def converter_factory(module_name: str) -> typing.Optional[ProtoConverterBase]:
         return FeatureBinningConverter()
     elif module_name == 'HeteroFeatureSelection':
         return HeteroFeatureSelectionConverter()
+<<<<<<< HEAD
+=======
+    elif module_name == "DataTransform":
+        return DataTransformConverter()
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     else:
         return None

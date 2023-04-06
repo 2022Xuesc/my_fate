@@ -32,7 +32,11 @@ class HeteroPearsonConverter(ProtoConverterBase):
         for i in range(len(param.parties)):
             param.parties[i] = replacer.party_tuple_format(param.parties[i])
         for anonymous in param.anonymous_map:
+<<<<<<< HEAD
             anonymous.anonymous = replacer.anonymous_format(anonymous.anonymous)
+=======
+            anonymous.anonymous = replacer.migrate_anonymous_header(anonymous.anonymous)
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         for names in param.all_names:
             for i, name in enumerate(names.names):
                 names.names[i] = replacer.maybe_anonymous_format(name)

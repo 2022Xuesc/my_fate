@@ -36,6 +36,7 @@ class StatisticsParam(BaseParam):
         "summary" represents list: [consts.SUM, consts.MEAN, consts.STANDARD_DEVIATION,
                     consts.MEDIAN, consts.MIN, consts.MAX,
                     consts.MISSING_COUNT, consts.SKEWNESS, consts.KURTOSIS]
+<<<<<<< HEAD
 
     column_names: list of string, default []
         Specify columns to be used for statistic computation by column names in header
@@ -47,6 +48,15 @@ class StatisticsParam(BaseParam):
     bias: bool, default: True
         If False, the calculations of skewness and kurtosis are corrected for statistical bias.
 
+=======
+    column_names: list of string, default []
+        Specify columns to be used for statistic computation by column names in header
+    column_indexes: list of int, default -1
+        Specify columns to be used for statistic computation by column order in header
+        -1 indicates to compute statistics over all columns
+    bias: bool, default: True
+        If False, the calculations of skewness and kurtosis are corrected for statistical bias.
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     need_run: bool, default True
         Indicate whether to run this modules
     """
@@ -73,12 +83,15 @@ class StatisticsParam(BaseParam):
         self.need_run = need_run
         self.quantile_error = quantile_error
         self.bias = bias
+<<<<<<< HEAD
         if column_names is None:
             self.column_names = []
         if column_indexes is None:
             self.column_indexes = []
         if abnormal_list is None:
             self.abnormal_list = []
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     # @staticmethod
     # def extend_statistics(statistic_name):
@@ -126,6 +139,12 @@ class StatisticsParam(BaseParam):
             if not match_found:
                 raise ValueError(f"Illegal statistics name provided: {stat_name}.")
 
+<<<<<<< HEAD
+=======
+        self.column_names = [] if self.column_names is None else self.column_names
+        self.column_indexes = [] if self.column_indexes is None else self.column_indexes
+        self.abnormal_list = [] if self.abnormal_list is None else self.abnormal_list
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         model_param_descr = "Statistics's param column_names"
         if not isinstance(self.column_names, list):
             raise ValueError(f"column_names should be list of string.")

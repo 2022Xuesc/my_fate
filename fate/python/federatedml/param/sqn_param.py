@@ -27,10 +27,15 @@ class StochasticQuasiNewtonParam(BaseParam):
     ----------
     update_interval_L : int, default: 3
         Set how many iteration to update hess matrix
+<<<<<<< HEAD
 
     memory_M : int, default: 5
         Stack size of curvature information, i.e. y_k and s_k in the paper.
 
+=======
+    memory_M : int, default: 5
+        Stack size of curvature information, i.e. y_k and s_k in the paper.
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     sample_size : int, default: 5000
         Sample size of data that used to update Hess matrix
 

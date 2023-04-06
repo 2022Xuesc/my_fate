@@ -37,4 +37,8 @@ message FeatureBinningMeta {
     bool local_only = 8;
     TransformMeta transform_param = 9;
     bool skip_static = 11;
+<<<<<<< HEAD
+=======
+    string optimal_metric_method = 12;
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 }

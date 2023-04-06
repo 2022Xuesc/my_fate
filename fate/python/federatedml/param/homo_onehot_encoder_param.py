@@ -13,6 +13,7 @@ class HomoOneHotParam(BaseParam):
 
     Parameters
     ----------
+<<<<<<< HEAD
 
     transform_col_indexes: list or int, default: -1
         Specify which columns need to calculated. -1 represent for all columns.
@@ -23,12 +24,23 @@ class HomoOneHotParam(BaseParam):
     need_alignment: bool, default True
         Indicated whether alignment of features is turned on
 
+=======
+    transform_col_indexes: list or int, default: -1
+        Specify which columns need to calculated. -1 represent for all columns.
+    need_run: bool, default True
+        Indicate if this module needed to be run
+    need_alignment: bool, default True
+        Indicated whether alignment of features is turned on
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     """
 
     def __init__(self, transform_col_indexes=-1, transform_col_names=None, need_run=True, need_alignment=True):
         super(HomoOneHotParam, self).__init__()
+<<<<<<< HEAD
         if transform_col_names is None:
             transform_col_names = []
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         self.transform_col_indexes = transform_col_indexes
         self.transform_col_names = transform_col_names
         self.need_run = need_run
@@ -39,4 +51,9 @@ class HomoOneHotParam(BaseParam):
         self.check_defined_type(self.transform_col_indexes, descr, ['list', 'int'])
         self.check_boolean(self.need_run, descr)
         self.check_boolean(self.need_alignment, descr)
+<<<<<<< HEAD
+=======
+
+        self.transform_col_names = [] if self.transform_col_names is None else self.transform_col_names
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         return True

@@ -29,7 +29,10 @@ class PredictParam(BaseParam):
 
     Parameters
     ----------
+<<<<<<< HEAD
 
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     threshold: float or int
         The threshold use to separate positive and negative class. Normally, it should be (0,1)
     """

@@ -37,6 +37,10 @@ message IVParam {
     bool is_woe_monotonic = 9;
     int64 bin_nums = 10;
     repeated string bin_anonymous = 11;
+<<<<<<< HEAD
+=======
+    repeated double optimal_metric_array = 12;
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 }
 
 message FeatureBinningResult {
@@ -65,5 +69,12 @@ message FeatureBinningParam {
     repeated string header = 3;
     repeated string header_anonymous = 4;
     string model_name = 5;
+<<<<<<< HEAD
     MultiClassResult multi_class_result=6;
+=======
+    MultiClassResult multi_class_result = 6;
+    FeatureBinningResult transform_binning_result = 7;
+    repeated FeatureBinningResult transform_host_results = 8;
+    MultiClassResult transform_multi_class_result = 9;
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 }

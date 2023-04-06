@@ -31,6 +31,7 @@ class LocalBaselineParam(BaseParam):
     ----------
     model_name : str
         sklearn model used to train on baseline model
+<<<<<<< HEAD
 
     model_opts : dict or none, default None
         Param to be used as input into baseline model
@@ -38,6 +39,12 @@ class LocalBaselineParam(BaseParam):
     predict_param : PredictParam object, default: default PredictParam object
         predict param
 
+=======
+    model_opts : dict or none, default None
+        Param to be used as input into baseline model
+    predict_param : PredictParam object, default: default PredictParam object
+        predict param
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     need_run: bool, default True
         Indicate if this module needed to be run
     """

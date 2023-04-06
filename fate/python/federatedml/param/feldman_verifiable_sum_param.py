@@ -27,7 +27,10 @@ class FeldmanVerifiableSumParam(BaseParam):
     ----------
     sum_cols : list of column index, default: None
         Specify which columns need to be sum. If column index is None, each of columns will be sum.
+<<<<<<< HEAD
 
+=======
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     q_n : int, positive integer less than or equal to 16, default: 6
         q_n is the number of significant decimal digit, If the data type is a float,
         the maximum significant digit is 16. The sum of integer and significant decimal digits should
@@ -36,12 +39,19 @@ class FeldmanVerifiableSumParam(BaseParam):
 
     def __init__(self, sum_cols=None, q_n=6):
         self.sum_cols = sum_cols
+<<<<<<< HEAD
         if sum_cols is None:
             self.sum_cols = []
 
         self.q_n = q_n
 
     def check(self):
+=======
+        self.q_n = q_n
+
+    def check(self):
+        self.sum_cols = [] if self.sum_cols is None else self.sum_cols
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
         if isinstance(self.sum_cols, list):
             for idx in self.sum_cols:
                 if not isinstance(idx, int):

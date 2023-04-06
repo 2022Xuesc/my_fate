@@ -29,6 +29,7 @@ class StepwiseParam(BaseParam):
     ----------
     score_name: {"AIC", "BIC"}, default: 'AIC'
         Specify which model selection criterion to be used
+<<<<<<< HEAD
 
     mode: {"Hetero", "Homo"}, default: 'Hetero'
         Indicate what mode is current task
@@ -49,6 +50,21 @@ class StepwiseParam(BaseParam):
     nvmax: int, default: None
         Specify the max subset size of final model, 2 <= nvmin <= nvmax. The final model size may be larger than nvmax due to max_step limit.
 
+=======
+    mode: {"Hetero", "Homo"}, default: 'Hetero'
+        Indicate what mode is current task
+    role: {"Guest", "Host", "Arbiter"}, default: 'Guest'
+        Indicate what role is current party
+    direction: {"both", "forward", "backward"}, default: 'both'
+        Indicate which direction to go for stepwise.
+        'forward' means forward selection; 'backward' means elimination; 'both' means possible models of both directions are examined at each step.
+    max_step: int, default: '10'
+        Specify total number of steps to run before forced stop.
+    nvmin: int, default: '2'
+        Specify the min subset size of final model, cannot be lower than 2. When nvmin > 2, the final model size may be smaller than nvmin due to max_step limit.
+    nvmax: int, default: None
+        Specify the max subset size of final model, 2 <= nvmin <= nvmax. The final model size may be larger than nvmax due to max_step limit.
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     need_stepwise: bool, default False
         Indicate if this module needed to be run
 

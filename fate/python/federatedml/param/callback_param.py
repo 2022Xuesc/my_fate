@@ -28,6 +28,7 @@ class CallbackParam(BaseParam):
     callbacks : list, default: []
         Indicate what kinds of callback functions is desired during the training process.
         Accepted values: {'EarlyStopping', 'ModelCheckpoint'， 'PerformanceEvaluate'}
+<<<<<<< HEAD
 
     validation_freqs: {None, int, list, tuple, set}
         validation frequency during training.
@@ -35,10 +36,17 @@ class CallbackParam(BaseParam):
     early_stopping_rounds: None or int
         Will stop training if one metric doesn’t improve in last early_stopping_round rounds
 
+=======
+    validation_freqs: {None, int, list, tuple, set}
+        validation frequency during training.
+    early_stopping_rounds: None or int
+        Will stop training if one metric doesn’t improve in last early_stopping_round rounds
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     metrics: None, or list
         Indicate when executing evaluation during train process, which metrics will be used. If set as empty,
         default metrics for specific task type will be used. As for binary classification, default metrics are
         ['auc', 'ks']
+<<<<<<< HEAD
 
     use_first_metric_only: bool, default: False
         Indicate whether use the first metric only for early stopping judgement.
@@ -47,6 +55,12 @@ class CallbackParam(BaseParam):
         The callbacks save model every save_freq epoch
 
 
+=======
+    use_first_metric_only: bool, default: False
+        Indicate whether use the first metric only for early stopping judgement.
+    save_freq: int, default: 1
+        The callbacks save model every save_freq epoch
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     """
 
     def __init__(self, callbacks=None, validation_freqs=None, early_stopping_rounds=None,
@@ -60,6 +74,11 @@ class CallbackParam(BaseParam):
         self.save_freq = save_freq
 
     def check(self):
+<<<<<<< HEAD
+=======
+        self.callbacks = [] if self.callbacks is None else self.callbacks
+        self.metrics = [] if self.metrics is None else self.metrics
+>>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
         if self.early_stopping_rounds is None:
             pass
