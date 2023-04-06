@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "small_experiment",
+    "name": "imagenet_guest_train",
+    "address": {
+        "path": "/home/klaus125/research/data.imagenet/iid10/guest/train"
+    }
+}

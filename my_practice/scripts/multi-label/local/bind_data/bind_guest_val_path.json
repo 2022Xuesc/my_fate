@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "ms-coco",
+    "name": "guest-val",
+    "address": {
+        "path": "/home/klaus125/research/dataset/guest/val"
+    }
+}

@@ -1,0 +1,110 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train",
+      "task_cores": 4,
+      "task_parallelism": 1,
+      "computing_partitions": 4
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 0
+  },
+  "role": {
+    "arbiter": [
+      100
+    ],
+    "host": [
+      1
+    ],
+    "guest": [
+      0
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "distiller_0": {
+        "max_iter": 25,
+        "batch_size": 16,
+        "aggregate_every_n_epoch": 2,
+        "lr": 0.005,
+        "early_stop_eps": 0,
+        "pretrained": false,
+        "dataset": "imagenet",
+        "arch": "alexnet",
+        "device": "cpu",
+        "post_train_quant": false,
+        "sched_dict": {
+          "pruners": {
+            "splicing_pruner": {
+              "class": "SplicingPruner",
+              "low_thresh_mult": 0.9,
+              "hi_thresh_mult": 1.1,
+              "sensitivity_multiplier": 0.015,
+              "sensitivities": {
+                "features.0.weight": 0.050,
+                "features.2.weight": 0.050,
+                "features.6.weight": 0.050,
+                "features.10.weight": 0.050,
+                "features.13.weight": 0.050,
+                "classifier.0.weight": 0.050,
+                "classifier.3.weight": 0.050,
+                "classifier.6.weight": 0.050
+              }
+            }
+          },
+          "policies": {
+            "pruner": {
+              "instance_name": "splicing_pruner",
+              "args": {
+                "keep_mask": true,
+                "mask_on_forward_only": true,
+                "use_double_copies": true,
+                "mini_batch_pruning_frequency": 1
+              },
+              "starting_epoch": 0,
+              "ending_epoch": 50,
+              "frequency": 1
+            }
+          }
+        }
+      }
+    },
+    "role": {
+      "host": {
+        "0": {
+          "reader_0": {
+            "table": {
+              "name": "imagenet_host_train",
+              "namespace": "small_experiment"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "imagenet_host_valid",
+              "namespace": "small_experiment"
+            }
+          }
+        }
+      },
+      "guest": {
+        "0": {
+          "reader_0": {
+            "table": {
+              "name": "imagenet_guest_train",
+              "namespace": "small_experiment"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "imagenet_guest_valid",
+              "namespace": "small_experiment"
+            }
+          }
+        }
+      }
+    }
+  }
+}

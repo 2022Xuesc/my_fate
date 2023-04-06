@@ -1,0 +1,106 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train",
+      "task_cores": 8,
+      "task_parallelism": 2,
+      "computing_partitions": 8
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 9999
+  },
+  "role": {
+    "arbiter": [
+      10000
+    ],
+    "host": [
+      0
+    ],
+    "guest": [
+      9999
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "distiller_0": {
+        "max_iter": 100,
+        "batch_size": 16,
+        "aggregate_every_n_epoch": 5,
+        "lr": 0.01,
+        "early_stop_eps": 0,
+        "pretrained": false,
+        "dataset": "imagenet",
+        "arch": "alexnet",
+        "post_train_quant": false,
+        "quant_aware_aggregate": false,
+        "sched_dict": {
+          "lr_schedulers": {
+            "pruning_lr": {
+              "class": "ExponentialLR",
+              "gamma": 0.95
+            }
+          },
+          "quantizers": {
+            "training_quantizer": {
+              "class": "QuantAwareTrainRangeLinearQuantizer",
+              "bits_activations": 8,
+              "bits_weights": 8,
+              "ema_decay": 0.999
+            }
+          },
+          "policies": {
+            "quantizer": {
+              "instance_name": "training_quantizer",
+              "starting_epoch": 0,
+              "ending_epoch": 500,
+              "frequency": 1
+            },
+            "lr_scheduler": {
+              "instance_name": "pruning_lr",
+              "starting_epoch": 100,
+              "ending_epoch": 500,
+              "frequency": 2
+            }
+          }
+        }
+      }
+    },
+    "role": {
+      "host": {
+        "0": {
+          "reader_0": {
+            "table": {
+              "name": "imagenet_host_train",
+              "namespace": "small_experiment"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "imagenet_host_valid",
+              "namespace": "small_experiment"
+            }
+          }
+        }
+      },
+      "guest": {
+        "0": {
+          "reader_0": {
+            "table": {
+              "name": "imagenet_guest_train",
+              "namespace": "small_experiment"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "imagenet_guest_valid",
+              "namespace": "small_experiment"
+            }
+          }
+        }
+      }
+    }
+  }
+}
