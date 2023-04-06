@@ -1,15 +1,9 @@
 {
     "engine": "PATH",
-<<<<<<< HEAD
-    "namespace": "ms-coco-mini",
-    "name": "guest-val",
-    "address": {
-        "path": "/home/klaus125/research/fate/my_practice/my_data/ms-coco/host/train"
-=======
+
     "namespace": "ms-coco",
     "name": "guest-val",
     "address": {
         "path": "/home/klaus125/research/dataset/guest/val"
->>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
     }
 }

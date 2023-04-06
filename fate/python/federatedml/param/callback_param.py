@@ -74,11 +74,9 @@ class CallbackParam(BaseParam):
         self.save_freq = save_freq
 
     def check(self):
-<<<<<<< HEAD
-=======
         self.callbacks = [] if self.callbacks is None else self.callbacks
         self.metrics = [] if self.metrics is None else self.metrics
->>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
+
 
         if self.early_stopping_rounds is None:
             pass
