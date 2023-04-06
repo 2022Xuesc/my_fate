@@ -35,10 +35,7 @@ from federatedml.nn.backend.pytorch.loss import get_loss_fn
 from federatedml.nn.backend.pytorch.optimizer import get_optimizer
 from federatedml.nn.homo_nn import _consts
 from federatedml.param import HomoNNParam
-<<<<<<< HEAD
 from federatedml.protobuf.generated import nn_model_meta_pb2, nn_model_param_pb2
-=======
->>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 from pytorch_lightning.callbacks import Callback
@@ -402,39 +399,7 @@ class PyTorchFederatedTrainer(object):
         return pred_tbl, classes
 
     def export_model(self, param):
-<<<<<<< HEAD
-
-        param_pb = nn_model_param_pb2.NNModelParam()
-
-        # save api_version
-        param_pb.api_version = param.api_version
-
-        # save pl model bytes
-        with tempfile.TemporaryDirectory() as d:
-            filepath = os.path.join(d, "model.ckpt")
-            self.pl_trainer.save_checkpoint(filepath)
-            with open(filepath, "rb") as f:
-                param_pb.saved_model_bytes = f.read()
-
-        # save header
-        param_pb.header.extend(self.header)
-
-        # save label mapping
-        if self.label_mapping is not None:
-            for label, mapped in self.label_mapping.items():
-                param_pb.label_mapping.add(
-                    label=json.dumps(label), mapped=json.dumps(mapped)
-                )
-
-        # meta
-        meta_pb = nn_model_meta_pb2.NNModelMeta()
-        meta_pb.params.CopyFrom(param.generate_pb())
-        meta_pb.aggregate_iter = self.context.aggregation_iteration
-
-        return {_consts.MODEL_META_NAME: meta_pb, _consts.MODEL_PARAM_NAME: param_pb}
-=======
         pass
->>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     @classmethod
     def load_model(cls, model_obj, meta_obj, param):
@@ -596,21 +561,7 @@ class PytorchFederatedAggregator(object):
                 break
 
     def export_model(self, param):
-
-<<<<<<< HEAD
-        param_pb = nn_model_param_pb2.NNModelParam()
-
-        # save api_version
-        param_pb.api_version = param.api_version
-
-        meta_pb = nn_model_meta_pb2.NNModelMeta()
-        meta_pb.params.CopyFrom(param.generate_pb())
-        meta_pb.aggregate_iter = self.context.aggregation_iteration
-
-        return {_consts.MODEL_META_NAME: meta_pb, _consts.MODEL_PARAM_NAME: param_pb}
-=======
         pass
->>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
     @classmethod
     def load_model(cls, model_obj, meta_obj, param):
