@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd
 
-path = '8clients_non_iid_agg'
+path = 'λ_0.001_8_clients_iid'
 
 clients_path = []
 
@@ -10,7 +10,7 @@ clients_path.append(os.path.join(path, 'guest/2'))
 for i in range(3, 10):
     clients_path.append(os.path.join(path, f'host/{i}'))
 
-arbiter_path = os.path.join(path,'arbiter/1')
+arbiter_path = os.path.join(path, 'arbiter/1')
 
 
 def draw_loss(path, file):
@@ -79,8 +79,39 @@ def do_draw(path, file):
     # plt.show()
 
 
+def draw_loss(path, file):
+    file_path = os.path.join(path, file)
+    data = pd.read_csv(file_path)
+
+    epochs = data['epoch']
+    reg_loss = data['reg_loss']
+    obj_loss = data['obj_loss']
+    overall_loss = data['overall_loss']
+
+    # 放在右边
+
+    plt.plot(epochs, obj_loss, 'b')
+    plt.plot(epochs, reg_loss, 'g')
+    plt.plot(epochs, overall_loss, 'r')
+    plt.xlabel('epoch')
+    plt.ylabel('loss value')
+
+    plt.legend(['obj_loss','reg_loss','overall_loss'])
+
+    # 设置题目
+    plt.title('The loss curve on ' + path)
+    # 显示图片
+    # plt.savefig(f'{path}_{file.split(".")[0]}.svg', dpi=600, format='svg')
+    plt.show()
+
+def draw_losses(paths,file):
+    if not isinstance(paths, list):
+        paths = [paths]
+    for path in paths:
+        draw_loss(path,file)
+
 def draw(paths, loss_file=None, train_file=None, valid_file=None):
-    if not isinstance(paths,list):
+    if not isinstance(paths, list):
         paths = [paths]
     for path in paths:
         # 绘制
@@ -97,8 +128,9 @@ def draw(paths, loss_file=None, train_file=None, valid_file=None):
 #
 #
 # draw(arbiter_path, loss_file='avgloss.csv')
+#
+# draw(clients_path, train_file='train.csv', valid_file='valid.csv')
+#
+# draw(arbiter_path, loss_file='avgloss.csv')
 
-draw(clients_path,train_file='train.csv',valid_file='valid.csv')
-
-
-draw(arbiter_path,loss_file='avgloss.csv')
+draw_losses(clients_path, 'loss.csv')

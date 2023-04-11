@@ -46,7 +46,7 @@
           "regularizers": {
             "l2_regularizer": {
               "class": "L2Regularizer",
-              "lamda": 0.001
+              "lamda": 0.00025
             }
           },
           "policies": {
