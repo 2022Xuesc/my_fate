@@ -23,7 +23,8 @@ client_num = 8
 def mv_files(dir_path, target_path):
     files = os.listdir(dir_path)
     files_dir = os.path.join(dir_path, f'{files[0]}/stats')
-    filenames = ['avgloss.csv', 'train.csv', 'valid.csv']
+    #filenames = ['avgloss.csv', 'train.csv', 'valid.csv']
+    filenames = ['loss.csv']
     for filename in filenames:
         file_path = os.path.join(files_dir, filename)
         shutil.copy(file_path, target_path)
