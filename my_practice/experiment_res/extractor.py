@@ -13,9 +13,9 @@
 import os
 import shutil
 
-job_id = 202304060333001300730
+job_id = 202304110605131003060
 module_name = 'multi_label_0'
-target_dir = 'λ_0.001_8_clients_iid'
+target_dir = 'λ_0.00025_8_clients_iid'
 client_num = 8
 
 
@@ -23,8 +23,8 @@ client_num = 8
 def mv_files(dir_path, target_path):
     files = os.listdir(dir_path)
     files_dir = os.path.join(dir_path, f'{files[0]}/stats')
-    #filenames = ['avgloss.csv', 'train.csv', 'valid.csv']
-    filenames = ['loss.csv']
+    filenames = ['avgloss.csv', 'train.csv', 'valid.csv','loss.csv']
+    #filenames = ['loss.csv']
     for filename in filenames:
         file_path = os.path.join(files_dir, filename)
         shutil.copy(file_path, target_path)
