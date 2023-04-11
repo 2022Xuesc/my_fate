@@ -29,11 +29,11 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
-        "max_iter": 100,
-        "batch_size": 128,
+        "max_iter": 50,
+        "batch_size": 64,
         "aggregate_every_n_epoch": 10,
         "lr": 0.1,
-        "pretrained": true,
+        "pretrained": false,
         "dataset": "ms-coco",
         "arch": "alexnet",
         "sched_dict": {
@@ -46,20 +46,20 @@
           "regularizers": {
             "l2_regularizer": {
               "class": "L2Regularizer",
-              "lamda": 0.1
+              "lamda": 0.00025
             }
           },
           "policies": {
             "lr_scheduler": {
               "instance_name": "pruning_lr",
               "starting_epoch": 100,
-              "ending_epoch": 800,
-              "frequency": 5
+              "ending_epoch": 500,
+              "frequency": 4
             },
             "regularizer": {
               "instance_name": "l2_regularizer",
               "starting_epoch": 0,
-              "ending_epoch": 800,
+              "ending_epoch": 500,
               "frequency": 1
             }
           }

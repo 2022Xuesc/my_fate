@@ -30,7 +30,7 @@
     "common": {
       "multi_label_0": {
         "max_iter": 50,
-        "batch_size": 128,
+        "batch_size": 64,
         "aggregate_every_n_epoch": 10,
         "lr": 0.1,
         "pretrained": false,
@@ -54,7 +54,7 @@
               "instance_name": "pruning_lr",
               "starting_epoch": 100,
               "ending_epoch": 500,
-              "frequency": 5
+              "frequency": 4
             },
             "regularizer": {
               "instance_name": "l2_regularizer",

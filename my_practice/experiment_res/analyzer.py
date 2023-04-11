@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd
 
-path = 'λ_0.001_8_clients_iid'
+path = 'λ_0.00025_8_clients_iid'
 
 clients_path = []
 
@@ -79,7 +79,7 @@ def do_draw(path, file):
     # plt.show()
 
 
-def draw_loss(path, file):
+def draw_multiple_loss(path, file):
     file_path = os.path.join(path, file)
     data = pd.read_csv(file_path)
 
@@ -101,14 +101,14 @@ def draw_loss(path, file):
     # 设置题目
     plt.title('The loss curve on ' + path)
     # 显示图片
-    # plt.savefig(f'{path}_{file.split(".")[0]}.svg', dpi=600, format='svg')
-    plt.show()
+    plt.savefig(f'{path}_loss.svg', dpi=600, format='svg')
+    plt.close()
 
 def draw_losses(paths,file):
     if not isinstance(paths, list):
         paths = [paths]
     for path in paths:
-        draw_loss(path,file)
+        draw_multiple_loss(path,file)
 
 def draw(paths, loss_file=None, train_file=None, valid_file=None):
     if not isinstance(paths, list):
@@ -127,8 +127,7 @@ def draw(paths, loss_file=None, train_file=None, valid_file=None):
 # draw(guest_path, train_file='train.csv', valid_file='valid.csv')
 #
 #
-# draw(arbiter_path, loss_file='avgloss.csv')
-#
+
 # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
 #
 # draw(arbiter_path, loss_file='avgloss.csv')
