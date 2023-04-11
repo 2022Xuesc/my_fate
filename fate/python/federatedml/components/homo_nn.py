@@ -20,34 +20,15 @@ from .components import ComponentMeta
 homo_nn_cpn_meta = ComponentMeta("HomoNN")
 
 
-@homo_nn_cpn_meta.bind_param
-def homo_nn_param():
-    from federatedml.param.homo_nn_param import HomoNNParam
-
-    return HomoNNParam
-
-
 @homo_nn_cpn_meta.bind_runner.on_guest.on_host
 def homo_nn_runner_client():
-<<<<<<< HEAD
     from federatedml.nn.homo_nn.enter_point import HomoNNDefaultClient
 
     return HomoNNDefaultClient
-=======
-    from federatedml.nn.homo.client import HomoNNClient
-
-    return HomoNNClient
->>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
 
 @homo_nn_cpn_meta.bind_runner.on_arbiter
 def homo_nn_runner_arbiter():
-<<<<<<< HEAD
     from federatedml.nn.homo_nn.enter_point import HomoNNDefaultServer
 
     return HomoNNDefaultServer
-=======
-    from federatedml.nn.homo.server import HomoNNServer
-
-    return HomoNNServer
->>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
