@@ -2,16 +2,6 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd
 
-path = 'λ_0.00025_8_clients_iid'
-
-clients_path = []
-
-clients_path.append(os.path.join(path, 'guest/2'))
-for i in range(3, 10):
-    clients_path.append(os.path.join(path, f'host/{i}'))
-
-arbiter_path = os.path.join(path, 'arbiter/1')
-
 
 def draw_loss(path, file):
     file_path = os.path.join(path, file)
@@ -43,6 +33,7 @@ def draw_loss(path, file):
     plt.title('The learning curve on ' + path)
     # 显示图片
     plt.savefig(f'{path}_{file.split(".")[0]}.svg', dpi=600, format='svg')
+    plt.close()
 
 
 def do_draw(path, file):
@@ -77,6 +68,7 @@ def do_draw(path, file):
     # 显示图片
     plt.savefig(f'{path}_{file.split(".")[0]}.svg', dpi=600, format='svg')
     # plt.show()
+    plt.close()
 
 
 def draw_multiple_loss(path, file):
@@ -96,7 +88,7 @@ def draw_multiple_loss(path, file):
     plt.xlabel('epoch')
     plt.ylabel('loss value')
 
-    plt.legend(['obj_loss','reg_loss','overall_loss'])
+    plt.legend(['obj_loss', 'reg_loss', 'overall_loss'])
 
     # 设置题目
     plt.title('The loss curve on ' + path)
@@ -104,11 +96,13 @@ def draw_multiple_loss(path, file):
     plt.savefig(f'{path}_loss.svg', dpi=600, format='svg')
     plt.close()
 
-def draw_losses(paths,file):
+
+def draw_losses(paths, file):
     if not isinstance(paths, list):
         paths = [paths]
     for path in paths:
-        draw_multiple_loss(path,file)
+        draw_multiple_loss(path, file)
+
 
 def draw(paths, loss_file=None, train_file=None, valid_file=None):
     if not isinstance(paths, list):
@@ -128,8 +122,17 @@ def draw(paths, loss_file=None, train_file=None, valid_file=None):
 #
 #
 
-# draw(clients_path, train_file='train.csv', valid_file='valid.csv')
-#
-# draw(arbiter_path, loss_file='avgloss.csv')
+paths = ['λ_0.00025_iid', 'λ_0.00025_non_iid', 'λ_0.00025_non_iid_agg']
+for path in paths:
+    clients_path = [os.path.join(path, 'guest/2')]
 
-draw_losses(clients_path, 'loss.csv')
+    for i in range(3, 10):
+        clients_path.append(os.path.join(path, f'host/{i}'))
+
+    arbiter_path = os.path.join(path, 'arbiter/1')
+
+    draw(clients_path, train_file='train.csv', valid_file='valid.csv')
+
+    draw(arbiter_path, loss_file='avgloss.csv')
+
+    draw_losses(clients_path, 'loss.csv')

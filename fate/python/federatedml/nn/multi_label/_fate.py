@@ -557,7 +557,7 @@ class MultiLabelFitter(object):
             loss.backward()
             optimizer.step()
 
-            return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
+        return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
 
 
 def validate(valid_loader, model, criterion, epoch, device, scheduler):
