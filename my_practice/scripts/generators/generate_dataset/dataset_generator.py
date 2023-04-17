@@ -36,6 +36,11 @@ def get_image2labels(phase):
         return json.load(f)
 
 
+def get_lstm_image2labels():
+    with open('train_lstm_image2labels.json') as f:
+        return json.load(f)
+
+
 # 从图像名称中取出image_id
 # COCO_val2014_000000000042
 
@@ -83,6 +88,38 @@ def generate_configs(dir_paths):
             file.close()
 
 
+# Todo: 根据标签的出现频率对标签顺序进行排序
+def generate_embedding_labels(dir_paths):
+    # label_id = 0表示开始，
+    # label_id = 91表示结束
+    startLabel = 0
+    endLabel = 91
+
+    if not isinstance(dir_paths, list):
+        dir_paths = [dir_paths]
+    for dir_path in dir_paths:
+        labels_path = os.path.join(dir_path, 'embedding_labels.txt')
+        if os.path.exists(labels_path):
+            os.remove(labels_path)
+
+        labels = []
+        files = os.listdir(dir_path)
+        image2labels = get_lstm_image2labels()
+        for filename in files:
+            if not filename.startswith("COCO"):
+                continue
+            # 字典json本地存储后,键改为了str类型
+            image_id = str(get_image_id(filename))
+            # 有些图片可能未被标注
+            if image_id in image2labels.keys():
+                label = [filename, startLabel]
+                label.extend(image2labels[image_id])
+                label.append(endLabel)
+                labels.append(label)
+        # Todo: 将labels写入文件中
+        write_labels(labels, labels_path)
+
+
 def generate_labels(dir_paths):
     if not isinstance(dir_paths, list):
         dir_paths = [dir_paths]
@@ -96,8 +133,8 @@ def generate_labels(dir_paths):
         files_cnt = len(files)
         cur = 1
         # 解析phase
-        # image2labels = get_image2labels(dir_path.split('/')[-1])
-        image2labels = get_image2labels('val')
+        image2labels = get_image2labels(dir_path.split('/')[-1])
+        # image2labels = get_image2labels('val')
         for filename in files:
             if filename in ['labels.txt', 'config.yaml']:
                 continue
@@ -116,7 +153,6 @@ def generate_labels(dir_paths):
         # Todo: 将labels写入文件中
         write_labels(labels, labels_path)
         print('Done')
-
 
 # src_path = '/data/projects/dataset/train2014'
 # generate_labels(src_path)
