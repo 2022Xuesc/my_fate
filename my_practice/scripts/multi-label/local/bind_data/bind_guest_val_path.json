@@ -1,9 +1,9 @@
 {
     "engine": "PATH",
 
-    "namespace": "ms-coco",
+    "namespace": "ms-coco-mini",
     "name": "guest-val",
     "address": {
-        "path": "/home/klaus125/research/dataset/guest/val"
+        "path": "/home/klaus125/research/dataset/mini/guest/val"
     }
 }

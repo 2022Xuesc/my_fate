@@ -277,7 +277,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
         transforms=valid_transforms(),
     )
     batch_size = param.batch_size
-    if batch_size < 0:
+    if batch_size < 0 or len(train_dataset) < batch_size:
         batch_size = len(train_dataset)
     shuffle = False
 
@@ -328,6 +328,9 @@ class MultiLabelFedAggregator(object):
                             tensors[0][j] += tensor
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
+            # 分析聚合后模型最后两层为0的子分类器的个数
+            zero_labels = sum(tensors[0][21] == 0)
+            LOGGER.warn(f'聚合后向量为0的标签数为{zero_labels}')
             self.context.send_model(tensors[0])
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             is_converged, loss = self.context.do_convergence_check()
@@ -369,21 +372,14 @@ class MultiLabelFedAggregator(object):
         pass
 
     @classmethod
-
-
     def load_model(cls, model_obj, meta_obj, param):
         param.restore_from_pb(meta_obj.params)
 
     pass
 
-
     @classmethod
-
-
     def load_model(cls, model_obj, meta_obj, param):
         pass
-
-
 
     @staticmethod
     def dataset_align():
@@ -502,11 +498,11 @@ class MultiLabelFitter(object):
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_samples = len(train_loader.sampler)
-        batch_size = train_loader.batch_size
+        batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
         steps_per_epoch = math.ceil(total_samples / batch_size)
 
-        fate_logger.info(f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
-
+        fate_logger.info(
+            f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
 
         sigmoid_func = torch.nn.Sigmoid()
 
@@ -548,7 +544,8 @@ class MultiLabelFitter(object):
                 losses[OVERALL_LOSS_KEY].add(loss.item())
 
             loss_writer.writerow(
-                [epoch, losses['Objective Loss'].mean, losses['L2Regularizer_loss'].mean, losses[OVERALL_LOSS_KEY].mean])
+                [epoch, losses['Objective Loss'].mean, losses['L2Regularizer_loss'].mean,
+                 losses[OVERALL_LOSS_KEY].mean])
 
             # 打印进度
             LOGGER.warn(

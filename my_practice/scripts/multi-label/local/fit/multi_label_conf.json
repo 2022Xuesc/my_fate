@@ -14,7 +14,7 @@
       10000
     ],
     "host": [
-      9998
+      9997,9998
     ],
     "guest": [
       9999
@@ -25,7 +25,7 @@
       "multi_label_0": {
         "max_iter": 100,
         "batch_size": 8,
-        "aggregate_every_n_epoch": 2,
+        "aggregate_every_n_epoch": 1,
         "lr": 0.1,
         "pretrained": false,
         "dataset": "ms-coco",
@@ -69,13 +69,13 @@
           "reader_0": {
             "table": {
               "name": "guest-train",
-              "namespace": "ms-coco"
+              "namespace": "ms-coco-mini"
             }
           },
           "reader_1": {
             "table": {
               "name": "guest-val",
-              "namespace": "ms-coco"
+              "namespace": "ms-coco-mini"
             }
           }
         }
@@ -87,14 +87,31 @@
           },
           "reader_0": {
             "table": {
-              "name": "host-train",
-              "namespace": "ms-coco"
+              "name": "host1-train",
+              "namespace": "ms-coco-mini"
             }
           },
           "reader_1": {
             "table": {
-              "name": "host-val",
-              "namespace": "ms-coco"
+              "name": "host1-val",
+              "namespace": "ms-coco-mini"
+            }
+          }
+        },
+        "1": {
+          "multi_label_0": {
+            "device": "cuda:0"
+          },
+          "reader_0": {
+            "table": {
+              "name": "host2-train",
+              "namespace": "ms-coco-mini"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "host2-val",
+              "namespace": "ms-coco-mini"
             }
           }
         }

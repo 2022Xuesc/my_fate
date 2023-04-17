@@ -1,8 +1,8 @@
 {
     "engine": "PATH",
-    "namespace": "ms-coco",
+    "namespace": "ms-coco-mini",
     "name": "guest-train",
     "address": {
-        "path": "/home/klaus125/research/dataset/guest/train"
+        "path": "/home/klaus125/research/dataset/mini/guest/train"
     }
 }
