@@ -354,10 +354,13 @@ class MultiLabelFedAggregator(object):
                     # 对每个列向量进行聚合
                     for k in range(len(tensor)):
                         # 对col_vec进行聚合
-                        tensor[k] *= degrees[i][k]
+                        # 如果客户端都不含对应标签的数据，则使用传统方法进行聚合，使得聚合后的权重非0
                         if degrees_sum[k] == 0:
-                            continue
-                        tensor[k] /= degrees_sum[k]
+                            tensor[k] *= degrees[i][-1]
+                            tensor[k] /= degrees_sum[-1]
+                        else:
+                            tensor[k] *= degrees[i][k]
+                            tensor[k] /= degrees_sum[k]
                         if i != 0:
                             tensors[0][j][k] += tensor[k]
                 else:
