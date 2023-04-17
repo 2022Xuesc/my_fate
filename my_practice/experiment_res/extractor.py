@@ -13,9 +13,9 @@
 import os
 import shutil
 
-job_id = 202304111512560923530
+job_id = 202304130257415476290
 module_name = 'multi_label_0'
-target_dir = 'λ_0.00025_non_iid_agg'
+target_dir = 'λ_non_iid_agg'
 client_num = 8
 
 
