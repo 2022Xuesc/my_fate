@@ -612,6 +612,9 @@ def _init_learner(param, device='cpu'):
     return model, scheduler, optimizer
 
 
+def _init_lstm_learner(param,device='cpu'):
+
+
 def calculate_accuracy_mode1(model_pred, labels):
     # 精度阈值
     accuracy_th = 0.5

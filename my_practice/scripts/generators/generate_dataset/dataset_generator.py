@@ -74,7 +74,7 @@ def write_labels(labels, label_path):
     f = open(label_path, 'w')
     for label in labels:
         for i in range(len(label)):
-            f.write(label[i])
+            f.write(str(label[i]))
             if i != len(label) - 1:
                 f.write(',')
         f.write('\n')
