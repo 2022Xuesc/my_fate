@@ -122,7 +122,7 @@ def draw(paths, loss_file=None, train_file=None, valid_file=None):
 #
 #
 
-paths = ['λ_iid', 'λ_non_iid', 'λ_non_iid_agg']
+paths = ['λ_non_iid_agg_modify']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/2')]
 
