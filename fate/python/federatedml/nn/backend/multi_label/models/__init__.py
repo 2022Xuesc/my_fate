@@ -3,7 +3,7 @@ import torchvision.models as torch_models
 from federatedml.nn.backend.distiller.utils import set_model_input_shape_attr
 from federatedml.nn.backend.distiller.models.imagenet.alexnet_batchnorm import AlexNetBN
 
-from lstm.encoders import EncoderCNN
+from federatedml.nn.backend.multi_label.models.lstm.encoders import EncoderCNN
 from federatedml.nn.backend.multi_label.models.lstm.decoders import LabelRNN
 
 TORCHVISION_MODEL_NAMES = sorted(
