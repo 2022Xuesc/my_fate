@@ -45,7 +45,7 @@ def generate_embedding_labels_for_clusters(dir_path, client_num):
         client_path = os.path.join(dir_path, f'client{i}')
         client_train_path = os.path.join(client_path, 'train')
         client_val_path = os.path.join(client_path, 'val')
-        path_list = [client_train_path, client_val_path]
+        path_list = [client_val_path]
         generate_embedding_labels(path_list)
         generate_configs(path_list)
 
@@ -65,4 +65,4 @@ test_annotation_file = os.path.join(annotations_dir, 'image_info_test2014.json')
 # generate_dataset(8)
 
 clustered_dir = '/data/projects/clustered_dataset'
-generate_labels_for_clusters(clustered_dir, client_num=8)
+generate_embedding_labels_for_clusters(clustered_dir, client_num=8)
