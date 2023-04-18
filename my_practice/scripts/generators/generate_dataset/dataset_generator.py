@@ -74,7 +74,7 @@ def write_labels(labels, label_path):
     f = open(label_path, 'w')
     for label in labels:
         for i in range(len(label)):
-            f.write(label[i])
+            f.write(str(label[i]))
             if i != len(label) - 1:
                 f.write(',')
         f.write('\n')
@@ -110,7 +110,7 @@ def generate_embedding_labels(dir_paths):
                 continue
             # 字典json本地存储后,键改为了str类型
             image_id = str(get_image_id(filename))
-            # 有些图片可能未被标注
+	    # 有些图片可能未被标注
             if image_id in image2labels.keys():
                 label = [filename, startLabel]
                 label.extend(image2labels[image_id])
