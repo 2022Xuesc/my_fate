@@ -213,10 +213,10 @@ class VisionDataSet(torchvision.datasets.VisionDataset, DatasetMixIn):
 
 
 # 定义自己的数据集读取类
-class MultiLabelDataSet:
-    def __init__(self, images_dir, transform=None):
+class MultiLabelDataSet(Dataset):
+    def __init__(self, images_dir, transform=None,file_name='labels.txt'):
         super(MultiLabelDataSet, self).__init__()
-        label_path = os.path.join(images_dir, 'labels.txt')
+        label_path = os.path.join(images_dir, file_name)
         # 打开存储图像名称与标签的txt文件
         fp = open(label_path, 'r')
         images = []
@@ -253,3 +253,4 @@ class MultiLabelDataSet:
 
     def __len__(self):
         return len(self.images)
+
