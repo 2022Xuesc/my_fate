@@ -7,7 +7,7 @@ __all__ = ['LabelRNN']
 
 class LabelRNN(nn.Module):
     # Todo: 这里max_seq_length指的是标签的生成长度吗？
-    def __init__(self, embed_size, hidden_size, label_num, num_layers, max_seq_length):
+    def __init__(self, embed_size, hidden_size, label_num, num_layers, max_seq_length=5):
         super(LabelRNN, self).__init__()
         self.embed = nn.Embedding(label_num, embed_size)
         # 设置batch_first为True，输入和输出的batch会在第一维，hn和cn不变
