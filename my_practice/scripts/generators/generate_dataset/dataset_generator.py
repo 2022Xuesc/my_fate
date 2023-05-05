@@ -45,8 +45,7 @@ def get_lstm_image2labels():
 # COCO_val2014_000000000042
 
 def get_image_id(image_name):
-    # print(image_name)
-    return int(image_name.split('.')[0][-12:])
+    return int(image_name.split('.')[0].split('_')[-1])
 
 
 def clear_dir(dir_path):
@@ -110,7 +109,7 @@ def generate_embedding_labels(dir_paths):
                 continue
             # 字典json本地存储后,键改为了str类型
             image_id = str(get_image_id(filename))
-	    # 有些图片可能未被标注
+            # 有些图片可能未被标注
             if image_id in image2labels.keys():
                 label = [filename, startLabel]
                 label.extend(image2labels[image_id])
@@ -154,5 +153,85 @@ def generate_labels(dir_paths):
         write_labels(labels, labels_path)
         print('Done')
 
+
+# Todo: 关于COCO数据集的新表示方法
+def generate_anno(data, images_dir, phase):
+    # 读取对应的image_id数据
+    image_id_path = os.path.join(data, '{}_image_id.json'.format(phase))
+    image_id = json.load(open(image_id_path, 'r'))
+    files = os.listdir(images_dir)
+    anno_list = []
+    for filename in files:
+        # 如果filename不是图像文件名称
+        if not filename.startswith('COCO'):
+            continue
+        cur_img_id = str(get_image_id(filename))
+        if cur_img_id not in image_id:
+            continue
+        anno_list.append(image_id[cur_img_id])
+    # 将anno_list存储到图像路径中
+    target_file_path = os.path.join(images_dir, 'anno.json')
+    json.dump(anno_list, open(target_file_path, 'w'))
+
+
+def generate_img_id(data, phase):
+    anno_dir_path = os.path.join(data, 'annotations')
+    annotations_file = json.load(open(os.path.join(anno_dir_path, 'instances_{}2014.json'.format(phase))))
+    annotations = annotations_file['annotations']
+    # 类别的整体数据对于训练集和测试集来说是一样的
+    category = annotations_file['categories']
+    # Todo: 建立从标签id到标签名称的映射
+    category_id = {}
+    for cat in category:
+        category_id[cat['id']] = cat['name']
+    # Todo: 由于标签id存在中断，因此，对标签名称排序重新生成标签id
+    cat2idx = category_to_idx(sorted(category_id.values()))
+
+    # Todo: 建立从img_id到标签的映射
+    annotations_id = {}
+    for annotation in annotations:
+        anno_cat_id = annotation['category_id']
+        anno_img_id = annotation['image_id']
+        if anno_img_id not in annotations_id:
+            annotations_id[anno_img_id] = set()
+        annotations_id[anno_img_id].add(cat2idx[category_id[anno_cat_id]])
+
+    # 处理图像信息
+    img_id = {}
+    images = annotations_file['images']
+    for img in images:
+        cur_img_id = img['id']
+        if cur_img_id not in annotations_id:
+            continue
+        if cur_img_id not in img_id:
+            img_id[cur_img_id] = {}
+        img_id[cur_img_id]['file_name'] = img['file_name']
+        img_id[cur_img_id]['labels'] = list(annotations_id[cur_img_id])
+
+    # Todo: 将img_id存储起来，便于为特定的图片集生成易于访问的图片+标签集
+    image_id_file = os.path.join(data, '{}_image_id.json'.format(phase))
+    json.dump(img_id, open(image_id_file, 'w'))
+
+    # 将cat2idx存储起来
+    target_file_path = os.path.join(data, 'category.json')
+    if not os.path.exists(target_file_path):
+        json.dump(cat2idx, open(target_file_path, 'w'))
+
+
+def category_to_idx(category):
+    cat2idx = {}
+    for cat in category:
+        cat2idx[cat] = len(cat2idx)
+    return cat2idx
+
+
 # src_path = '/data/projects/dataset/train2014'
 # generate_labels(src_path)
+
+coco_dir = '../../../dataset/coco'
+
+# train和val对应的category.json相同
+# generate_all_labels(coco_dir, 'val')
+
+# images_dir = os.path.join(coco_dir, 'data')
+# generate_anno(coco_dir, images_dir, "val")
