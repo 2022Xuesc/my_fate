@@ -514,15 +514,15 @@ class MultiLabelFitter(object):
         # 发送模型并接收聚合后的模型
 
         # FedAvg聚合策略
-        # self.context.do_aggregation(weight=self._num_data_consumed, device=self.param.device)
+        self.context.do_aggregation(weight=self._num_data_consumed, device=self.param.device)
 
         # Flag聚合策略
         # self.context.do_aggregation(weight=self._num_label_consumed, device=self.param.device)
 
         # Partial Supervised聚合策略
-        weight_list = list(self._num_per_labels)
-        weight_list.append(self._num_data_consumed)
-        self.context.do_aggregation(weight=weight_list, device=self.param.device)
+        # weight_list = list(self._num_per_labels)
+        # weight_list.append(self._num_data_consumed)
+        # self.context.do_aggregation(weight=weight_list, device=self.param.device)
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         precision, recall, loss = self.train_one_epoch(epoch, train_loader, scheduler)
@@ -702,7 +702,7 @@ def _init_lstm_learner(param, device='cpu'):
 
 def calculate_accuracy_mode1(model_pred, labels):
     # 精度阈值
-    accuracy_th = 0.5
+    accuracy_th = 0.6
     pred_res = model_pred > accuracy_th
     pred_res = pred_res.float()
     pred_sum = torch.sum(pred_res)

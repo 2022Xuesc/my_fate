@@ -130,7 +130,7 @@ train_dir = '/home/klaus125/research/dataset/val2014'
 clustered_dir = '/home/klaus125/research/dataset/clustered_dataset'
 #
 km = kmodes.KModes(n_clusters=num_clients)
-train_vec2names, train_vecs = get_label_vecs(val_image_id_path)
+train_vec2names, train_vecs = get_label_vecs(train_image_id_path)
 # 转为array数组
 train_data = np.array(train_vecs)
 print(f'训练数据的维度为：{train_data.shape}')
