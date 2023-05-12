@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package com.webank.ai.fate.core.mlmodel.buffer;
+
+option java_outer_classname = "GCNMetaProto";
+
+message GCNParam {
+    int32 batch_size = 1;
+    int32 epochs = 2;
+
+    string device = 3;
+    bool pretrained = 4;
+    string dataset = 5;
+    string arch = 6;
+    float lr = 7;
+    int32 num_labels = 8;
+    int32 aggregate_every_n_epoch = 9;
+    int32 max_iter = 10;
+    repeated string sched_dict = 11;
+    string early_stop_eps = 12;  float t = 13;
+    string adj_file = 14;
+
+}
+
+message GCNMetaProto {
+    string module = 1;
+    GCNParam params = 100;
+}

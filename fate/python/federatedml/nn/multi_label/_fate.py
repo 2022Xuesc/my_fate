@@ -15,7 +15,7 @@ import torch
 import torch.nn
 
 from federatedml.nn.backend.multi_label.config import config_scheduler
-from federatedml.nn.backend.multi_label.models import create_model
+from federatedml.nn.backend.multi_label.models import create_model, create_lstm_model
 from federatedml.nn.backend.pytorch.data import MultiLabelDataSet
 from federatedml.nn.homo_nn import _consts
 from federatedml.param.multi_label_param import MultiLabelParam
@@ -23,6 +23,8 @@ from federatedml.util import LOGGER
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
+
+from torch.nn.utils.rnn import *
 
 log_dir = 'logs'
 stats_dir = os.path.join(os.getcwd(), 'stats')
@@ -265,16 +267,17 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    expected_label_type = np.int64
 
     # 构建数据集
     train_dataset = make_dataset(
         data=train_data,
         transforms=train_transforms(),
+        file_name='embedding_labels.txt'
     )
     valid_dataset = make_dataset(
         data=valid_data,
         transforms=valid_transforms(),
+        file_name='embedding_labels.txt'
     )
     batch_size = param.batch_size
     if batch_size < 0 or len(train_dataset) < batch_size:
@@ -284,20 +287,35 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     drop_last = True
     num_workers = 32
 
+    # Todo: 定义collate_fn
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle
+        drop_last=drop_last, shuffle=shuffle, collate_fn=collate_fn
     )
     valid_loader = torch.utils.data.DataLoader(
         dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle
+        drop_last=drop_last, shuffle=shuffle, collate_fn=collate_fn
     )
     fitter = MultiLabelFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
 
 
-def make_dataset(data, transforms):
-    return MultiLabelDataSet(data.path, transforms)
+def make_dataset(data, transforms, file_name):
+    return MultiLabelDataSet(data.path, transforms, file_name=file_name)
+
+
+def collate_fn(data):
+    # 根据label长度对data进行降序排序
+    data.sort(key=lambda x: len(x[1]), reverse=True)
+    images, labels = zip(*data)
+    images = torch.stack(images, 0)
+    lengths = [len(label) for label in labels]
+    targets = torch.zeros(len(labels), max(lengths)).long()
+
+    for i, label in enumerate(labels):
+        end = lengths[i]
+        targets[i, :end] = label[:end]
+    return images, targets, lengths
 
 
 class MultiLabelFedAggregator(object):
@@ -399,13 +417,22 @@ class MultiLabelFitter(object):
             label_mapping=None,
             context: FedClientContext = None
     ):
+        self.scheduler = ...
         self.param = copy.deepcopy(param)
         self._all_consumed_data_aggregated = True
         self.best_precision = 0
         self.context = context
         self.label_mapping = label_mapping
-        (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
-        self.criterion = torch.nn.BCELoss().to(self.param.device)
+
+        # Todo: 原始的AlexNet分类器
+        # (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
+
+        # Todo: 现有的CnnRnn分类器
+        self.model, self.optimizer = _init_lstm_learner(self.param, self.param.device)
+
+        # Todo:
+        # self.criterion = torch.nn.BCELoss().to(self.param.device)
+        self.criterion = torch.nn.CrossEntropyLoss().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -461,8 +488,14 @@ class MultiLabelFitter(object):
 
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
-        precision, recall, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
-                                             epoch, self.param.device, scheduler)
+        precision = ...
+        recall = ...
+        # precision, recall, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
+        #                                      epoch, self.param.device, scheduler)
+        # Todo: 要debug的地方
+        accuracy, loss = self.train_rnn_cnn(train_loader, self.model, self.criterion, self.optimizer,
+                                            epoch, self.param.device, scheduler)
+
         fate_logger.info(f'训练阶段结束,epoch = {epoch},平均loss = {loss}')
         train_writer.writerow([epoch, precision, recall, loss])
         return precision, recall, loss
@@ -559,6 +592,43 @@ class MultiLabelFitter(object):
 
         return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
 
+    def train_rnn_cnn(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
+        total_step = len(train_loader)
+        # Todo: 先使用本地import
+        for i, (images, labels, lengths) in enumerate(train_loader):
+            images = images.to(device)
+            labels = labels.to(device)
+            packed = pack_padded_sequence(labels, lengths, batch_first=True)
+            targets = packed[0]
+
+            # 前向传播
+            outputs = model(images, labels, lengths)
+            # Todo: 根据输出和目标计算precision和recall
+            #  targets的维度是164*1，表示164个位置中，正确的标签值
+            #  outputs的维度是164*92，表示164个位置中，每个标签的预测概率，选择max即可
+
+            # Todo: 这里可能会取出重复标签，但训练时候先不管，因为重复表明与target不符，
+            #  会被优化器主动优化
+            predicted_data = torch.argmax(outputs, dim=1)
+            predict_labels = pad_packed_sequence(packed._replace(data=predicted_data), batch_first=True)
+            # 对比labels计算平均precision和recall
+            accuracy = calculate_cnn_rnn_accuracy(labels, predict_labels[0], lengths)
+            loss = criterion(outputs, targets)
+            model.zero_grad()
+            loss.backward()
+            optimizer.step()
+        return accuracy, loss
+
+
+def calculate_cnn_rnn_accuracy(labels, predict_labels, lengths):
+    total = sum(lengths)
+    right = 0
+    for end, label, predict_label in zip(lengths, labels, predict_labels):
+        label_set = set(label[:end].cpu().tolist())
+        predict_label_set = set(predict_label[:end].cpu().tolist())
+        right += len(label_set.intersection(predict_label_set))
+    return right / total
+
 
 def validate(valid_loader, model, criterion, epoch, device, scheduler):
     # 这里
@@ -610,6 +680,24 @@ def _init_learner(param, device='cpu'):
     if param.sched_dict:
         scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)
     return model, scheduler, optimizer
+
+
+def _init_lstm_learner(param, device='cpu'):
+    # 先使用硬编码的参数
+    embed_size = 8
+    hidden_size = 4
+    num_layers = 1
+    label_num = 92
+    learning_rate = 0.1
+    model = create_lstm_model(embed_size, hidden_size, num_layers, label_num, device)
+    params = list(model.decoder.parameters()) + list(model.encoder.cnn.parameters())
+    optimizer = torch.optim.Adam(params, lr=learning_rate)
+
+    # Todo: 为Lstm配置调度器
+    # if param.sched_dict:
+    #     scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)
+
+    return model, optimizer
 
 
 def calculate_accuracy_mode1(model_pred, labels):

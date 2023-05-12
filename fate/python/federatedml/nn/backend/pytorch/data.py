@@ -12,6 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import pickle
+
+import json
 import os
 
 import numpy as np
@@ -213,10 +216,10 @@ class VisionDataSet(torchvision.datasets.VisionDataset, DatasetMixIn):
 
 
 # 定义自己的数据集读取类
-class MultiLabelDataSet:
-    def __init__(self, images_dir, transform=None):
+class MultiLabelDataSet(Dataset):
+    def __init__(self, images_dir, transform=None, file_name='labels.txt'):
         super(MultiLabelDataSet, self).__init__()
-        label_path = os.path.join(images_dir, 'labels.txt')
+        label_path = os.path.join(images_dir, file_name)
         # 打开存储图像名称与标签的txt文件
         fp = open(label_path, 'r')
         images = []
@@ -253,3 +256,44 @@ class MultiLabelDataSet:
 
     def __len__(self):
         return len(self.images)
+
+
+class COCO(Dataset):
+    def __init__(self, images_dir, config_dir, transforms=None, inp_name=None):
+        self.images_dir = images_dir
+        self.config_dir = config_dir
+        self.transforms = transforms
+        self.img_list = []
+        self.cat2idx = None
+        self.get_anno()
+
+        self.num_classes = len(self.cat2idx)
+        inp_file = os.path.join(self.config_dir,inp_name)
+        with open(inp_file, 'rb') as f:
+            self.inp = pickle.load(f)
+        self.inp_name = inp_name
+
+    def get_anno(self):
+        list_path = os.path.join(self.images_dir, 'anno.json')
+        self.img_list = json.load(open(list_path, 'r'))
+        category_path = os.path.join(self.config_dir, 'category.json')
+        self.cat2idx = json.load(open(category_path, 'r'))
+
+    def __len__(self):
+        return len(self.img_list)
+
+    def __getitem__(self, index):
+        item = self.img_list[index]
+        return self.get(item)
+
+    def get(self, item):
+        filename = item['file_name']
+        labels = sorted(item['labels'])
+        # 读取图像数据
+        img = Image.open(os.path.join(self.images_dir, filename)).convert('RGB')
+        if self.transforms is not None:
+            img = self.transforms(img)
+        # Todo: 这里的target初始化成-1，然后将所属标签集置为1
+        target = np.zeros(self.num_classes, np.float32) - 1
+        target[labels] = 1
+        return (img, self.inp), target

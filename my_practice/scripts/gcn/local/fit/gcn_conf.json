@@ -1,0 +1,106 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train"
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 9999
+  },
+  "role": {
+    "arbiter": [
+      10000
+    ],
+    "host": [
+      9997
+    ],
+    "guest": [
+      9999
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "gcn_0": {
+        "max_iter": 100,
+        "batch_size": 8,
+        "aggregate_every_n_epoch": 1,
+        "lr": 0.1,
+        "pretrained": false,
+        "dataset": "coco",
+        "arch": "gcn",
+        "adj_file": "/home/klaus125/research/fate/my_practice/dataset/coco/coco_adj.pkl",
+        "t": 0.4,
+        "sched_dict": {
+          "lr_schedulers": {
+            "pruning_lr": {
+              "class": "ExponentialLR",
+              "gamma": 0.99
+            }
+          },
+          "regularizers": {
+            "l2_regularizer": {
+              "class": "L2Regularizer",
+              "lamda": 0.002
+            }
+          },
+          "policies": {
+            "lr_scheduler": {
+              "instance_name": "pruning_lr",
+              "starting_epoch": 1,
+              "ending_epoch": 100,
+              "frequency": 1
+            },
+            "regularizer": {
+              "instance_name": "l2_regularizer",
+              "starting_epoch": 1,
+              "ending_epoch": 100,
+              "frequency": 1
+            }
+          }
+        }
+      }
+    },
+    "role": {
+      "guest": {
+        "0": {
+          "gcn_0": {
+            "device": "cuda:0"
+          },
+          "reader_0": {
+            "table": {
+              "name": "guest-train",
+              "namespace": "gcn-coco"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "guest-val",
+              "namespace": "gcn-coco"
+            }
+          }
+        }
+      },
+      "host": {
+        "0": {
+          "gcn_0": {
+            "device": "cuda:0"
+          },
+          "reader_0": {
+            "table": {
+              "name": "host-train",
+              "namespace": "gcn-coco"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "host-val",
+              "namespace": "gcn-coco"
+            }
+          }
+        }
+      }
+    }
+  }
+}

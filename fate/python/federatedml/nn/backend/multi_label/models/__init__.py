@@ -1,8 +1,10 @@
 import torchvision.models as torch_models
 
-from federatedml.nn.backend.distiller.models.imagenet.alexnet import AlexNet
 from federatedml.nn.backend.distiller.utils import set_model_input_shape_attr
 from federatedml.nn.backend.distiller.models.imagenet.alexnet_batchnorm import AlexNetBN
+
+
+from federatedml.nn.backend.multi_label.models.lstm.cnn_rnn import CnnRnn
 
 TORCHVISION_MODEL_NAMES = sorted(
     name for name in torch_models.__dict__
@@ -24,6 +26,11 @@ def create_model(pretrained, dataset, arch, device, num_classes=1000):
     model.arch = arch
     model.dataset = dataset
     return model.to(device)
+
+
+def create_lstm_model(embed_size, hidden_size, num_layers, label_num, device):
+    model = CnnRnn(embed_size,hidden_size,label_num,num_layers,device)
+    return model
 
 
 def _create_imagenet_model(arch, pretrained, num_classes):
