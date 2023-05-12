@@ -1,3 +1,4 @@
+import json
 import os.path
 
 import numpy as np
@@ -12,15 +13,13 @@ sns.set(font_scale=1.5)
 
 
 def get_labels_cnts(data_dir):
-    labels_path = os.path.join(data_dir, 'labels.txt')
-    fp = open(labels_path, 'r')
+    anno_path = os.path.join(data_dir, 'anno.json')
+    anno = json.load(open(anno_path, 'r'))
+    # 该文件夹下所有图像的标签值集合，通过访问anno_json得到
     labels = []
-    for line in fp:
-        line.strip('\n')
-        info = line.split(',')
-        for index in range(1, len(info)):
-            if info[index] == '1':
-                labels.append(index - 1)
+    for img_info in anno:
+        img_labels = img_info['labels']
+        labels.extend(img_labels)
     return labels
 
 
@@ -60,12 +59,12 @@ def calc_kl_divergence(client_names, label_tensors):
     return div_frame
 
 
-def draw_hist(target_dir, data_dirs, num_labels=90):
+def draw_hist(target_dir, data_dirs, num_labels=80):
     for data_dir in data_dirs:
         labels_cnts = get_labels_cnts(data_dir)
         info = data_dir.split('/')
         role, phase = info[-2], info[-1]
-
+        plt.figure(figsize=(12, 8))
         plt.hist(
             labels_cnts,
             bins=list(range(num_labels + 1)),
@@ -77,39 +76,42 @@ def draw_hist(target_dir, data_dirs, num_labels=90):
         plt.xlabel('label_id')
         plt.ylabel('label_occurrence')
 
-        plt.savefig(f'{save_dir}/{role}_{phase}_distribution.svg', dpi=600, format='svg')
+        plt.savefig(f'{target_dir}/{role}_{phase}_distribution.svg', dpi=600, format='svg')
         plt.cla()
 
 
-def get_labels_feature(labels):
-    labels_vec = [0] * 90
+def get_labels_feature(labels, num_labels=80):
+    labels_vec = [0] * num_labels
     for label_id in labels:
         labels_vec[label_id] += 1
     return labels_vec
 
 
-client_nums = 8
-class_nums = 90
-server_path = '/data/projects/my_dataset'
-save_dir = '.'
-# server_path = '/data/projects/clustered_dataset'
-# save_dir = 'clusters_distribution'
+client_nums = 10
+class_nums = 80
+# server_path = '/data/projects/my_dataset'
+# save_dir = '.'
+server_path = '/data/projects/clustered_dataset'
+save_dir = 'clusters_distribution'
+
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
-client_names = [f'client{i}' for i in range(1, client_nums + 1)]
+client_names = [f'client{i + 1}' for i in range(client_nums)]
 
 total_labels = []
 
 # 画直方图
-for i in range(1, client_nums + 1):
-    client_train_path = os.path.join(server_path, f'client{i}/train')
-    client_valid_path = os.path.join(server_path, f'client{i}/val')
-    # draw_hist(save_dir, [client_train_path, client_valid_path])
+for i in range(client_nums):
+    client_id = i + 1
+    client_train_path = os.path.join(server_path, f'client{client_id}/train')
+    client_valid_path = os.path.join(server_path, f'client{client_id}/val')
+    # Todo: 作出分布直方图
+    draw_hist(save_dir, [client_train_path, client_valid_path])
 
     labels = get_labels_cnts(client_train_path)
 
     total_labels.append(get_labels_feature(labels))
 
-# div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
-# draw_heatmap(save_dir, div_frame)
+div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
+draw_heatmap(save_dir, div_frame)

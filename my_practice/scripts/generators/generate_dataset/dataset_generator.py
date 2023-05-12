@@ -225,13 +225,19 @@ def category_to_idx(category):
     return cat2idx
 
 
-# src_path = '/data/projects/dataset/train2014'
-# generate_labels(src_path)
-
 coco_dir = '../../../dataset/coco'
 
-# train和val对应的category.json相同
-# generate_all_labels(coco_dir, 'val')
+# Todo: 服务器端的未执行代码
+client_nums = 10
+image_dir = "/data/projects/clustered_dataset"
+for i in range(client_nums):
+    client_id = i + 1
+    generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
+    generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
 
-# images_dir = os.path.join(coco_dir, 'data')
-# generate_anno(coco_dir, images_dir, "val")
+# Todo: 客户端待执行代码
+# client_nums = 10
+# image_dir = "/home/klaus125/research/dataset/clustered_dataset/"
+# for i in range(client_nums):
+#     client_id = i + 1
+#     generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'val')

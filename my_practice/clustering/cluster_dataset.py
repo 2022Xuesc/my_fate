@@ -122,9 +122,12 @@ val_image_id_path = "../dataset/coco/val_image_id.json"
 # 划分10个客户端
 num_clients = 10
 # # 1. 读取训练数据集，根据标签之间的距离对数据集进行聚类
-train_dir = '/data/projects/dataset/train2014'
-val_dir = '/data/projects/dataset/val2014'
-clustered_dir = '/data/projects/clustered_dataset'
+# train_dir = '/data/projects/dataset/train2014'
+# val_dir = '/data/projects/dataset/val2014'
+# clustered_dir = '/data/projects/clustered_dataset'
+
+train_dir = '/home/klaus125/research/dataset/val2014'
+clustered_dir = '/home/klaus125/research/dataset/clustered_dataset'
 #
 km = kmodes.KModes(n_clusters=num_clients)
 train_vec2names, train_vecs = get_label_vecs(val_image_id_path)
@@ -134,11 +137,11 @@ print(f'训练数据的维度为：{train_data.shape}')
 print('开始训练聚类模型并预测')
 train_clusters = km.fit_predict(train_data)
 print('训练完成')
-copy_file_to_cluster(val_dir, clustered_dir, train_clusters, train_data,
+copy_file_to_cluster(train_dir, clustered_dir, train_clusters, train_data,
                      'train', train_vec2names, train_vecs)
 #
 # # 2. 根据聚类结果，划分训练数据集，并且对验证数据集进行预测
-val_vec2names, val_vecs = get_label_vecs(val_image_id_path)
-val_data = np.array(val_vecs)
-val_clusters = km.predict(val_data)
-copy_file_to_cluster(val_dir, clustered_dir, val_clusters, val_data, 'val', val_vec2names, val_vecs)
+# val_vec2names, val_vecs = get_label_vecs(val_image_id_path)
+# val_data = np.array(val_vecs)
+# val_clusters = km.predict(val_data)
+# copy_file_to_cluster(val_dir, clustered_dir, val_clusters, val_data, 'val', val_vec2names, val_vecs)
