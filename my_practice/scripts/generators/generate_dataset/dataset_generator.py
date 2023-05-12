@@ -155,7 +155,7 @@ def generate_labels(dir_paths):
 
 
 # Todo: 关于COCO数据集的新表示方法
-def generate_anno(data, images_dir, phase):
+def generate_anno(data, images_dir, phase='val'):
     # 读取对应的image_id数据
     image_id_path = os.path.join(data, '{}_image_id.json'.format(phase))
     image_id = json.load(open(image_id_path, 'r'))

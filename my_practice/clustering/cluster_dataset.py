@@ -1,3 +1,4 @@
+import json
 import os
 
 import torch
@@ -68,24 +69,33 @@ def draw(metric_type, K, metrics):
 # learn_kmodes()
 
 
-def get_label_vecs(data_dir, num_classes=90):
+'''
+    输入：{phase}_image_id.json的文件路径，从中读取到
+    从anno_json中获取到：
+    标签向量到名称的字典
+    聚类需要的标签向量的集合
+'''
+
+
+def get_label_vecs(json_path, num_labels=80):
     vec2names = dict()
-    # 为train.txt也生成labels.txt
-    labels_path = os.path.join(data_dir, 'labels.txt')
-    fp = open(labels_path, 'r')
-    for line in fp:
-        label_vec = [0] * num_classes
-        line.strip('\n')
-        info = line.split(',')
-        for index in range(1, len(info)):
-            if info[index] == '1':
-                label_vec[index - 1] = 1
+    # 训练数据集的信息，从train_anno.json中读取
+    # Todo: 本地先根据val_anno.json进行测试
+    #  1. 验证是否有标签向量相同的两张图片
+    #  2.
+    image_id2labels = json.load(open(json_path, 'r'))
+    for image_id in image_id2labels:
+        image_info = image_id2labels[image_id]
+        filename = image_info['file_name']
+        label = image_info['labels']
+        # 将label转换成80维度的向量
+        label_vec = [0] * num_labels
+        for label_index in label:
+            label_vec[label_index] = 1
         label_key = tuple(label_vec)
         if label_key not in vec2names.keys():
             vec2names[label_key] = list()
-        # info[0]是文件名
-        vec2names[label_key].append(info[0])
-
+        vec2names[label_key].append(filename)
     vecs = []
     for key in vec2names.keys():
         vecs.append(list(key))
@@ -94,13 +104,14 @@ def get_label_vecs(data_dir, num_classes=90):
 
 def copy_file_to_cluster(src_dir, clustered_dir, clusters, data, phase, vec2names, vecs):
     for i in range(data.shape[0]):
-	i = i + 1
-        target_dir = os.path.join(clustered_dir, f'client{clusters[i]}/{phase}')
+        target_dir = os.path.join(clustered_dir, f'client{clusters[i] + 1}/{phase}')
         os.makedirs(target_dir, exist_ok=True)
         for filename in vec2names[tuple(vecs[i])]:
             # 将filename对应的文件拷贝到target_path中
             shutil.copy(os.path.join(src_dir, filename), target_dir)
 
+train_image_id_path = "../dataset/coco/train_image_id.json"
+val_image_id_path = "../dataset/coco/val_image_id.json"
 
 # 训练得到损失曲线，从曲线中选择最好的k
 # res = train_cluster(data)
@@ -108,26 +119,26 @@ def copy_file_to_cluster(src_dir, clustered_dir, clusters, data, phase, vec2name
 # draw('dist',K,res[1])
 # draw('sse', K, res[2])
 
-num_clients = 8
-# 1. 读取训练数据集，根据标签之间的距离对数据集进行聚类
+# 划分10个客户端
+num_clients = 10
+# # 1. 读取训练数据集，根据标签之间的距离对数据集进行聚类
 train_dir = '/data/projects/dataset/train2014'
 val_dir = '/data/projects/dataset/val2014'
 clustered_dir = '/data/projects/clustered_dataset'
-
+#
 km = kmodes.KModes(n_clusters=num_clients)
-train_vec2names, train_vecs = get_label_vecs(train_dir)
+train_vec2names, train_vecs = get_label_vecs(val_image_id_path)
 # 转为array数组
 train_data = np.array(train_vecs)
 print(f'训练数据的维度为：{train_data.shape}')
 print('开始训练聚类模型并预测')
 train_clusters = km.fit_predict(train_data)
 print('训练完成')
-copy_file_to_cluster(train_dir, clustered_dir, train_clusters, train_data,
+copy_file_to_cluster(val_dir, clustered_dir, train_clusters, train_data,
                      'train', train_vec2names, train_vecs)
-
-# 2. 根据聚类结果，划分训练数据集，并且对验证数据集进行预测
-
-val_vec2names, val_vecs = get_label_vecs(val_dir)
+#
+# # 2. 根据聚类结果，划分训练数据集，并且对验证数据集进行预测
+val_vec2names, val_vecs = get_label_vecs(val_image_id_path)
 val_data = np.array(val_vecs)
 val_clusters = km.predict(val_data)
 copy_file_to_cluster(val_dir, clustered_dir, val_clusters, val_data, 'val', val_vec2names, val_vecs)

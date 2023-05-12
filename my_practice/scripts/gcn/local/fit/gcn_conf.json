@@ -14,7 +14,7 @@
       10000
     ],
     "host": [
-      9997,9998
+      9997
     ],
     "guest": [
       9999
@@ -22,14 +22,16 @@
   },
   "component_parameters": {
     "common": {
-      "multi_label_0": {
+      "gcn_0": {
         "max_iter": 100,
         "batch_size": 8,
         "aggregate_every_n_epoch": 1,
         "lr": 0.1,
         "pretrained": false,
-        "dataset": "ms-coco",
-        "arch": "alexnet",
+        "dataset": "coco",
+        "arch": "gcn",
+        "adj_file": "/home/klaus125/research/fate/my_practice/dataset/coco/coco_adj.pkl",
+        "t": 0.4,
         "sched_dict": {
           "lr_schedulers": {
             "pruning_lr": {
@@ -46,14 +48,14 @@
           "policies": {
             "lr_scheduler": {
               "instance_name": "pruning_lr",
-              "starting_epoch": 50,
-              "ending_epoch": 800,
-              "frequency": 5
+              "starting_epoch": 1,
+              "ending_epoch": 100,
+              "frequency": 1
             },
             "regularizer": {
               "instance_name": "l2_regularizer",
-              "starting_epoch": 0,
-              "ending_epoch": 800,
+              "starting_epoch": 1,
+              "ending_epoch": 100,
               "frequency": 1
             }
           }
@@ -63,55 +65,38 @@
     "role": {
       "guest": {
         "0": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:0"
           },
           "reader_0": {
             "table": {
               "name": "guest-train",
-              "namespace": "ms-coco-mini"
+              "namespace": "gcn-coco"
             }
           },
           "reader_1": {
             "table": {
               "name": "guest-val",
-              "namespace": "ms-coco-mini"
+              "namespace": "gcn-coco"
             }
           }
         }
       },
       "host": {
         "0": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:0"
           },
           "reader_0": {
             "table": {
-              "name": "host1-train",
-              "namespace": "ms-coco-mini"
+              "name": "host-train",
+              "namespace": "gcn-coco"
             }
           },
           "reader_1": {
             "table": {
-              "name": "host1-val",
-              "namespace": "ms-coco-mini"
-            }
-          }
-        },
-        "1": {
-          "multi_label_0": {
-            "device": "cuda:0"
-          },
-          "reader_0": {
-            "table": {
-              "name": "host2-train",
-              "namespace": "ms-coco-mini"
-            }
-          },
-          "reader_1": {
-            "table": {
-              "name": "host2-val",
-              "namespace": "ms-coco-mini"
+              "name": "host-val",
+              "namespace": "gcn-coco"
             }
           }
         }

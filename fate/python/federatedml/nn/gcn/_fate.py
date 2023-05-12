@@ -50,14 +50,18 @@ buf_size = 1
 
 train_file = open(os.path.join(stats_dir, 'train.csv'), 'w', buffering=buf_size)
 train_writer = csv.writer(train_file)
-train_writer.writerow(['epoch', 'precision', 'recall', 'train_loss'])
+train_writer.writerow(
+    ['epoch', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map', 'loss'])
 
 loss_file = open(os.path.join(stats_dir, 'loss.csv'), 'w', buffering=buf_size)
 loss_writer = csv.writer(loss_file)
 loss_writer.writerow(['epoch', 'obj_loss', 'reg_loss', 'overall_loss'])
+
 valid_file = open(os.path.join(stats_dir, 'valid.csv'), 'w', buffering=buf_size)
 valid_writer = csv.writer(valid_file)
-valid_writer.writerow(['epoch', 'precision', 'recall', 'valid_loss'])
+
+train_writer.writerow(
+    ['epoch', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map', 'loss'])
 
 avgloss_file = open(os.path.join(stats_dir, 'avgloss.csv'), 'w', buffering=buf_size)
 avgloss_writer = csv.writer(avgloss_file)
@@ -130,8 +134,8 @@ class FedClientContext(_FedBaseContext):
     def recv_model(self):
         return self.aggregator.get_aggregated_model(suffix=self._suffix())
 
-    def send_loss(self, precision, recall, loss, weight):
-        self.aggregator.send_model((precision, recall, loss, weight), suffix=self._suffix(group="loss"))
+    def send_loss(self, loss, weight):
+        self.aggregator.send_model((loss, weight), suffix=self._suffix(group="loss"))
 
     def recv_loss(self):
         return self.aggregator.get_aggregated_model(
@@ -155,9 +159,9 @@ class FedClientContext(_FedBaseContext):
                 continue
             param.data.copy_(agg_tensor)
 
-    def do_convergence_check(self, weight, precision, recall, loss_value):
+    def do_convergence_check(self, weight, loss_value):
         self.loss_summary.append(loss_value)
-        self.send_loss(precision, recall, loss_value, weight)
+        self.send_loss(loss_value, weight)
         return self.recv_loss()
 
     # 配置聚合参数，将优化器中的参数提取出来
@@ -213,9 +217,9 @@ class FedServerContext(_FedBaseContext):
         return self.aggregator.get_models(suffix=self._suffix())
 
     # 发送收敛状态
-    def send_convergence_status(self, precision, recall, status):
+    def send_convergence_status(self, status):
         self.aggregator.send_aggregated_model(
-            (precision, recall, status), suffix=self._suffix(group="convergence")
+            (status), suffix=self._suffix(group="convergence")
         )
 
     def recv_losses(self):
@@ -227,23 +231,18 @@ class FedServerContext(_FedBaseContext):
         arbiter_logger.info('成功接受客户端发送的loss')
         total_loss = 0.0
         total_weight = 0.0
-        total_precision = 0.0
-        total_recall = 0.0
 
-        for precision, recall, loss, weight in loss_weight_pairs:
+        for loss, weight in loss_weight_pairs:
             total_loss += loss * weight
-            total_precision += precision * weight
-            total_recall += recall * weight
             total_weight += weight
-        mean_loss = total_loss / total_weight
-        mean_precision = total_precision / total_weight
-        mean_recall = total_recall / total_weight
 
-        avgloss_writer.writerow([self.aggregation_iteration, mean_precision, mean_recall, mean_loss])
+        mean_loss = total_loss / total_weight
+
+        avgloss_writer.writerow([self.aggregation_iteration, mean_loss])
 
         is_converged = abs(mean_loss - self._loss) < self._eps
 
-        self.send_convergence_status(mean_precision, mean_recall, is_converged)
+        self.send_convergence_status(is_converged)
 
         self._loss = mean_loss
         arbiter_logger.info(f'收敛性验证：loss={mean_loss},is_converged={is_converged}')
@@ -270,8 +269,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # 与服务器进行握手
     context.init()
 
-    category_dir = ''
-    inp_name = ''
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    inp_name = 'coco_glove_word2vec.pkl'
 
     # 构建数据集
     train_dataset = make_dataset(
@@ -291,7 +290,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
         batch_size = len(train_dataset)
     shuffle = False
 
-    drop_last = True
+    drop_last = False
     num_workers = 32
 
     # Todo: 定义collate_fn
@@ -308,7 +307,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
 
 
 def make_dataset(data, category_dir, transforms, inp_name):
-    return COCO(data.path, category_dir=category_dir, transforms=transforms, inp_name=inp_name)
+    return COCO(data.path, config_dir=category_dir, transforms=transforms, inp_name=inp_name)
 
 
 class GCNFedAggregator(object):
@@ -420,7 +419,7 @@ class GCNFitter(object):
         # Todo: 现有的gcn分类器
         self.model, self.scheduler, self.optimizer = _init_gcn_learner(self.param, self.param.device)
 
-        self.criterion = torch.nn.MultiLabelSoftMarginLoss
+        self.criterion = torch.nn.MultiLabelSoftMarginLoss()
 
         self.start_epoch, self.end_epoch = 0, epochs
 
@@ -433,6 +432,9 @@ class GCNFitter(object):
         # 3. 按照每个标签所包含的样本数进行聚合，维护一个list，对应Partial Supervised论文
         self._num_per_labels = [0] * self.param.num_labels
 
+        # Todo: 初始化平均精度度量器
+        self.ap_meter = AveragePrecisionMeter(difficult_examples=True)
+
     def get_label_mapping(self):
         return self.label_mapping
 
@@ -440,8 +442,9 @@ class GCNFitter(object):
     def fit(self, train_loader, valid_loader):
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
-            self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
+            valid_loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
             fate_logger.info(f'已完成一轮训练+验证')
+            self.on_fit_epoch_end(epoch, valid_loader, valid_loss)
             if self.context.should_stop():
                 break
 
@@ -454,14 +457,12 @@ class GCNFitter(object):
             self._num_data_consumed += num_samples
         fate_logger.info(f'当前epoch为{epoch}，已经消耗的样本数量为{self._num_data_consumed}')
 
-    def on_fit_epoch_end(self, epoch, valid_loader, valid_precision, valid_recall, valid_loss):
-        precision = valid_precision
-        recall = valid_recall
+    def on_fit_epoch_end(self, epoch, valid_loader, valid_loss):
         loss = valid_loss
         if self.context.should_aggregate_on_epoch(epoch):
             self.aggregate_model(epoch)
-            mean_precision, mean_recall, status = self.context.do_convergence_check(
-                len(valid_loader.sampler), precision, recall, loss
+            status = self.context.do_convergence_check(
+                len(valid_loader.sampler), loss
             )
             if status:
                 self.context.set_converged()
@@ -475,6 +476,8 @@ class GCNFitter(object):
 
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
+        # 度量重置
+        self.ap_meter.reset()
         # Todo: 调整学习率的部分放到scheduler中执行
         loss = self.train(train_loader, self.model, self.criterion, self.optimizer, epoch, self.param.device, scheduler)
         return loss
@@ -482,6 +485,7 @@ class GCNFitter(object):
     def validate_one_epoch(self, epoch, valid_loader, scheduler):
         loss = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device, scheduler)
         return loss
+
     def aggregate_model(self, epoch):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
@@ -501,10 +505,12 @@ class GCNFitter(object):
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         self.train_one_epoch(epoch, train_loader, scheduler)
+        valid_loss = None
         if valid_loader:
-            self.validate_one_epoch(epoch, valid_loader, scheduler)
+            valid_loss = self.validate_one_epoch(epoch, valid_loader, scheduler)
         if self.scheduler:
             self.scheduler.on_epoch_end(epoch, self.optimizer)
+        return valid_loss
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         total_samples = len(valid_loader.sampler)
@@ -515,16 +521,28 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-
+        self.ap_meter.reset()
         fate_logger.info(
             f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
         model.eval()
         with torch.no_grad():
-            for validate_step, (inputs, target) in enumerate(valid_loader):
-                inputs = inputs.to(device)
+            for validate_step, ((features, inp), target) in enumerate(valid_loader):
+                # 这里的inputs是一个长度为3的列表，inputs[0]是features,inputs[1]是输入的相关性矩阵
+                features = features.to(device)
+                inp = inp.to(device)
                 target = target.to(device)
-                output = model(inputs)
+                # Todo: 处理target
+                # Todo: 这里对target进行处理
+                target_bk = target.clone()
+                # Todo: 什么时候target中会出现0，不是为1或者-1吗？
+                target[target == 0] = 1
+                target[target == -1] = 0
+
+                output = model(features, inp)
                 loss = criterion(output, target)
+                # output.data后require_grad为false
+                self.ap_meter.add(output.data, target_bk.clone().detach())
+
                 if scheduler:
                     agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
                     loss = agg_loss.overall_loss
@@ -536,11 +554,17 @@ class GCNFitter(object):
                 else:
                     losses[OVERALL_LOSS_KEY].add(loss.item())
                 LOGGER.warn(
-                    f'[valid] epoch = {epoch}：{validate_step} / {steps_per_epoch},loss={loss}')
+                    f'[valid] epoch = {epoch}：{validate_step} / {steps_per_epoch},loss={loss.item()}')
+        map = 100 * self.ap_meter.value().mean()
+        loss = losses[OVERALL_LOSS_KEY].mean
+        OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
+        OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
+        # 将这些指标写入文件中
+        # 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3'
+        valid_writer.writerow([epoch, OP, OR, OF1, CP, CR, CF1, OP_k, OF1_k, CP_k, CR_k, CF1_k, map, loss])
         return losses[OVERALL_LOSS_KEY].mean
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
-
         total_samples = len(train_loader.sampler)
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
         steps_per_epoch = math.ceil(total_samples / batch_size)
@@ -555,15 +579,26 @@ class GCNFitter(object):
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-        for train_step, (inputs, target) in enumerate(train_loader):
-            # 移动到相应的的设备上
-            inputs = inputs.to(device)
+        for train_step, ((features, inp), target) in enumerate(train_loader):
+            # 这里的inputs是一个长度为3的列表，inputs[0]是features,inputs[1]是输入的相关性矩阵
+            features = features.to(device)
+            inp = inp.to(device)
             target = target.to(device)
+
+            # Todo: 这里对target进行处理
+            target_bk = target.clone()
+            # Todo: 什么时候target中会出现0，不是为1或者-1吗？
+            target[target == 0] = 1
+            target[target == -1] = 0
+
             # 计算模型输出
-            output = model(inputs)
+            output = model(features, inp)
             loss = criterion(output, target)
 
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+            # Todo: 将计算结果添加到ap_meter中
+
+            self.ap_meter.add(output.data, target_bk)
 
             if scheduler:
                 agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
@@ -576,9 +611,9 @@ class GCNFitter(object):
             else:
                 losses[OVERALL_LOSS_KEY].add(loss.item())
 
-            loss_writer.writerow(
-                [epoch, losses['Objective Loss'].mean, losses['L2Regularizer_loss'].mean,
-                 losses[OVERALL_LOSS_KEY].mean])
+            # loss_writer.writerow(
+            #     [epoch, losses['Objective Loss'].mean, losses['L2Regularizer_loss'].mean,
+            #      losses[OVERALL_LOSS_KEY].mean])
 
             # 打印进度
             LOGGER.warn(
@@ -586,15 +621,29 @@ class GCNFitter(object):
 
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=10.0)
             optimizer.step()
+        # epoch结束后，处理相关的指标
+        map = 100 * self.ap_meter.value().mean()
+        loss = losses[OVERALL_LOSS_KEY].mean
+        OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
+        OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
+        # 将这些指标写入文件中
+        # 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3'
+        train_writer.writerow([epoch, OP, OR, OF1, CP, CR, CF1, OP_k, OF1_k, CP_k, CR_k, CF1_k, map, loss])
         return losses[OVERALL_LOSS_KEY].mean
 
 
 def _init_gcn_learner(param, device='cpu'):
     # 创建并返回模型和优化器
     # 关于adj_file的指定，放在哪里好？
+    # adj_file='/home/klaus125/research/fate/my_practice/dataset/coco'
+    # Todo: 这里将in_channel暂设置为300，之后再写入到param中
+    in_channel = 300
+    # Todo-Custom: 先放到cpu上
+    param.device = 'cpu'
     model = gcn_resnet101(param.pretrained, param.dataset, t=param.t, adj_file=param.adj_file,
-                          device=param.device, num_classes=param.num_classes, in_channel=param.in_channel)
+                          device=param.device, num_classes=param.num_labels, in_channel=in_channel)
     # learning rate和learning rate for pretrained_layers
     lr, lrp = 0.1, 0.1
     optimizer = torch.optim.SGD(model.get_config_optim(lr, lrp),
@@ -602,8 +651,8 @@ def _init_gcn_learner(param, device='cpu'):
                                 momentum=0.9,
                                 weight_decay=1e-4)
     scheduler = None
-    # if param.sched_dict:
-    #     scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)
+    if param.sched_dict:
+        scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)
     return model, scheduler, optimizer
 
 
@@ -628,3 +677,158 @@ def valid_transforms():
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
+
+
+class AveragePrecisionMeter(object):
+    """
+    The APMeter measures the average precision per class.
+    The APMeter is designed to operate on `NxK` Tensors `output` and
+    `target`, and optionally a `Nx1` Tensor weight where (1) the `output`
+    contains model output scores for `N` examples and `K` classes that ought to
+    be higher when the model is more convinced that the example should be
+    positively labeled, and smaller when the model believes the example should
+    be negatively labeled (for instance, the output of a sigmoid function); (2)
+    the `target` contains only values 0 (for negative examples) and 1
+    (for positive examples); and (3) the `weight` ( > 0) represents weight for
+    each sample.
+    """
+
+    def __init__(self, difficult_examples=False):
+        super(AveragePrecisionMeter, self).__init__()
+        self.reset()
+        self.difficult_examples = difficult_examples
+
+    def reset(self):
+        """Resets the meter with empty member variables"""
+        self.scores = torch.FloatTensor(torch.FloatStorage())
+        self.targets = torch.LongTensor(torch.LongStorage())
+
+    def add(self, output, target):
+        """
+        Args:
+            output (Tensor): NxK tensor that for each of the N examples
+                indicates the probability of the example belonging to each of
+                the K classes, according to the model. The probabilities should
+                sum to one over all classes
+            target (Tensor): binary NxK tensort that encodes which of the K
+                classes are associated with the N-th input
+                    (eg: a row [0, 1, 0, 1] indicates that the example is
+                         associated with classes 2 and 4)
+            weight (optional, Tensor): Nx1 tensor representing the weight for
+                each example (each weight > 0)
+        """
+        if not torch.is_tensor(output):
+            output = torch.from_numpy(output)
+        if not torch.is_tensor(target):
+            target = torch.from_numpy(target)
+
+        if output.dim() == 1:
+            output = output.view(-1, 1)
+        else:
+            assert output.dim() == 2, \
+                'wrong output size (should be 1D or 2D with one column \
+                per class)'
+        if target.dim() == 1:
+            target = target.view(-1, 1)
+        else:
+            assert target.dim() == 2, \
+                'wrong target size (should be 1D or 2D with one column \
+                per class)'
+        if self.scores.numel() > 0:
+            assert target.size(1) == self.targets.size(1), \
+                'dimensions for output should match previously added examples.'
+
+        # make sure storage is of sufficient size
+        if self.scores.storage().size() < self.scores.numel() + output.numel():
+            new_size = math.ceil(self.scores.storage().size() * 1.5)
+            self.scores.storage().resize_(int(new_size + output.numel()))
+            self.targets.storage().resize_(int(new_size + output.numel()))
+
+        # store scores and targets
+        offset = self.scores.size(0) if self.scores.dim() > 0 else 0
+        self.scores.resize_(offset + output.size(0), output.size(1))
+        self.targets.resize_(offset + target.size(0), target.size(1))
+        self.scores.narrow(0, offset, output.size(0)).copy_(output)
+        self.targets.narrow(0, offset, target.size(0)).copy_(target)
+
+    def value(self):
+        """Returns the model's average precision for each class
+        Return:
+            ap (FloatTensor): 1xK tensor, with avg precision for each class k
+        """
+
+        if self.scores.numel() == 0:
+            return 0
+        ap = torch.zeros(self.scores.size(1))
+        rg = torch.arange(1, self.scores.size(0)).float()
+        # compute average precision for each class
+        for k in range(self.scores.size(1)):
+            # sort scores
+            scores = self.scores[:, k]
+            targets = self.targets[:, k]
+            # compute average precision
+            ap[k] = AveragePrecisionMeter.average_precision(scores, targets, self.difficult_examples)
+        return ap
+
+    @staticmethod
+    def average_precision(output, target, difficult_examples=True):
+
+        # sort examples
+        sorted, indices = torch.sort(output, dim=0, descending=True)
+
+        # Computes prec@i
+        pos_count = 0.
+        total_count = 0.
+        precision_at_i = 0.
+        for i in indices:
+            label = target[i]
+            if difficult_examples and label == 0:
+                continue
+            if label == 1:
+                pos_count += 1
+            total_count += 1
+            if label == 1:
+                precision_at_i += pos_count / total_count
+        if pos_count != 0:
+            precision_at_i /= pos_count
+        return precision_at_i
+
+    def overall(self):
+        if self.scores.numel() == 0:
+            return 0
+        scores = self.scores.cpu().numpy()
+        targets = self.targets.cpu().numpy()
+        targets[targets == -1] = 0
+        return self.evaluation(scores, targets)
+
+    def overall_topk(self, k):
+        targets = self.targets.cpu().numpy()
+        targets[targets == -1] = 0
+        n, c = self.scores.size()
+        scores = np.zeros((n, c)) - 1
+        index = self.scores.topk(k, 1, True, True)[1].cpu().numpy()
+        tmp = self.scores.cpu().numpy()
+        for i in range(n):
+            for ind in index[i]:
+                scores[i, ind] = 1 if tmp[i, ind] >= 0 else -1
+        return self.evaluation(scores, targets)
+
+    def evaluation(self, scores_, targets_):
+        n, n_class = scores_.shape
+        Nc, Np, Ng = np.zeros(n_class), np.zeros(n_class), np.zeros(n_class)
+        for k in range(n_class):
+            scores = scores_[:, k]
+            targets = targets_[:, k]
+            targets[targets == -1] = 0
+            Ng[k] = np.sum(targets == 1)
+            Np[k] = np.sum(scores >= 0)
+            Nc[k] = np.sum(targets * (scores >= 0))
+        Np[Np == 0] = 1
+        OP = np.sum(Nc) / np.sum(Np)
+        OR = np.sum(Nc) / np.sum(Ng)
+        OF1 = (2 * OP * OR) / (OP + OR)
+
+        CP = np.sum(Nc / Np) / n_class
+        CR = np.sum(Nc / Ng) / n_class
+        CF1 = (2 * CP * CR) / (CP + CR)
+        return OP, OR, OF1, CP, CR, CF1

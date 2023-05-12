@@ -12,11 +12,13 @@ class GCNParam(BaseParam):
                  epochs: int = 500,
                  device: str = 'cpu',
                  pretrained: bool = True,
-                 dataset: str = 'ms-coco',
+                 dataset: str = 'coco',
                  early_stop_eps: float = 0.,
                  arch: str = 'gcn',
                  lr: float = 0.005,
                  num_labels: int = 80,
+                 t: float = 0.4,
+                 adj_file: str = ''
                  ):
         super(GCNParam, self).__init__()
         self.aggregate_every_n_epoch = aggregate_every_n_epoch
@@ -31,6 +33,8 @@ class GCNParam(BaseParam):
         self.lr = lr
         self.early_stop_eps = early_stop_eps
         self.num_labels = num_labels
+        self.t = t
+        self.adj_file = adj_file
 
     def check(self):
         pass
@@ -52,6 +56,8 @@ class GCNParam(BaseParam):
         pb.arch = self.arch
         pb.early_stop_eps = self.early_stop_eps
         pb.lr = self.lr
+        pb.t = self.t
+        pb.adj_file = self.adj_file
         return pb
 
     # Todo: protobuf
@@ -68,4 +74,6 @@ class GCNParam(BaseParam):
         self.early_stop_eps = pb.early_stop_eps
         self.lr = pb.lr
         self.num_labels = pb.num_labels
+        self.t = pb.t
+        self.adj_file = pb.adj_file
         return pb

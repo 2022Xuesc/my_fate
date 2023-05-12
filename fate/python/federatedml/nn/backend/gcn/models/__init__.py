@@ -77,6 +77,7 @@ class GCNResnet(nn.Module):
         feature = feature.view(feature.size(0), -1)
 
         # Todo: inp是图神经网络的输入
+        # 这里选择取第一个分量，是因为每个数据样本使用的inp都是相同的
         inp = inp[0]
         adj = gen_adj(self.A).detach()
         x = self.gc1(inp, adj)
@@ -98,6 +99,7 @@ class GCNResnet(nn.Module):
 
 def gcn_resnet101(pretrained, dataset, t, adj_file=None, device='cpu', num_classes=80, in_channel=300):
     model = torch_models.resnet101(pretrained=pretrained)
+
     model = GCNResnet(model=model, num_classes=num_classes, in_channel=in_channel, t=t, adj_file=adj_file)
     # 设置必要的信息
     set_model_input_shape_attr(model, dataset)

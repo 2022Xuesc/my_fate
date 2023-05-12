@@ -430,7 +430,6 @@ class MultiLabelFitter(object):
         # Todo: 现有的CnnRnn分类器
         self.model, self.optimizer = _init_lstm_learner(self.param, self.param.device)
 
-
         # Todo:
         # self.criterion = torch.nn.BCELoss().to(self.param.device)
         self.criterion = torch.nn.CrossEntropyLoss().to(self.param.device)
@@ -603,7 +602,7 @@ class MultiLabelFitter(object):
             targets = packed[0]
 
             # 前向传播
-            outputs = model(images,labels,lengths)
+            outputs = model(images, labels, lengths)
             # Todo: 根据输出和目标计算precision和recall
             #  targets的维度是164*1，表示164个位置中，正确的标签值
             #  outputs的维度是164*92，表示164个位置中，每个标签的预测概率，选择max即可

@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0egcn-meta.proto\x12&com.webank.ai.fate.core.mlmodel.buffer\"\xf0\x01\n\x08GCNParam\x12\x12\n\nbatch_size\x18\x01 \x01(\x05\x12\x0e\n\x06\x65pochs\x18\x02 \x01(\x05\x12\x0e\n\x06\x64\x65vice\x18\x03 \x01(\t\x12\x12\n\npretrained\x18\x04 \x01(\x08\x12\x0f\n\x07\x64\x61taset\x18\x05 \x01(\t\x12\x0c\n\x04\x61rch\x18\x06 \x01(\t\x12\n\n\x02lr\x18\x07 \x01(\t\x12\x12\n\nnum_labels\x18\x08 \x01(\x05\x12\x1f\n\x17\x61ggregate_every_n_epoch\x18\t \x01(\x05\x12\x10\n\x08max_iter\x18\n \x01(\x05\x12\x12\n\nsched_dict\x18\x0b \x03(\t\x12\x16\n\x0e\x65\x61rly_stop_eps\x18\x0c \x01(\t\"`\n\x0cGCNMetaProto\x12\x0e\n\x06module\x18\x01 \x01(\t\x12@\n\x06params\x18\x64 \x01(\x0b\x32\x30.com.webank.ai.fate.core.mlmodel.buffer.GCNParamB\x0e\x42\x0cGCNMetaProtob\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0egcn-meta.proto\x12&com.webank.ai.fate.core.mlmodel.buffer\"\x8d\x02\n\x08GCNParam\x12\x12\n\nbatch_size\x18\x01 \x01(\x05\x12\x0e\n\x06\x65pochs\x18\x02 \x01(\x05\x12\x0e\n\x06\x64\x65vice\x18\x03 \x01(\t\x12\x12\n\npretrained\x18\x04 \x01(\x08\x12\x0f\n\x07\x64\x61taset\x18\x05 \x01(\t\x12\x0c\n\x04\x61rch\x18\x06 \x01(\t\x12\n\n\x02lr\x18\x07 \x01(\x02\x12\x12\n\nnum_labels\x18\x08 \x01(\x05\x12\x1f\n\x17\x61ggregate_every_n_epoch\x18\t \x01(\x05\x12\x10\n\x08max_iter\x18\n \x01(\x05\x12\x12\n\nsched_dict\x18\x0b \x03(\t\x12\x16\n\x0e\x65\x61rly_stop_eps\x18\x0c \x01(\t\x12\t\n\x01t\x18\r \x01(\x02\x12\x10\n\x08\x61\x64j_file\x18\x0e \x01(\t\"`\n\x0cGCNMetaProto\x12\x0e\n\x06module\x18\x01 \x01(\t\x12@\n\x06params\x18\x64 \x01(\x0b\x32\x30.com.webank.ai.fate.core.mlmodel.buffer.GCNParamB\x0e\x42\x0cGCNMetaProtob\x06proto3')
 
 
 
@@ -39,7 +39,7 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'B\014GCNMetaProto'
   _GCNPARAM._serialized_start=59
-  _GCNPARAM._serialized_end=299
-  _GCNMETAPROTO._serialized_start=301
-  _GCNMETAPROTO._serialized_end=397
+  _GCNPARAM._serialized_end=328
+  _GCNMETAPROTO._serialized_start=330
+  _GCNMETAPROTO._serialized_end=426
 # @@protoc_insertion_point(module_scope)

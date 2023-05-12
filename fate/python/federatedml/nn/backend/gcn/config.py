@@ -27,7 +27,7 @@ def config_scheduler(model, optimizer, sched_dict, scheduler=None):
             regularizer = regularizers[instance_name]
             policy = multi_label.RegularizationPolicy(regularizer)
         if policy:
-            add_policy_to_scheduler(policy,policy_def,scheduler)
+            add_policy_to_scheduler(policy, policy_def, scheduler)
 
     # 将学习率调度器延迟配置
     lr_schedulers = __factory('lr_schedulers', model, sched_dict, optimizer=optimizer, last_epoch=-1)
