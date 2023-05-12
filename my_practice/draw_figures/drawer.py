@@ -87,6 +87,12 @@ def get_labels_feature(labels, num_labels=80):
     return labels_vec
 
 
+def get_sample_size(data_dir):
+    anno_path = os.path.join(data_dir, 'anno.json')
+    anno = json.load(open(anno_path, 'r'))
+    return len(anno)
+
+
 client_nums = 10
 class_nums = 80
 # server_path = '/data/projects/my_dataset'
@@ -101,6 +107,9 @@ client_names = [f'client{i + 1}' for i in range(client_nums)]
 
 total_labels = []
 
+# Todo: 记录每个客户端的样本数量，画出直方图
+samples = []
+
 # 画直方图
 for i in range(client_nums):
     client_id = i + 1
@@ -113,5 +122,20 @@ for i in range(client_nums):
 
     total_labels.append(get_labels_feature(labels))
 
+    # 只选取训练集大小
+    samples.append(get_sample_size(client_train_path))
+
 div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
 draw_heatmap(save_dir, div_frame)
+
+# Todo: 作出关于samples的柱状图
+plt.figure(figsize=(12, 8))
+
+for i in range(client_nums):
+    plt.bar(client_names[i],samples[i],fc='r')
+
+plt.title('The distribution of the client data')
+plt.ylabel('Client Data Size')
+
+plt.savefig(f'{save_dir}/client_data_size_distribution.svg', dpi=600, format='svg')
+plt.cla()
