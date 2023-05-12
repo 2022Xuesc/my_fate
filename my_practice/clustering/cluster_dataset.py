@@ -127,14 +127,14 @@ val_dir = '/data/projects/dataset/val2014'
 clustered_dir = '/data/projects/clustered_dataset'
 #
 km = kmodes.KModes(n_clusters=num_clients)
-train_vec2names, train_vecs = get_label_vecs(val_image_id_path)
+train_vec2names, train_vecs = get_label_vecs(train_image_id_path)
 # 转为array数组
 train_data = np.array(train_vecs)
 print(f'训练数据的维度为：{train_data.shape}')
 print('开始训练聚类模型并预测')
 train_clusters = km.fit_predict(train_data)
 print('训练完成')
-copy_file_to_cluster(val_dir, clustered_dir, train_clusters, train_data,
+copy_file_to_cluster(train_dir, clustered_dir, train_clusters, train_data,
                      'train', train_vec2names, train_vecs)
 #
 # # 2. 根据聚类结果，划分训练数据集，并且对验证数据集进行预测
