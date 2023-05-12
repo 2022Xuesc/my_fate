@@ -129,13 +129,15 @@ div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Te
 draw_heatmap(save_dir, div_frame)
 
 # Todo: 作出关于samples的柱状图
+samples = np.log10(samples)
+
 plt.figure(figsize=(12, 8))
 
 for i in range(client_nums):
     plt.bar(client_names[i],samples[i],fc='r')
 
 plt.title('The distribution of the client data')
-plt.ylabel('Client Data Size')
+plt.ylabel('Client Data Size(log10)')
 
 plt.savefig(f'{save_dir}/client_data_size_distribution.svg', dpi=600, format='svg')
 plt.cla()
