@@ -29,7 +29,7 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
-        "max_iter": 50,
+        "max_iter": 20,
         "batch_size": 64,
         "aggregate_every_n_epoch": 10,
         "lr": 0.1,
@@ -52,14 +52,14 @@
           "policies": {
             "lr_scheduler": {
               "instance_name": "pruning_lr",
-              "starting_epoch": 100,
-              "ending_epoch": 500,
-              "frequency": 4
+              "starting_epoch": 50,
+              "ending_epoch": 200,
+              "frequency": 2
             },
             "regularizer": {
               "instance_name": "l2_regularizer",
               "starting_epoch": 0,
-              "ending_epoch": 500,
+              "ending_epoch": 200,
               "frequency": 1
             }
           }
