@@ -80,6 +80,8 @@ def write_labels(labels, label_path):
 
 
 def generate_configs(dir_paths):
+    if not isinstance(dir_paths, list):
+        dir_paths = [dir_paths]
     for dir_path in dir_paths:
         config_path = os.path.join(dir_path, 'config.yaml')
         if not os.path.exists(config_path):
