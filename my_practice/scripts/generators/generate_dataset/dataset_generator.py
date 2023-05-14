@@ -121,6 +121,7 @@ def generate_embedding_labels(dir_paths):
         write_labels(labels, labels_path)
 
 
+# Todo: 已经废弃
 def generate_labels(dir_paths):
     if not isinstance(dir_paths, list):
         dir_paths = [dir_paths]
@@ -230,14 +231,14 @@ def category_to_idx(category):
 coco_dir = '../../../dataset/coco'
 
 # Todo: 服务器端的未执行代码
-client_nums = 10
-image_dir = "/data/projects/clustered_dataset"
-for i in range(client_nums):
-    client_id = i + 1
+# client_nums = 10
+# image_dir = "/data/projects/clustered_dataset"
+# for i in range(client_nums):
+#     client_id = i + 1
     # generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
     # generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
-    generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
-    generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
+    # generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
+    # generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
 
 # Todo: 客户端待执行代码
 # client_nums = 10
@@ -245,3 +246,4 @@ for i in range(client_nums):
 # for i in range(client_nums):
 #     client_id = i + 1
 #     generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'val')
+

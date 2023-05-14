@@ -11,22 +11,21 @@ test_path = "/data/projects/dataset/test2014"
 # val_path = "../../my_data/imagenet/guest/train/images"
 # test_path = "../../my_data/imagenet/guest/train/images"
 
-
+coco_dir =  '../../../dataset/coco'
 def generate_dataset(n):
-    my_data_path = "/data/projects/my_dataset"
-    # my_data_path = "../../my_data"
+    my_data_path = "/data/projects/iid_dataset"
     for i in range(1, n + 1):
         client_path = os.path.join(my_data_path, f'client{i}')
         client_train_path = os.path.join(client_path, 'train')
         client_val_path = os.path.join(client_path, 'val')
-        client_test_path = os.path.join(client_path, 'test')
+        # client_test_path = os.path.join(client_path, 'test')
         generate_2014(train_path, (i - 1) / n, i / n, client_train_path)
         generate_2014(val_path, (i - 1) / n, i / n, client_val_path)
-        generate_2014(test_path, (i - 1) / n, i / n, client_test_path)
+        # generate_2014(test_path, (i - 1) / n, i / n, client_test_path)
         # 生成标签
-        path_list = [client_train_path, client_val_path]
-        generate_labels(path_list)
-        generate_configs(path_list)
+        generate_anno(coco_dir,client_train_path,'train')
+        generate_anno(coco_dir,client_val_path,'val')
+        generate_configs([client_train_path, client_val_path])
 
 
 # 先跳过测试数据集的划分
@@ -67,3 +66,5 @@ test_annotation_file = os.path.join(annotations_dir, 'image_info_test2014.json')
 # clustered_dir = '/data/projects/clustered_dataset'
 # generate_embedding_labels_for_clusters(clustered_dir, client_num=8)
 
+client_nums = 10
+generate_dataset(client_nums)
