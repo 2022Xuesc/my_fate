@@ -15,3 +15,7 @@ flow table bind --drop -c bind_client7_train_path.json
 flow table bind --drop -c bind_client7_val_path.json
 flow table bind --drop -c bind_client8_train_path.json
 flow table bind --drop -c bind_client8_val_path.json
+flow table bind --drop -c bind_client9_train_path.json
+flow table bind --drop -c bind_client9_val_path.json
+flow table bind --drop -c bind_client10_train_path.json
+flow table bind --drop -c bind_client10_val_path.json

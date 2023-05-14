@@ -1,8 +1,8 @@
 {
     "engine": "PATH",
     "namespace": "coco-clients10-iid",
-    "name": "client2_val",
+    "name": "client10_val",
     "address": {
-        "path": "/data/projects/iid_dataset/client2/val"
+        "path": "/data/projects/iid_dataset/client10/val"
     }
 }

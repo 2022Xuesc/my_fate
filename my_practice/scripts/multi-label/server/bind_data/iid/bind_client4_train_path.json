@@ -1,8 +1,8 @@
 {
     "engine": "PATH",
-    "namespace": "ms-coco-0321",
+    "namespace": "coco-clients10-iid",
     "name": "client4_train",
     "address": {
-        "path": "/data/projects/my_dataset/client4/train"
+        "path": "/data/projects/iid_dataset/client4/train"
     }
 }
