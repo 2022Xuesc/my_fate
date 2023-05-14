@@ -14,7 +14,7 @@
       10000
     ],
     "host": [
-      9997,9998
+      9997
     ],
     "guest": [
       9999
@@ -27,7 +27,7 @@
         "batch_size": 8,
         "aggregate_every_n_epoch": 1,
         "lr": 0.1,
-        "pretrained": false,
+        "pretrained": true,
         "dataset": "ms-coco",
         "arch": "alexnet",
         "sched_dict": {
@@ -69,13 +69,13 @@
           "reader_0": {
             "table": {
               "name": "guest-train",
-              "namespace": "ms-coco-mini"
+              "namespace": "gcn-coco"
             }
           },
           "reader_1": {
             "table": {
               "name": "guest-val",
-              "namespace": "ms-coco-mini"
+              "namespace": "gcn-coco"
             }
           }
         }
@@ -87,31 +87,14 @@
           },
           "reader_0": {
             "table": {
-              "name": "host1-train",
-              "namespace": "ms-coco-mini"
+              "name": "host-train",
+              "namespace": "gcn-coco"
             }
           },
           "reader_1": {
             "table": {
-              "name": "host1-val",
-              "namespace": "ms-coco-mini"
-            }
-          }
-        },
-        "1": {
-          "multi_label_0": {
-            "device": "cuda:0"
-          },
-          "reader_0": {
-            "table": {
-              "name": "host2-train",
-              "namespace": "ms-coco-mini"
-            }
-          },
-          "reader_1": {
-            "table": {
-              "name": "host2-val",
-              "namespace": "ms-coco-mini"
+              "name": "host-val",
+              "namespace": "gcn-coco"
             }
           }
         }

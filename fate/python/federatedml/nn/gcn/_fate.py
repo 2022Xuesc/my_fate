@@ -269,7 +269,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # 与服务器进行握手
     context.init()
 
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '../../../../../my_practice/dataset/coco'
     inp_name = 'coco_glove_word2vec.pkl'
 
     # 构建数据集

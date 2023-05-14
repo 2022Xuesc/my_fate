@@ -15,8 +15,8 @@ class MultiLabelParam(BaseParam):
                  dataset: str = 'ms-coco',
                  early_stop_eps: float = 0.,
                  arch: str = 'alexnet',
-                 lr: float = 0.005,
-                 num_labels: int = 90,
+                 lr: float = 0.01,
+                 num_labels: int = 80,
                  ):
         super(MultiLabelParam, self).__init__()
         self.aggregate_every_n_epoch = aggregate_every_n_epoch

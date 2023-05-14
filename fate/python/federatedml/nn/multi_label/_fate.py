@@ -15,8 +15,8 @@ import torch
 import torch.nn
 
 from federatedml.nn.backend.multi_label.config import config_scheduler
-from federatedml.nn.backend.multi_label.models import create_model, create_lstm_model
-from federatedml.nn.backend.pytorch.data import MultiLabelDataSet
+from federatedml.nn.backend.multi_label.models import *
+from federatedml.nn.backend.pytorch.data import MultiLabelDataSet, COCO
 from federatedml.nn.homo_nn import _consts
 from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
@@ -48,18 +48,18 @@ buf_size = 1
 
 train_file = open(os.path.join(stats_dir, 'train.csv'), 'w', buffering=buf_size)
 train_writer = csv.writer(train_file)
-train_writer.writerow(['epoch', 'precision', 'recall', 'train_loss'])
+train_writer.writerow(['epoch', 'mAP', 'train_loss'])
 
 loss_file = open(os.path.join(stats_dir, 'loss.csv'), 'w', buffering=buf_size)
 loss_writer = csv.writer(loss_file)
 loss_writer.writerow(['epoch', 'obj_loss', 'reg_loss', 'overall_loss'])
 valid_file = open(os.path.join(stats_dir, 'valid.csv'), 'w', buffering=buf_size)
 valid_writer = csv.writer(valid_file)
-valid_writer.writerow(['epoch', 'precision', 'recall', 'valid_loss'])
+valid_writer.writerow(['epoch', 'mAP', 'valid_loss'])
 
 avgloss_file = open(os.path.join(stats_dir, 'avgloss.csv'), 'w', buffering=buf_size)
 avgloss_writer = csv.writer(avgloss_file)
-avgloss_writer.writerow(['agg_iter', 'precision', 'recall', 'avgloss'])
+avgloss_writer.writerow(['agg_iter', 'mAP', 'avgloss'])
 
 
 class _FedBaseContext(object):
@@ -128,8 +128,8 @@ class FedClientContext(_FedBaseContext):
     def recv_model(self):
         return self.aggregator.get_aggregated_model(suffix=self._suffix())
 
-    def send_loss(self, precision, recall, loss, weight):
-        self.aggregator.send_model((precision, recall, loss, weight), suffix=self._suffix(group="loss"))
+    def send_loss(self, mAP, loss, weight):
+        self.aggregator.send_model((mAP, loss, weight), suffix=self._suffix(group="loss"))
 
     def recv_loss(self):
         return self.aggregator.get_aggregated_model(
@@ -153,9 +153,9 @@ class FedClientContext(_FedBaseContext):
                 continue
             param.data.copy_(agg_tensor)
 
-    def do_convergence_check(self, weight, precision, recall, loss_value):
+    def do_convergence_check(self, weight, mAP, loss_value):
         self.loss_summary.append(loss_value)
-        self.send_loss(precision, recall, loss_value, weight)
+        self.send_loss(mAP, loss_value, weight)
         return self.recv_loss()
 
     # 配置聚合参数，将优化器中的参数提取出来
@@ -211,9 +211,9 @@ class FedServerContext(_FedBaseContext):
         return self.aggregator.get_models(suffix=self._suffix())
 
     # 发送收敛状态
-    def send_convergence_status(self, precision, recall, status):
+    def send_convergence_status(self, mAP, status):
         self.aggregator.send_aggregated_model(
-            (precision, recall, status), suffix=self._suffix(group="convergence")
+            (mAP, status), suffix=self._suffix(group="convergence")
         )
 
     def recv_losses(self):
@@ -225,28 +225,184 @@ class FedServerContext(_FedBaseContext):
         arbiter_logger.info('成功接受客户端发送的loss')
         total_loss = 0.0
         total_weight = 0.0
-        total_precision = 0.0
-        total_recall = 0.0
+        total_mAP = 0.
 
-        for precision, recall, loss, weight in loss_weight_pairs:
+        for mAP, loss, weight in loss_weight_pairs:
             total_loss += loss * weight
-            total_precision += precision * weight
-            total_recall += recall * weight
+            total_mAP += mAP * weight
             total_weight += weight
         mean_loss = total_loss / total_weight
-        mean_precision = total_precision / total_weight
-        mean_recall = total_recall / total_weight
+        mean_mAP = total_mAP / total_weight
 
-        avgloss_writer.writerow([self.aggregation_iteration, mean_precision, mean_recall, mean_loss])
+        avgloss_writer.writerow([self.aggregation_iteration, mean_mAP, mean_loss])
 
         is_converged = abs(mean_loss - self._loss) < self._eps
 
-        self.send_convergence_status(mean_precision, mean_recall, is_converged)
+        self.send_convergence_status(mean_mAP, is_converged)
 
         self._loss = mean_loss
         arbiter_logger.info(f'收敛性验证：loss={mean_loss},is_converged={is_converged}')
         LOGGER.info(f"convergence check: loss={mean_loss}, is_converged={is_converged}")
         return is_converged, mean_loss
+
+
+# Todo: 学习apMeter
+class AveragePrecisionMeter(object):
+    """
+    计算每个类（标签）的平均精度
+    给定输入为:
+    1. N*K的输出张量output：值越大，置信度越高;
+    2. N*K的目标张量target：二值向量，0表示负样本，1表示正样本
+    3. 可选的N*1权重向量：每个样本的权重
+    N是样本个数，K是类别即标签个数
+    """
+
+    # Todo: 这里difficult_examples的含义是什么？
+    #  可能存在难以识别的目标（模糊、被遮挡、部分消失），往往需要更加复杂的特征进行识别
+    #  为了更加有效评估目标检测算法的性能，一般会对这些目标单独处理
+    #  标记为difficult的目标物体可能不会作为正样本、也不会作为负样本，而是作为“无效”样本，不会对评价指标产生影响
+    def __init__(self, difficult_examples=False):
+        super(AveragePrecisionMeter, self).__init__()
+        self.reset()
+        self.difficult_examples = difficult_examples
+
+    def reset(self):
+        """将计量器的成员变量重置为空"""
+        self.scores = torch.FloatTensor(torch.FloatStorage())
+        self.targets = torch.LongTensor(torch.LongStorage())
+
+    def add(self, output, target):
+        """
+        Args:
+            output (Tensor): NxK tensor，每个样本对应的每个标签的预测概率向量，和为1
+            target (Tensor): binary NxK tensor，表示每个样本的真实标签分布
+            weight (optional, Tensor): Nx1 tensor，表示每个样本的权重
+        """
+
+        # Todo: 进行一些必要的维度转换与检查
+        if not torch.is_tensor(output):
+            output = torch.from_numpy(output)
+        if not torch.is_tensor(target):
+            target = torch.from_numpy(target)
+
+        if output.dim() == 1:
+            output = output.view(-1, 1)
+        else:
+            assert output.dim() == 2, \
+                'wrong output size (should be 1D or 2D with one column \
+                per class)'
+        if target.dim() == 1:
+            target = target.view(-1, 1)
+        else:
+            assert target.dim() == 2, \
+                'wrong target size (should be 1D or 2D with one column \
+                per class)'
+        if self.scores.numel() > 0:
+            assert target.size(1) == self.targets.size(1), \
+                'dimensions for output should match previously added examples.'
+
+        # 确保存储有足够的大小-->对存储进行扩容
+        if self.scores.storage().size() < self.scores.numel() + output.numel():
+            new_size = math.ceil(self.scores.storage().size() * 1.5)
+            self.scores.storage().resize_(int(new_size + output.numel()))
+            self.targets.storage().resize_(int(new_size + output.numel()))
+
+        # 存储预测分数scores和目标值targets
+        offset = self.scores.size(0) if self.scores.dim() > 0 else 0
+        self.scores.resize_(offset + output.size(0), output.size(1))
+        self.targets.resize_(offset + target.size(0), target.size(1))
+        self.scores.narrow(0, offset, output.size(0)).copy_(output)
+        self.targets.narrow(0, offset, target.size(0)).copy_(target)
+
+    def value(self):
+        """ 返回每个类的平均精度
+        Return:
+            ap (FloatTensor): 1xK tensor，对应标签（类别）k的平均精度
+        """
+
+        if self.scores.numel() == 0:
+            return 0
+        ap = torch.zeros(self.scores.size(1))
+        rg = torch.arange(1, self.scores.size(0)).float()
+        # compute average precision for each class
+        for k in range(self.scores.size(1)):
+            # sort scores
+            scores = self.scores[:, k]
+            targets = self.targets[:, k]
+            # compute average precision
+            ap[k] = AveragePrecisionMeter.average_precision(scores, targets, self.difficult_examples)
+        return ap
+
+    @staticmethod
+    def average_precision(output, target, difficult_examples=False):
+
+        # 对输出概率进行排序
+        # Todo: 这里第0维是K吗？跑一遍GCN进行验证
+        sorted, indices = torch.sort(output, dim=0, descending=True)
+
+        # 计算prec@i
+        pos_count = 0.
+        total_count = 0.
+        precision_at_i = 0.
+        # 遍历排序后的下标即可
+        for i in indices:
+            label = target[i]
+            if difficult_examples and label == 0:
+                continue
+            # 更新正标签的个数
+            if label == 1:
+                pos_count += 1
+            # 更新已遍历总标签的个数
+            total_count += 1
+            if label == 1:
+                # 说明召回水平增加，计算precision
+                precision_at_i += pos_count / total_count
+        # 除以样本的正标签个数对精度进行平均
+        # Todo: 一般不需要该判断语句，每个样本总有正标签
+        if pos_count != 0:
+            precision_at_i /= pos_count
+        # 返回该样本的average precision
+        return precision_at_i
+
+    def overall(self):
+        if self.scores.numel() == 0:
+            return 0
+        scores = self.scores.cpu().numpy()
+        targets = self.targets.cpu().numpy()
+        targets[targets == -1] = 0
+        return self.evaluation(scores, targets)
+
+    def overall_topk(self, k):
+        targets = self.targets.cpu().numpy()
+        targets[targets == -1] = 0
+        n, c = self.scores.size()
+        scores = np.zeros((n, c)) - 1
+        index = self.scores.topk(k, 1, True, True)[1].cpu().numpy()
+        tmp = self.scores.cpu().numpy()
+        for i in range(n):
+            for ind in index[i]:
+                scores[i, ind] = 1 if tmp[i, ind] >= 0 else -1
+        return self.evaluation(scores, targets)
+
+    def evaluation(self, scores_, targets_):
+        n, n_class = scores_.shape
+        Nc, Np, Ng = np.zeros(n_class), np.zeros(n_class), np.zeros(n_class)
+        for k in range(n_class):
+            scores = scores_[:, k]
+            targets = targets_[:, k]
+            targets[targets == -1] = 0
+            Ng[k] = np.sum(targets == 1)
+            Np[k] = np.sum(scores >= 0)
+            Nc[k] = np.sum(targets * (scores >= 0))
+        Np[Np == 0] = 1
+        OP = np.sum(Nc) / np.sum(Np)
+        OR = np.sum(Nc) / np.sum(Ng)
+        OF1 = (2 * OP * OR) / (OP + OR)
+
+        CP = np.sum(Nc / Np) / n_class
+        CR = np.sum(Nc / Ng) / n_class
+        CF1 = (2 * CP * CR) / (CP + CR)
+        return OP, OR, OF1, CP, CR, CF1
 
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
@@ -268,21 +424,25 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 与服务器进行握手
     context.init()
 
-    # 构建数据集
+    # 对数据集构建代码的修改
+
+    # 使用绝对路径
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+
     train_dataset = make_dataset(
         data=train_data,
         transforms=train_transforms(),
-        file_name='embedding_labels.txt'
+        category_dir=category_dir
     )
     valid_dataset = make_dataset(
         data=valid_data,
         transforms=valid_transforms(),
-        file_name='embedding_labels.txt'
+        category_dir=category_dir
     )
     batch_size = param.batch_size
     if batch_size < 0 or len(train_dataset) < batch_size:
         batch_size = len(train_dataset)
-    shuffle = False
+    shuffle = True
 
     drop_last = True
     num_workers = 32
@@ -290,18 +450,18 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: 定义collate_fn
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle, collate_fn=collate_fn
+        drop_last=drop_last, shuffle=shuffle
     )
     valid_loader = torch.utils.data.DataLoader(
         dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle, collate_fn=collate_fn
+        drop_last=drop_last, shuffle=shuffle
     )
     fitter = MultiLabelFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
 
 
-def make_dataset(data, transforms, file_name):
-    return MultiLabelDataSet(data.path, transforms, file_name=file_name)
+def make_dataset(data, category_dir, transforms):
+    return COCO(data.path, config_dir=category_dir, transforms=transforms)
 
 
 def collate_fn(data):
@@ -425,14 +585,14 @@ class MultiLabelFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: 原始的AlexNet分类器
-        # (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
+        (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
 
         # Todo: 现有的CnnRnn分类器
-        self.model, self.optimizer = _init_lstm_learner(self.param, self.param.device)
+        # self.model, self.optimizer = _init_lstm_learner(self.param, self.param.device)
 
         # Todo:
-        # self.criterion = torch.nn.BCELoss().to(self.param.device)
-        self.criterion = torch.nn.CrossEntropyLoss().to(self.param.device)
+        self.criterion = torch.nn.BCELoss().to(self.param.device)
+        # self.criterion = torch.nn.CrossEntropyLoss().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -444,6 +604,9 @@ class MultiLabelFitter(object):
         # 3. 按照每个标签所包含的样本数进行聚合，维护一个list，对应Partial Supervised论文
         self._num_per_labels = [0] * self.param.num_labels
 
+        # Todo: 创建ap_meter
+        self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
+
     def get_label_mapping(self):
         return self.label_mapping
 
@@ -451,10 +614,10 @@ class MultiLabelFitter(object):
     def fit(self, train_loader, valid_loader):
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
-            precision, recall, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
+            mAP, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
             fate_logger.info(f'已完成一轮训练+验证')
-            LOGGER.warn(f'epoch={epoch}/{self.end_epoch},precision={precision},recall={recall},loss={loss}')
-            self.on_fit_epoch_end(epoch, valid_loader, precision, recall, loss)
+            LOGGER.warn(f'epoch={epoch}/{self.end_epoch},mAP={mAP},loss={loss}')
+            self.on_fit_epoch_end(epoch, valid_loader, mAP, loss)
             if self.context.should_stop():
                 break
 
@@ -467,14 +630,13 @@ class MultiLabelFitter(object):
             self._num_data_consumed += num_samples
         fate_logger.info(f'当前epoch为{epoch}，已经消耗的样本数量为{self._num_data_consumed}')
 
-    def on_fit_epoch_end(self, epoch, valid_loader, valid_precision, valid_recall, valid_loss):
-        precision = valid_precision
-        recall = valid_recall
+    def on_fit_epoch_end(self, epoch, valid_loader, valid_mAP, valid_loss):
+        mAP = valid_mAP
         loss = valid_loss
         if self.context.should_aggregate_on_epoch(epoch):
             self.aggregate_model(epoch)
-            mean_precision, mean_recall, status = self.context.do_convergence_check(
-                len(valid_loader.sampler), precision, recall, loss
+            mean_mAP, status = self.context.do_convergence_check(
+                len(valid_loader.sampler), mAP, loss
             )
             if status:
                 self.context.set_converged()
@@ -488,24 +650,21 @@ class MultiLabelFitter(object):
 
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
-        precision = ...
-        recall = ...
-        # precision, recall, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
-        #                                      epoch, self.param.device, scheduler)
-        # Todo: 要debug的地方
-        accuracy, loss = self.train_rnn_cnn(train_loader, self.model, self.criterion, self.optimizer,
-                                            epoch, self.param.device, scheduler)
+        mAP, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
+                               epoch, self.param.device, scheduler)
+        # accuracy, loss = self.train_rnn_cnn(train_loader, self.model, self.criterion, self.optimizer,
+        #                                     epoch, self.param.device, scheduler)
 
         fate_logger.info(f'训练阶段结束,epoch = {epoch},平均loss = {loss}')
-        train_writer.writerow([epoch, precision, recall, loss])
-        return precision, recall, loss
+        train_writer.writerow([epoch, mAP, loss])
+        return mAP, loss
 
     def validate_one_epoch(self, epoch, valid_loader, scheduler):
-        precision, recall, loss = validate(valid_loader, self.model, self.criterion, epoch, self.param.device,
-                                           scheduler)
-        fate_logger.info(f'验证阶段结束,epoch = {epoch},precision = {precision},recall = {recall},平均loss = {loss}')
-        valid_writer.writerow([epoch, precision, recall, loss])
-        return precision, recall, loss
+        mAP, loss = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device,
+                                  scheduler)
+        fate_logger.info(f'验证阶段结束,epoch = {epoch},mAP = {mAP},平均loss = {loss}')
+        valid_writer.writerow([epoch, mAP, loss])
+        return mAP, loss
 
     def aggregate_model(self, epoch):
         # 配置参数，将优化器optimizer中的参数写入到list中
@@ -525,12 +684,12 @@ class MultiLabelFitter(object):
         # self.context.do_aggregation(weight=weight_list, device=self.param.device)
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
-        precision, recall, loss = self.train_one_epoch(epoch, train_loader, scheduler)
+        mAP, loss = self.train_one_epoch(epoch, train_loader, scheduler)
         if valid_loader:
-            precision, recall, loss = self.validate_one_epoch(epoch, valid_loader, scheduler)
+            mAP, loss = self.validate_one_epoch(epoch, valid_loader, scheduler)
         if self.scheduler:
             self.scheduler.on_epoch_end(epoch, self.optimizer)
-        return precision, recall, loss
+        return mAP, loss
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_samples = len(train_loader.sampler)
@@ -540,33 +699,36 @@ class MultiLabelFitter(object):
         fate_logger.info(
             f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
 
+        # 使用sigmoid，而非softmax，并不要求对所有标签的预测概率和为1，因为是在多标签的情景之下
         sigmoid_func = torch.nn.Sigmoid()
-
+        self.ap_meter.reset()
         model.train()
-        precisions = tnt.AverageValueMeter()
-        recalls = tnt.AverageValueMeter()
 
         # 对Loss进行更新
         OVERALL_LOSS_KEY = 'Overall Loss'
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-
+        # 这里不使用inp
         for train_step, (inputs, target) in enumerate(train_loader):
             inputs = inputs.to(device)
             target = target.to(device)
 
             self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
-            # 也可在聚合时候统计，这里为明了起见，之间统计
+            # 也可在聚合时候统计，这里为明了起见，直接统计
             self._num_label_consumed += target.sum().item()
 
             output = model(inputs)
+            self.ap_meter.add(output.data, target.data)
+
             loss = criterion(sigmoid_func(output), target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
-            precision, recall = calculate_accuracy_mode1(sigmoid_func(output), target)
-            precisions.add(precision)
-            recalls.add(recall)
+
+            # 暂时不使用precision和recall的度量
+            # precision, recall = calculate_accuracy_mode1(sigmoid_func(output), target)
+            # precisions.add(precision)
+            # recalls.add(recall)
 
             if scheduler:
                 agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
@@ -585,12 +747,63 @@ class MultiLabelFitter(object):
 
             # 打印进度
             LOGGER.warn(
-                f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},precision={precision},recall={recall},loss={loss}')
+                f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},loss={loss}')
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-        return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
+        mAP = 100 * self.ap_meter.value().mean()
+
+        return mAP, losses[OVERALL_LOSS_KEY].mean
+
+    def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
+        # 对Loss进行更新
+        OVERALL_LOSS_KEY = 'Overall Loss'
+        OBJECTIVE_LOSS_KEY = 'Objective Loss'
+        losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
+                              (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
+
+        total_samples = len(valid_loader.sampler)
+        batch_size = valid_loader.batch_size
+
+        total_steps = math.ceil(total_samples / batch_size)
+        fate_logger.info(f'开始一轮验证，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{total_steps}')
+
+        sigmoid_func = torch.nn.Sigmoid()
+
+        model.eval()
+        # Todo: 在开始训练之前，重置ap_meter
+        self.ap_meter.reset()
+        with torch.no_grad():
+            for train_step, (inputs, target) in enumerate(valid_loader):
+                inputs = inputs.to(device)
+                target = target.to(device)
+                output = model(inputs)
+                loss = criterion(sigmoid_func(output), target)
+
+                # 将输出和对应的target加入到ap_meter中
+                # Todo: 对相关格式的验证
+                self.ap_meter.add(output.data, target.data)
+
+                # precision, recall = calculate_accuracy_mode1(sigmoid_func(output), target)
+                # precisions.add(precision)
+                # recalls.add(recall)
+                if scheduler:
+                    agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
+                    loss = agg_loss.overall_loss
+                    losses[OVERALL_LOSS_KEY].add(loss.item())
+                    for lc in agg_loss.loss_components:
+                        if lc.name not in losses:
+                            losses[lc.name] = tnt.AverageValueMeter()
+                        losses[lc.name].add(lc.value.item())
+                else:
+                    losses[OVERALL_LOSS_KEY].add(loss.item())
+                # LOGGER.warn(
+                #     f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
+        # 一个batch走完后，计算ap_meter
+
+        mAP = 100 * self.ap_meter.value().mean()
+        return mAP, losses[OVERALL_LOSS_KEY].mean
 
     def train_rnn_cnn(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_step = len(train_loader)
@@ -620,6 +833,17 @@ class MultiLabelFitter(object):
         return accuracy, loss
 
 
+def _init_learner(param, device='cpu'):
+    # Todo: 将通用部分提取出来
+    model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels)
+    # 这里的超参数设置
+    optimizer = torch.optim.SGD(model.parameters(), lr=param.lr, momentum=0.9, weight_decay=1e-4)
+    scheduler = None
+    if param.sched_dict:
+        scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)
+    return model, scheduler, optimizer
+
+
 def calculate_cnn_rnn_accuracy(labels, predict_labels, lengths):
     total = sum(lengths)
     right = 0
@@ -630,58 +854,7 @@ def calculate_cnn_rnn_accuracy(labels, predict_labels, lengths):
     return right / total
 
 
-def validate(valid_loader, model, criterion, epoch, device, scheduler):
-    # 这里
-    precisions = tnt.AverageValueMeter()
-    recalls = tnt.AverageValueMeter()
-    # 对Loss进行更新
-    OVERALL_LOSS_KEY = 'Overall Loss'
-    OBJECTIVE_LOSS_KEY = 'Objective Loss'
-    losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
-                          (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-
-    total_samples = len(valid_loader.sampler)
-    batch_size = valid_loader.batch_size
-
-    total_steps = math.ceil(total_samples / batch_size)
-    fate_logger.info(f'开始一轮验证，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{total_steps}')
-    sigmoid_func = torch.nn.Sigmoid()
-    model.eval()
-
-    with torch.no_grad():
-        for validate_step, (inputs, target) in enumerate(valid_loader):
-            inputs = inputs.to(device)
-            target = target.to(device)
-            output = model(inputs)
-            loss = criterion(sigmoid_func(output), target)
-            precision, recall = calculate_accuracy_mode1(sigmoid_func(output), target)
-            precisions.add(precision)
-            recalls.add(recall)
-            if scheduler:
-                agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
-                loss = agg_loss.overall_loss
-                losses[OVERALL_LOSS_KEY].add(loss.item())
-                for lc in agg_loss.loss_components:
-                    if lc.name not in losses:
-                        losses[lc.name] = tnt.AverageValueMeter()
-                    losses[lc.name].add(lc.value.item())
-            else:
-                losses[OVERALL_LOSS_KEY].add(loss.item())
-            LOGGER.warn(
-                f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
-    return precisions.mean, recalls.mean, losses[OVERALL_LOSS_KEY].mean
-
-
-def _init_learner(param, device='cpu'):
-    # Todo: 将通用部分提取出来
-    model = create_model(param.pretrained, param.dataset, param.arch, num_classes=param.num_labels, device=device)
-    optimizer = torch.optim.SGD(model.parameters(), lr=param.lr, momentum=0.9)
-    scheduler = None
-    if param.sched_dict:
-        scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)
-    return model, scheduler, optimizer
-
-
+# Todo: LSTM的代码改写
 def _init_lstm_learner(param, device='cpu'):
     # 先使用硬编码的参数
     embed_size = 8
@@ -700,6 +873,8 @@ def _init_lstm_learner(param, device='cpu'):
     return model, optimizer
 
 
+# 设定阈值计算查准率和查全率
+# Todo: 关于阈值的设定方式
 def calculate_accuracy_mode1(model_pred, labels):
     # 精度阈值
     accuracy_th = 0.6
@@ -736,6 +911,7 @@ def train_transforms():
 def valid_transforms():
     return transforms.Compose([
         transforms.Resize(256),
+        # 输入图像是224*224
         transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])

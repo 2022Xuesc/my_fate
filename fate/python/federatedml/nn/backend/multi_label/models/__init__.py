@@ -1,8 +1,8 @@
+import torch.nn
 import torchvision.models as torch_models
 
 from federatedml.nn.backend.distiller.utils import set_model_input_shape_attr
 from federatedml.nn.backend.distiller.models.imagenet.alexnet_batchnorm import AlexNetBN
-
 
 from federatedml.nn.backend.multi_label.models.lstm.cnn_rnn import CnnRnn
 
@@ -28,8 +28,16 @@ def create_model(pretrained, dataset, arch, device, num_classes=1000):
     return model.to(device)
 
 
+def create_resnet101_model(pretrained, device, num_classes=80):
+    # Todo: 先下载1000类的全连接层
+    model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
+    model.fc = torch.nn.Sequential(torch.nn.Linear(2048, num_classes))
+    torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
+    return model.to(device)
+
+
 def create_lstm_model(embed_size, hidden_size, num_layers, label_num, device):
-    model = CnnRnn(embed_size,hidden_size,label_num,num_layers,device)
+    model = CnnRnn(embed_size, hidden_size, label_num, num_layers, device)
     return model
 
 

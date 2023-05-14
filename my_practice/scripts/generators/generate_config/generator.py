@@ -2,10 +2,10 @@ import json
 import os.path
 
 data_dir = '/data/projects/clustered_dataset'
-namespace = 'ms-coco-non-iid'
+namespace = 'coco-clients10'
 type = 'non-iid'
 
-client_num = 8
+client_num = 10
 phases = ['train', 'val']
 dir_path = f"../../multi-label/server/bind_data/{type}"
 if not os.path.exists(dir_path):

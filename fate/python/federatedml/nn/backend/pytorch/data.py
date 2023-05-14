@@ -268,10 +268,12 @@ class COCO(Dataset):
         self.get_anno()
 
         self.num_classes = len(self.cat2idx)
-        inp_file = os.path.join(self.config_dir,inp_name)
-        with open(inp_file, 'rb') as f:
-            self.inp = pickle.load(f)
-        self.inp_name = inp_name
+        self.inp = None
+        if inp_name is not None:
+            inp_file = os.path.join(self.config_dir, inp_name)
+            with open(inp_file, 'rb') as f:
+                self.inp = pickle.load(f)
+            self.inp_name = inp_name
 
     def get_anno(self):
         list_path = os.path.join(self.images_dir, 'anno.json')
@@ -293,7 +295,6 @@ class COCO(Dataset):
         img = Image.open(os.path.join(self.images_dir, filename)).convert('RGB')
         if self.transforms is not None:
             img = self.transforms(img)
-        # Todo: 这里的target初始化成-1，然后将所属标签集置为1
-        target = np.zeros(self.num_classes, np.float32) - 1
+        target = np.zeros(self.num_classes, np.float32)
         target[labels] = 1
-        return (img, self.inp), target
+        return img, target

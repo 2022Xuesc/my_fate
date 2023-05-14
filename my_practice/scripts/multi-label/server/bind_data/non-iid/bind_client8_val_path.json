@@ -1,6 +1,6 @@
 {
     "engine": "PATH",
-    "namespace": "ms-coco-non-iid",
+    "namespace": "coco-clients10",
     "name": "client8_val",
     "address": {
         "path": "/data/projects/clustered_dataset/client8/val"
