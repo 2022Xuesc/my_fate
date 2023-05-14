@@ -427,7 +427,9 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/dataset'
+
+    # 这里改成服务器路径
 
     train_dataset = make_dataset(
         data=train_data,
