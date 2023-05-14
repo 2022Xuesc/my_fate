@@ -232,8 +232,10 @@ client_nums = 10
 image_dir = "/data/projects/clustered_dataset"
 for i in range(client_nums):
     client_id = i + 1
-    generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
-    generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
+    # generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
+    # generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
+    generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
+    generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
 
 # Todo: 客户端待执行代码
 # client_nums = 10

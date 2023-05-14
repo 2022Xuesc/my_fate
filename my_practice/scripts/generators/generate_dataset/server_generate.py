@@ -64,5 +64,6 @@ test_annotation_file = os.path.join(annotations_dir, 'image_info_test2014.json')
 # 为每个文件夹生成标注数据以及config.yaml文件
 # generate_dataset(8)
 
-clustered_dir = '/data/projects/clustered_dataset'
-generate_embedding_labels_for_clusters(clustered_dir, client_num=8)
+# clustered_dir = '/data/projects/clustered_dataset'
+# generate_embedding_labels_for_clusters(clustered_dir, client_num=8)
+
