@@ -78,7 +78,7 @@
           "reader_0": {
             "table": {
               "name": "client1_train",
-              "namespace": "coco-clients10-iid-iid"
+              "namespace": "coco-clients10-iid"
             }
           },
           "reader_1": {

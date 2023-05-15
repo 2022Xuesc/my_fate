@@ -71,6 +71,10 @@ class _FedBaseContext(object):
 
     # Todo: 发送消息时，可以指定当前的迭代信息，考虑在此处进行异步优化
     def _suffix(self, group: str = "model"):
+        # Todo: 注意这里的后缀
+        #  self._name --> "default"
+        #  group      --> "model"
+        #  iteration  --> `当前聚合轮次`
         return (
             self._name,
             group,
@@ -120,6 +124,7 @@ class FedClientContext(_FedBaseContext):
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
             tensor_arrs.append(tensor_arr)
+
         self.aggregator.send_model(
             (tensor_arrs, weight), suffix=self._suffix()
         )
@@ -427,7 +432,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    category_dir = '/data/projects/dataset'
+    # category_dir = '/data/projects/dataset'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -483,12 +489,19 @@ def collate_fn(data):
 class MultiLabelFedAggregator(object):
     def __init__(self, context: FedServerContext):
         self.context = context
+        self.global_models = None
+        self.num_of_recv_models = 0
+        self.client_num = 10
+        self.max_num_of_models = self.client_num * self.context.max_num_aggregation
 
     def fit(self, loss_callback):
         while not self.context.finished():
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
-            cur_iteration = self.context.aggregation_iteration
-            arbiter_logger.info(f'当前聚合轮次为{cur_iteration},成功接收到客户端的模型参数!')
+            # 收到的是空列表，则跳过当前轮次，继续判定
+            if len(recv_elements) == 0:
+                continue
+            self.num_of_recv_models += len(recv_elements)
+            # Todo: 返回结果中附加sender_ids，有指向性地发送模型数据
             LOGGER.warn(f'收到{len(recv_elements)}客户端发送过来的模型')
             tensors = [party_tuple[0] for party_tuple in recv_elements]
 
@@ -499,25 +512,39 @@ class MultiLabelFedAggregator(object):
             if isinstance(degrees[0], list):
                 self.aggregate_by_labels(tensors, degrees)
             else:
-                total_degree = sum(degrees)
-                for i in range(len(tensors)):
-                    for j, tensor in enumerate(tensors[i]):
-                        tensor *= degrees[i]
-                        tensor /= total_degree
-                        if i != 0:
-                            tensors[0][j] += tensor
-            LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
+                self.aggregate_whole_model(tensors, degrees)
+            # tensors[0]即为当次聚合后的模型
+            # Todo: 下面将tensors[0]和全局模型进行聚合
+            if self.global_models is None:
+                self.global_models = tensors[0]
+            else:
+                alpha = 0.2
+                degrees = [1 - alpha, alpha]
+                tensors = [self.global_models, tensors[0]]
+                self.aggregate_whole_model(tensors, degrees)
+                self.global_models = tensors[0]
 
-            # 分析聚合后模型最后两层为0的子分类器的个数
-            zero_labels = sum(tensors[0][21] == 0)
-            LOGGER.warn(f'聚合后向量为0的标签数为{zero_labels}')
-            self.context.send_model(tensors[0])
-            LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
-            is_converged, loss = self.context.do_convergence_check()
-            loss_callback(self.context.aggregation_iteration, float(loss))
-            self.context.increase_aggregation_iteration()
-            if is_converged:
+            self.context.send_model(self.global_models)
+
+            # is_converged, loss = self.context.do_convergence_check()
+
+            # loss_callback(self.context.aggregation_iteration, float(loss))
+            # if is_converged:
+            #     break
+
+            # Todo: 所有模型都已经聚合完毕
+            if self.num_of_recv_models == self.max_num_of_models:
                 break
+
+    # 普通聚合
+    def aggregate_whole_model(self, tensors, degrees):
+        total_degree = sum(degrees)
+        for i in range(len(tensors)):
+            for j, tensor in enumerate(tensors[i]):
+                tensor *= degrees[i]
+                tensor /= total_degree
+                if i != 0:
+                    tensors[0][j] += tensor
 
     # 分标签聚合
     def aggregate_by_labels(self, tensors, degrees):
@@ -637,11 +664,11 @@ class MultiLabelFitter(object):
         loss = valid_loss
         if self.context.should_aggregate_on_epoch(epoch):
             self.aggregate_model(epoch)
-            mean_mAP, status = self.context.do_convergence_check(
-                len(valid_loader.sampler), mAP, loss
-            )
-            if status:
-                self.context.set_converged()
+            # mean_mAP, status = self.context.do_convergence_check(
+            #     len(valid_loader.sampler), mAP, loss
+            # )
+            # if status:
+            #     self.context.set_converged()
             self._all_consumed_data_aggregated = True
 
             self._num_data_consumed = 0
@@ -777,7 +804,7 @@ class MultiLabelFitter(object):
         # Todo: 在开始训练之前，重置ap_meter
         self.ap_meter.reset()
         with torch.no_grad():
-            for train_step, (inputs, target) in enumerate(valid_loader):
+            for validate_step, (inputs, target) in enumerate(valid_loader):
                 inputs = inputs.to(device)
                 target = target.to(device)
                 output = model(inputs)
@@ -800,9 +827,9 @@ class MultiLabelFitter(object):
                         losses[lc.name].add(lc.value.item())
                 else:
                     losses[OVERALL_LOSS_KEY].add(loss.item())
-                # LOGGER.warn(
-                #     f'[valid] epoch = {epoch}：{validate_step} / {total_steps},precision={precision},recall={recall},loss={loss}')
-        # 一个batch走完后，计算ap_meter
+                # 一个batch走完后，计算ap_meter
+                LOGGER.warn(
+                    f'[valid] epoch={epoch}, step={validate_step} / {total_steps},loss={loss}')
 
         mAP = 100 * self.ap_meter.value().mean()
         return mAP, losses[OVERALL_LOSS_KEY].mean
