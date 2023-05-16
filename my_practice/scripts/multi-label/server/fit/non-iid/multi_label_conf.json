@@ -56,13 +56,13 @@
             "lr_scheduler": {
               "instance_name": "pruning_lr",
               "starting_epoch": 100,
-              "ending_epoch": 800,
+              "ending_epoch": 400,
               "frequency": 5
             },
             "regularizer": {
               "instance_name": "l2_regularizer",
               "starting_epoch": 0,
-              "ending_epoch": 1000,
+              "ending_epoch": 500,
               "frequency": 1
             }
           }
