@@ -632,9 +632,9 @@ class Federation(object):
                 LOGGER.debug(f"[{log_str}]remote object with type: {type(v)}")
                 dtype = FederationDataType.OBJECT
 
+        send_agg_model = len(self.sender_parties) > 0
         # Todo: 这里只对参与当前轮聚合的客户端发送
-        local_parties = self.sender_parties if len(self.sender_parties) > 0 else parties
-        # for party in parties:
+        local_parties = self.sender_parties if send_agg_model else parties
         for party in local_parties:
             # 这里对tagged_key仍然进行修改
             elements = tag.split('.')
@@ -654,7 +654,9 @@ class Federation(object):
                 )
                 self._put_status(party, _tagged_key, (_v.name, _v.namespace, dtype))  # 将表存储到消息“缓存”中
                 # 发送完聚合模型后再增加agg_iter
-
+                if send_agg_model:
+                    LOGGER.warn(
+                        f"[服务器-分发模型] 服务器将全局模型分发给客户端: {party.role}-{party.party_id}-{self.agg_iters[party.party_id]}.")
                 self.agg_iters[party.party_id] += 1
             else:
                 self._put_object(party, _tagged_key, v)
@@ -695,7 +697,7 @@ class Federation(object):
                 elements[-1] = str(self.agg_iters[party.party_id])
                 tag = '.'.join(elements)
             _tagged_key = self._federation_object_key(name, tag, party, self._party)  # 这里使用对应party_id的聚合轮次
-            tasks.append(get_func(self._get_status, _tagged_key, self.sender_parties, party))
+            tasks.append(get_func(self._get_status, _tagged_key, self.sender_parties, party=party))
         results = self._loop.run_until_complete(asyncio.gather(*tasks))
 
         rtn = []
@@ -740,6 +742,48 @@ _meta_table: typing.Optional[Table] = None
 _SESSION = Session(uuid.uuid1().hex)
 
 
+# 不要求一定检索到键key
+async def _directly_get_value(get_func, key, sender_parties, session=None, party=None):
+    value = get_func(key)
+    # 说明成功检索到了最新的模型，此时将对应客户端的模型聚合轮次增加1
+    # 1. 根据key检索对应的party_id
+    #  key的形式为{prefix}-host-9997-arbiter-10000
+    # 2.
+    if value is not None:
+        # 此外，还需要将sender_id存储起来
+        LOGGER.warn(f"[服务器-接收模型] 服务器接收到客户端{party.role}-{party.party_id}发送的模型...")
+        table: Table = _load_table(
+            session=session, name=value[0], namespace=value[1], need_cleanup=False
+        )
+        if table is not None:
+            sender_parties.append(party)
+    return value
+
+
+async def _check_status_and_get_value(get_func, key, sender_parties=None, session=None, party=None):
+    value = get_func(key)
+    # 如果是空的话会重复调用
+    while True:
+        if value is not None:
+            # value是字符串，说明是建立连接的过程
+            if isinstance(value, str):
+                break
+            # 尝试加载表
+            table: Table = _load_table(
+                session=session, name=value[0], namespace=value[1], need_cleanup=False
+            )
+            if table is not None:
+                break
+        await asyncio.sleep(0.1)
+        value = get_func(key)
+    LOGGER.debug(
+        "[GET] Got {} type {}".format(
+            key, "Table" if isinstance(value, tuple) else "Object"
+        )
+    )
+    return value
+
+
 def _get_meta_table():
     global _meta_table
     if _meta_table is None:
@@ -772,33 +816,6 @@ def _get_data_dir():
 
 def _get_storage_dir(*args):
     return _data_dir.joinpath(*args)
-
-
-# 不要求一定检索到键key
-async def _directly_get_value(get_func, key, sender_parties=None, party=None):
-    value = get_func(key)
-    # 说明成功检索到了最新的模型，此时将对应客户端的模型聚合轮次增加1
-    # 1. 根据key检索对应的party_id
-    #  key的形式为{prefix}-host-9997-arbiter-10000
-    # 2.
-    if value is not None:
-        # 此外，还需要将sender_id存储起来
-        sender_parties.append(party)
-    return value
-
-
-async def _check_status_and_get_value(get_func, key, sender_parties=None, party=None):
-    value = get_func(key)
-    # 如果是空的话会重复调用
-    while value is None:
-        await asyncio.sleep(0.1)
-        value = get_func(key)
-    LOGGER.debug(
-        "[GET] Got {} type {}".format(
-            key, "Table" if isinstance(value, tuple) else "Object"
-        )
-    )
-    return value
 
 
 def _create_table(

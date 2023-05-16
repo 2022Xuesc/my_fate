@@ -96,7 +96,7 @@ class _FedBaseContext(object):
 
 # 创建客户端的上下文
 class FedClientContext(_FedBaseContext):
-    def __init__(self, max_num_aggregation, aggregate_every_n_epoch, name="default"):
+    def __init__(self, max_num_aggregation, aggregate_every_n_epoch, name="feat"):
         super(FedClientContext, self).__init__(max_num_aggregation=max_num_aggregation, name=name)
         self.transfer_variable = SecureAggregatorTransVar()
         self.aggregator = aggregator.Client(self.transfer_variable.aggregator_trans_var)
@@ -188,7 +188,7 @@ class FedClientContext(_FedBaseContext):
 # 创建服务器端的上下文
 class FedServerContext(_FedBaseContext):
     # Todo: 这里的name关系到FATE架构的通信，不能随便更改
-    def __init__(self, max_num_aggregation, eps=0.0, name="default"):
+    def __init__(self, max_num_aggregation, eps=0.0, name="feat"):
         super(FedServerContext, self).__init__(
             max_num_aggregation=max_num_aggregation, name=name
         )
