@@ -34,7 +34,7 @@
         "max_iter": 100,
         "batch_size": 64,
         "aggregate_every_n_epoch": 5,
-        "lr": 0.1,
+        "lr": 0.01,
         "num_labels": 80,
         "pretrained": true,
         "dataset": "coco",
