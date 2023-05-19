@@ -546,7 +546,7 @@ class GCNFitter(object):
                 else:
                     losses[OVERALL_LOSS_KEY].add(loss.item())
                 LOGGER.warn(
-                    f'[valid] epoch = {epoch}：{validate_step} / {steps},loss={loss.item()}')
+                    f'[valid] epoch = {epoch}：{validate_step} / {steps},map={100 * self.ap_meter.value().mean().item()}, loss={loss.item()}')
         map = 100 * self.ap_meter.value().mean()
         loss = losses[OVERALL_LOSS_KEY].mean
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
@@ -603,7 +603,7 @@ class GCNFitter(object):
 
             # 打印进度，打印进度中只关注损失
             LOGGER.warn(
-                f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},loss={loss.item()}')
+                f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},,map={100 * self.ap_meter.value().mean().item()},loss={loss.item()}')
 
             optimizer.zero_grad()
             loss.backward()
