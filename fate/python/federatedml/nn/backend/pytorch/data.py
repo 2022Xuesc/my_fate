@@ -286,7 +286,12 @@ class COCO(Dataset):
 
     def __getitem__(self, index):
         item = self.img_list[index]
-        return self.get(item)
+        img, target = self.get(item)
+        # 如果self.inp不为空，说明是在GCN的配置环境下
+        if self.inp is not None:
+            return (img, self.inp), target
+        else:  # 否则使用的是常规的网络，直接返回img和target即可
+            return img, target
 
     def get(self, item):
         filename = item['file_name']
@@ -295,6 +300,7 @@ class COCO(Dataset):
         img = Image.open(os.path.join(self.images_dir, filename)).convert('RGB')
         if self.transforms is not None:
             img = self.transforms(img)
+        # Todo: 这里负标签设置为0，正标签设置为1
         target = np.zeros(self.num_classes, np.float32)
         target[labels] = 1
         return img, target

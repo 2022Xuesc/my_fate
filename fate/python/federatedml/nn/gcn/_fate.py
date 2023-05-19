@@ -26,28 +26,16 @@ from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 from federatedml.nn.backend.gcn.utils import MultiScaleCrop, Warp
 
-from torch.nn.utils.rnn import *
-
-log_dir = 'logs'
+# 统计数据的存储路径
 stats_dir = os.path.join(os.getcwd(), 'stats')
-LOGGER.warn(stats_dir)
-models_dir = 'models'
 
 if not os.path.exists(stats_dir):
     os.makedirs(stats_dir)
 
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
-
-if not os.path.exists(models_dir):
-    os.makedirs(models_dir)
-
-fate_logger = logging.getLogger('fate_logger')
-arbiter_logger = logging.getLogger('arbiter_logger')
-
 buf_size = 1
 # 定义和实验数据记录相关的对象
 
+# Todo: 客户端的相关记录
 train_file = open(os.path.join(stats_dir, 'train.csv'), 'w', buffering=buf_size)
 train_writer = csv.writer(train_file)
 train_writer.writerow(
@@ -63,19 +51,24 @@ valid_writer = csv.writer(valid_file)
 train_writer.writerow(
     ['epoch', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map', 'loss'])
 
+# Todo: 服务器端的相关记录
 avgloss_file = open(os.path.join(stats_dir, 'avgloss.csv'), 'w', buffering=buf_size)
 avgloss_writer = csv.writer(avgloss_file)
-avgloss_writer.writerow(['agg_iter', 'precision', 'recall', 'avgloss'])
+avgloss_writer.writerow(
+    ['agg_iter', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map', 'loss'])
 
 
 class _FedBaseContext(object):
     def __init__(self, max_num_aggregation, name):
-        self.max_num_aggregation = max_num_aggregation
-        # Todo: 关于名称的指定？
         self._name = name
+
+        # Todo: 客户端设置最大聚合轮次和当前聚合轮次
+        #  供同步和简单异步使用
+        self.max_num_aggregation = max_num_aggregation
         self._aggregation_iteration = 0
 
-    # Todo: 发送消息时，可以指定当前的迭代信息，考虑在此处进行异步优化
+    # Todo: 定义发送消息的后缀
+    #  会变化的是当前聚合轮次，表示为哪个回合的模型发送聚合权重
     def _suffix(self, group: str = "model"):
         return (
             self._name,
@@ -109,8 +102,9 @@ class FedClientContext(_FedBaseContext):
         self._params: list = []
 
         self._should_stop = False
-        self.loss_summary = []
+        self.metrics_summary = []
 
+    # Todo: 服务器和客户端之间建立连接的部分，可以不用考虑
     def init(self):
         self.random_padding_cipher.create_cipher()
 
@@ -119,8 +113,8 @@ class FedClientContext(_FedBaseContext):
             torch.clone(tensor).detach().mul_(weight)
         ).numpy()
 
-    # 发送模型
-    # 这里tensors是模型参数，weight是模型聚合权重
+    # Todo: 发送模型
+    #  tensors是模型参数，weight是模型聚合权重
     def send_model(self, tensors, weight):
         tensor_arrs = []
         for tensor in tensors:
@@ -134,10 +128,11 @@ class FedClientContext(_FedBaseContext):
     def recv_model(self):
         return self.aggregator.get_aggregated_model(suffix=self._suffix())
 
-    def send_loss(self, loss, weight):
-        self.aggregator.send_model((loss, weight), suffix=self._suffix(group="loss"))
+    # Todo: 向服务器发送相关的度量指标
+    def send_metrics(self, metrics, weight):
+        self.aggregator.send_model((metrics, weight), suffix=self._suffix(group="metrics"))
 
-    def recv_loss(self):
+    def recv_convergence(self):
         return self.aggregator.get_aggregated_model(
             suffix=self._suffix(group="convergence")
         )
@@ -146,23 +141,29 @@ class FedClientContext(_FedBaseContext):
     def do_aggregation(self, weight, device):
         # 发送全局模型
         self.send_model(self._params, weight)
-        LOGGER.warn("模型发送完毕")
+        LOGGER.warn(f"{self.aggregation_iteration}个模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
+
+        # 使用接收的全局模型更新本地模型
         agg_tensors = []
         for arr in recv_elements:
             agg_tensors.append(torch.from_numpy(arr).to(device))
         for param, agg_tensor in zip(self._params, agg_tensors):
-            # param.grad处理的是哪种情况
+            # Todo: param.grad处理的是哪种情况
             if param.grad is None:
                 continue
             param.data.copy_(agg_tensor)
 
-    def do_convergence_check(self, weight, loss_value):
-        self.loss_summary.append(loss_value)
-        self.send_loss(loss_value, weight)
-        return self.recv_loss()
+    # 关于度量的向量
+    def do_convergence_check(self, weight, metrics):
+        self.metrics_summary.append(metrics)
+
+        self.send_metrics(metrics, weight)
+        # 接收收敛情况
+        # return self.recv_convergence()
+        return False
 
     # 配置聚合参数，将优化器中的参数提取出来
     def configure_aggregation_params(self, optimizer):
@@ -222,30 +223,34 @@ class FedServerContext(_FedBaseContext):
             (status), suffix=self._suffix(group="convergence")
         )
 
-    def recv_losses(self):
-        return self.aggregator.get_models(suffix=self._suffix(group="loss"))
+    def recv_metrics(self):
+        return self.aggregator.get_models(suffix=self._suffix(group="metrics"))
 
     def do_convergence_check(self):
-        arbiter_logger.info('正在等待客户端发送loss')
-        loss_weight_pairs = self.recv_losses()
-        arbiter_logger.info('成功接受客户端发送的loss')
-        total_loss = 0.0
+        loss_metrics_pairs = self.recv_metrics()
+        total_metrics = None
         total_weight = 0.0
 
-        for loss, weight in loss_weight_pairs:
-            total_loss += loss * weight
+        for metrics, weight in loss_metrics_pairs:
+            cur_metrics = [metric * weight for metric in metrics]
+            if total_metrics is None:
+                total_metrics = cur_metrics
+            else:
+                total_metrics = [x + y for x, y in zip(total_metrics, cur_metrics)]  # Todo: 这样是附加，而不是对应位置相加
             total_weight += weight
 
-        mean_loss = total_loss / total_weight
+        # 这里的除也要改
+        mean_metrics = [metric / total_weight for metric in total_metrics]
 
-        avgloss_writer.writerow([self.aggregation_iteration, mean_loss])
+        avgloss_writer.writerow([self.aggregation_iteration] + mean_metrics)
+
+        mean_loss = mean_metrics[-1]
 
         is_converged = abs(mean_loss - self._loss) < self._eps
 
-        self.send_convergence_status(is_converged)
+        # self.send_convergence_status(is_converged)
 
-        self._loss = mean_loss
-        arbiter_logger.info(f'收敛性验证：loss={mean_loss},is_converged={is_converged}')
+        self._loss = mean_metrics[-1]
         LOGGER.info(f"convergence check: loss={mean_loss}, is_converged={is_converged}")
         return is_converged, mean_loss
 
@@ -268,8 +273,9 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
+    # category_dir = '/data/projects/dataset'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
-    category_dir = '../../../../../my_practice/dataset/coco'
     inp_name = 'coco_glove_word2vec.pkl'
 
     # 构建数据集
@@ -318,7 +324,6 @@ class GCNFedAggregator(object):
         while not self.context.finished():
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
             cur_iteration = self.context.aggregation_iteration
-            arbiter_logger.info(f'当前聚合轮次为{cur_iteration},成功接收到客户端的模型参数!')
             LOGGER.warn(f'收到{len(recv_elements)}客户端发送过来的模型')
             tensors = [party_tuple[0] for party_tuple in recv_elements]
 
@@ -338,9 +343,6 @@ class GCNFedAggregator(object):
                             tensors[0][j] += tensor
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            # 分析聚合后模型最后两层为0的子分类器的个数
-            zero_labels = sum(tensors[0][21] == 0)
-            LOGGER.warn(f'聚合后向量为0的标签数为{zero_labels}')
             self.context.send_model(tensors[0])
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             is_converged, loss = self.context.do_convergence_check()
@@ -442,27 +444,24 @@ class GCNFitter(object):
     def fit(self, train_loader, valid_loader):
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
-            valid_loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
-            fate_logger.info(f'已完成一轮训练+验证')
-            self.on_fit_epoch_end(epoch, valid_loader, valid_loss)
+            valid_metrics = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
+            self.on_fit_epoch_end(epoch, valid_loader, valid_metrics)
             if self.context.should_stop():
                 break
 
     def on_fit_epoch_start(self, epoch, num_samples):
         if self._all_consumed_data_aggregated:
-            fate_logger.info(f'新一轮聚合开始')
             self._num_data_consumed = num_samples
             self._all_consumed_data_aggregated = False
         else:
             self._num_data_consumed += num_samples
-        fate_logger.info(f'当前epoch为{epoch}，已经消耗的样本数量为{self._num_data_consumed}')
 
-    def on_fit_epoch_end(self, epoch, valid_loader, valid_loss):
-        loss = valid_loss
+    def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
+        metrics = valid_metrics
         if self.context.should_aggregate_on_epoch(epoch):
             self.aggregate_model(epoch)
             status = self.context.do_convergence_check(
-                len(valid_loader.sampler), loss
+                len(valid_loader.sampler), metrics
             )
             if status:
                 self.context.set_converged()
@@ -479,12 +478,14 @@ class GCNFitter(object):
         # 度量重置
         self.ap_meter.reset()
         # Todo: 调整学习率的部分放到scheduler中执行
-        loss = self.train(train_loader, self.model, self.criterion, self.optimizer, epoch, self.param.device, scheduler)
-        return loss
+        metrics = self.train(train_loader, self.model, self.criterion, self.optimizer, epoch, self.param.device,
+                             scheduler)
+        return metrics
 
     def validate_one_epoch(self, epoch, valid_loader, scheduler):
-        loss = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device, scheduler)
-        return loss
+        self.ap_meter.reset()
+        metrics = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device, scheduler)
+        return metrics
 
     def aggregate_model(self, epoch):
         # 配置参数，将优化器optimizer中的参数写入到list中
@@ -505,43 +506,34 @@ class GCNFitter(object):
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         self.train_one_epoch(epoch, train_loader, scheduler)
-        valid_loss = None
+        valid_metrics = None
         if valid_loader:
-            valid_loss = self.validate_one_epoch(epoch, valid_loader, scheduler)
+            valid_metrics = self.validate_one_epoch(epoch, valid_loader, scheduler)
         if self.scheduler:
             self.scheduler.on_epoch_end(epoch, self.optimizer)
-        return valid_loss
+        return valid_metrics
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         total_samples = len(valid_loader.sampler)
+        # batch_size = 1用于本地测试
         batch_size = 1 if total_samples < valid_loader.batch_size else valid_loader.batch_size
-        steps_per_epoch = math.ceil(total_samples / batch_size)
+        steps = math.ceil(total_samples / batch_size)
 
         OVERALL_LOSS_KEY = 'Overall Loss'
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        self.ap_meter.reset()
-        fate_logger.info(
-            f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
         model.eval()
         with torch.no_grad():
             for validate_step, ((features, inp), target) in enumerate(valid_loader):
-                # 这里的inputs是一个长度为3的列表，inputs[0]是features,inputs[1]是输入的相关性矩阵
                 features = features.to(device)
                 inp = inp.to(device)
                 target = target.to(device)
-                # Todo: 处理target
-                # Todo: 这里对target进行处理
-                target_bk = target.clone()
-                # Todo: 什么时候target中会出现0，不是为1或者-1吗？
-                target[target == 0] = 1
-                target[target == -1] = 0
 
                 output = model(features, inp)
                 loss = criterion(output, target)
-                # output.data后require_grad为false
-                self.ap_meter.add(output.data, target_bk.clone().detach())
+                # Todo: 这里需要对target进行detach操作吗？
+                self.ap_meter.add(output.data, target)
 
                 if scheduler:
                     agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
@@ -554,23 +546,21 @@ class GCNFitter(object):
                 else:
                     losses[OVERALL_LOSS_KEY].add(loss.item())
                 LOGGER.warn(
-                    f'[valid] epoch = {epoch}：{validate_step} / {steps_per_epoch},loss={loss.item()}')
+                    f'[valid] epoch = {epoch}：{validate_step} / {steps},loss={loss.item()}')
         map = 100 * self.ap_meter.value().mean()
         loss = losses[OVERALL_LOSS_KEY].mean
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
+        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OF1_k, CP_k, CR_k, CF1_k, map.item(), loss]
         # 将这些指标写入文件中
         # 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3'
-        valid_writer.writerow([epoch, OP, OR, OF1, CP, CR, CF1, OP_k, OF1_k, CP_k, CR_k, CF1_k, map, loss])
-        return losses[OVERALL_LOSS_KEY].mean
+        valid_writer.writerow([epoch] + metrics)
+        return metrics
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_samples = len(train_loader.sampler)
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
         steps_per_epoch = math.ceil(total_samples / batch_size)
-
-        fate_logger.info(
-            f'开始一轮训练，epoch为:{epoch}，batch_size为:{batch_size}，每个epoch需要的step为:{steps_per_epoch}')
 
         model.train()
         # Todo: 记录损失的相关信息
@@ -580,25 +570,19 @@ class GCNFitter(object):
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
-            # 这里的inputs是一个长度为3的列表，inputs[0]是features,inputs[1]是输入的相关性矩阵
+            # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
             inp = inp.to(device)
             target = target.to(device)
-
-            # Todo: 这里对target进行处理
-            target_bk = target.clone()
-            # Todo: 什么时候target中会出现0，不是为1或者-1吗？
-            target[target == 0] = 1
-            target[target == -1] = 0
 
             # 计算模型输出
             output = model(features, inp)
             loss = criterion(output, target)
 
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
-            # Todo: 将计算结果添加到ap_meter中
 
-            self.ap_meter.add(output.data, target_bk)
+            # Todo: 将计算结果添加到ap_meter中
+            self.ap_meter.add(output.data, target)
 
             if scheduler:
                 agg_loss = scheduler.before_backward_pass(epoch, loss, return_loss_components=True)
@@ -611,41 +595,44 @@ class GCNFitter(object):
             else:
                 losses[OVERALL_LOSS_KEY].add(loss.item())
 
-            # loss_writer.writerow(
-            #     [epoch, losses['Objective Loss'].mean, losses['L2Regularizer_loss'].mean,
-            #      losses[OVERALL_LOSS_KEY].mean])
+            REG_LOSS_KEY = 'L2Regularizer_loss'
+            # 依然使用l2正则化器
+            loss_writer.writerow(
+                [epoch, losses['Objective Loss'].mean, losses[REG_LOSS_KEY].mean if REG_LOSS_KEY in losses else -1,
+                 losses[OVERALL_LOSS_KEY].mean])
 
-            # 打印进度
+            # 打印进度，打印进度中只关注损失
             LOGGER.warn(
-                f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},loss={loss}')
+                f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},loss={loss.item()}')
 
             optimizer.zero_grad()
             loss.backward()
+
+            # 移除掉较大的梯度
             torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=10.0)
+
             optimizer.step()
         # epoch结束后，处理相关的指标
         map = 100 * self.ap_meter.value().mean()
         loss = losses[OVERALL_LOSS_KEY].mean
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
+        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, map, loss]
         # 将这些指标写入文件中
-        # 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3'
-        train_writer.writerow([epoch, OP, OR, OF1, CP, CR, CF1, OP_k, OF1_k, CP_k, CR_k, CF1_k, map, loss])
-        return losses[OVERALL_LOSS_KEY].mean
+        # 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map', 'loss'
+        train_writer.writerow([epoch] + metrics)
+        return metrics
 
 
 def _init_gcn_learner(param, device='cpu'):
-    # 创建并返回模型和优化器
-    # 关于adj_file的指定，放在哪里好？
-    # adj_file='/home/klaus125/research/fate/my_practice/dataset/coco'
     # Todo: 这里将in_channel暂设置为300，之后再写入到param中
     in_channel = 300
-    # Todo-Custom: 先放到cpu上
     param.device = 'cpu'
     model = gcn_resnet101(param.pretrained, param.dataset, t=param.t, adj_file=param.adj_file,
                           device=param.device, num_classes=param.num_labels, in_channel=in_channel)
     # learning rate和learning rate for pretrained_layers
-    lr, lrp = 0.1, 0.1
+    # Todo: 这里lrp是预训练层的学习率比例值
+    lr, lrp = param.lr, 0.1
     optimizer = torch.optim.SGD(model.get_config_optim(lr, lrp),
                                 lr=lr,
                                 momentum=0.9,
@@ -656,6 +643,7 @@ def _init_gcn_learner(param, device='cpu'):
     return model, scheduler, optimizer
 
 
+# 这里图像大小采用原论文中的设定
 image_size = 448
 
 

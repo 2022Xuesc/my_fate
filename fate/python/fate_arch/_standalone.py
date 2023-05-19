@@ -641,8 +641,8 @@ class Federation(object):
             if elements[-1].isdigit():
                 elements[-1] = str(self.agg_iters[party.party_id])
                 tag = '.'.join(elements)
-
             _tagged_key = self._federation_object_key(name, tag, self._party, party)  # tagged_key中包含发送方和接收方
+
             if isinstance(v, Table):
                 saved_name = str(uuid.uuid1())
                 LOGGER.debug(
@@ -663,7 +663,7 @@ class Federation(object):
                 self._put_status(party, _tagged_key, _tagged_key)
 
     # noinspection PyProtectedMember Todo: 进行实际的读取操作
-    def get(self, name: str, tag: str, parties: typing.List[Party], sync=False) -> typing.List:
+    def get(self, name: str, tag: str, parties: typing.List[Party], sync=True) -> typing.List:
         # 如果self.agg_iters还未进行初始化
         if len(self.agg_iters) == 0:
             for party in parties:

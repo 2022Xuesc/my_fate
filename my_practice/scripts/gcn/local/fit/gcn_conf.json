@@ -27,7 +27,7 @@
         "batch_size": 8,
         "aggregate_every_n_epoch": 1,
         "lr": 0.1,
-        "pretrained": false,
+        "pretrained": true,
         "dataset": "coco",
         "arch": "gcn",
         "adj_file": "/home/klaus125/research/fate/my_practice/dataset/coco/coco_adj.pkl",
@@ -48,13 +48,13 @@
           "policies": {
             "lr_scheduler": {
               "instance_name": "pruning_lr",
-              "starting_epoch": 1,
+              "starting_epoch": 0,
               "ending_epoch": 100,
               "frequency": 1
             },
             "regularizer": {
               "instance_name": "l2_regularizer",
-              "starting_epoch": 1,
+              "starting_epoch": 0,
               "ending_epoch": 100,
               "frequency": 1
             }
