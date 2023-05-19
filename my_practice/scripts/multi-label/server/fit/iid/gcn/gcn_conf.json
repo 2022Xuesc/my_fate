@@ -30,7 +30,7 @@
   },
   "component_parameters": {
     "common": {
-      "multi_label_0": {
+      "gcn_0": {
         "max_iter": 100,
         "batch_size": 64,
         "aggregate_every_n_epoch": 5,
@@ -74,7 +74,7 @@
     "role": {
       "guest": {
         "0": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:1"
           },
           "reader_0": {
@@ -93,7 +93,7 @@
       },
       "host": {
         "0": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:1"
           },
           "reader_0": {
@@ -110,7 +110,7 @@
           }
         },
         "1": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:2"
           },
           "reader_0": {
@@ -127,7 +127,7 @@
           }
         },
         "2": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:2"
           },
           "reader_0": {
@@ -144,7 +144,7 @@
           }
         },
         "3": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:3"
           },
           "reader_0": {
@@ -161,7 +161,7 @@
           }
         },
         "4": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:3"
           },
           "reader_0": {
@@ -178,8 +178,8 @@
           }
         },
         "5": {
-          "multi_label_0": {
-            "device": "cuda:4"
+          "gcn_0": {
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
@@ -195,8 +195,8 @@
           }
         },
         "6": {
-          "multi_label_0": {
-            "device": "cuda:4"
+          "gcn_0": {
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
@@ -212,7 +212,7 @@
           }
         },
         "7": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:5"
           },
           "reader_0": {
@@ -229,7 +229,7 @@
           }
         },
         "8": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:5"
           },
           "reader_0": {
