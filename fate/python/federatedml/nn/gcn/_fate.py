@@ -273,8 +273,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    # category_dir = '/data/projects/dataset'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     inp_name = 'coco_glove_word2vec.pkl'
 
@@ -627,7 +627,6 @@ class GCNFitter(object):
 def _init_gcn_learner(param, device='cpu'):
     # Todo: 这里将in_channel暂设置为300，之后再写入到param中
     in_channel = 300
-    param.device = 'cpu'
     model = gcn_resnet101(param.pretrained, param.dataset, t=param.t, adj_file=param.adj_file,
                           device=param.device, num_classes=param.num_labels, in_channel=in_channel)
     # learning rate和learning rate for pretrained_layers

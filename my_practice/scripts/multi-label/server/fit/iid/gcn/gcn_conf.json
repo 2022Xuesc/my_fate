@@ -39,7 +39,7 @@
         "pretrained": true,
         "dataset": "coco",
         "arch": "resnet",
-        "adj_file": "/home/klaus125/research/fate/my_practice/dataset/coco/coco_adj.pkl",
+        "adj_file": "/data/projects/fate/my_practice/dataset/coco/coco_adj.pkl",
         "t": 0.4,
         "sched_dict": {
           "lr_schedulers": {
