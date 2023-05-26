@@ -413,8 +413,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    category_dir = '/data/projects/dataset'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/data/projects/dataset'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -816,7 +816,7 @@ class MultiLabelFitter(object):
                 losses[OVERALL_LOSS_KEY].add(loss.item())
 
             loss_writer.writerow(
-                [epoch, losses['Objective Loss'].mean, losses['L2Regularizer_loss'].mean,
+                [epoch, losses['Objective Loss'].mean,
                  losses[OVERALL_LOSS_KEY].mean])
 
             # 打印进度
