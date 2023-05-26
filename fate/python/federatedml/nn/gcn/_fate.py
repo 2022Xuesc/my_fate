@@ -273,8 +273,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     inp_name = 'coco_glove_word2vec.pkl'
 
@@ -435,7 +435,7 @@ class GCNFitter(object):
         self._num_per_labels = [0] * self.param.num_labels
 
         # Todo: 初始化平均精度度量器
-        self.ap_meter = AveragePrecisionMeter(difficult_examples=True)
+        self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -603,7 +603,7 @@ class GCNFitter(object):
 
             # 打印进度，打印进度中只关注损失
             LOGGER.warn(
-                f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},,map={100 * self.ap_meter.value().mean().item()},loss={loss.item()}')
+                f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},map={100 * self.ap_meter.value().mean().item()},loss={loss.item()}")
 
             optimizer.zero_grad()
             loss.backward()
@@ -758,7 +758,7 @@ class AveragePrecisionMeter(object):
         return ap
 
     @staticmethod
-    def average_precision(output, target, difficult_examples=True):
+    def average_precision(output, target, difficult_examples=False):
 
         # sort examples
         sorted, indices = torch.sort(output, dim=0, descending=True)
