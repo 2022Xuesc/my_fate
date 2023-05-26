@@ -31,9 +31,7 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
-        "max_iter": 100,
-        "batch_size": 64,
-        "aggregate_every_n_epoch": 5,
+        "max_iter": 100
         "lr": 0.01,
         "num_labels": 80,
         "pretrained": true,
@@ -73,7 +71,9 @@
       "guest": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:1"
+            "device": "cuda:1",
+            "batch_size": 64,
+            "aggregate_every_n_epoch": 5
           },
           "reader_0": {
             "table": {
@@ -92,7 +92,9 @@
       "host": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:1"
+            "device": "cuda:1",
+            "batch_size": 16,
+            "aggregate_every_n_epoch": 200
           },
           "reader_0": {
             "table": {
@@ -109,7 +111,9 @@
         },
         "1": {
           "multi_label_0": {
-            "device": "cuda:2"
+            "device": "cuda:2",
+            "batch_size": 16,
+            "aggregate_every_n_epoch": 200
           },
           "reader_0": {
             "table": {
@@ -126,7 +130,9 @@
         },
         "2": {
           "multi_label_0": {
-            "device": "cuda:2"
+            "device": "cuda:2",
+            "batch_size": 16,
+            "aggregate_every_n_epoch": 200
           },
           "reader_0": {
             "table": {
@@ -143,7 +149,9 @@
         },
         "3": {
           "multi_label_0": {
-            "device": "cuda:3"
+            "device": "cuda:3",
+            "batch_size": 16,
+            "aggregate_every_n_epoch": 200
           },
           "reader_0": {
             "table": {
@@ -160,7 +168,9 @@
         },
         "4": {
           "multi_label_0": {
-            "device": "cuda:3"
+            "device": "cuda:3",
+            "batch_size": 16,
+            "aggregate_every_n_epoch": 200
           },
           "reader_0": {
             "table": {
@@ -177,7 +187,9 @@
         },
         "5": {
           "multi_label_0": {
-            "device": "cuda:4"
+            "device": "cuda:4",
+            "batch_size": 16,
+            "aggregate_every_n_epoch": 200
           },
           "reader_0": {
             "table": {
@@ -194,7 +206,9 @@
         },
         "6": {
           "multi_label_0": {
-            "device": "cuda:4"
+            "device": "cuda:4",
+            "batch_size": 16,
+            "aggregate_every_n_epoch": 200
           },
           "reader_0": {
             "table": {
@@ -211,7 +225,9 @@
         },
         "7": {
           "multi_label_0": {
-            "device": "cuda:5"
+            "device": "cuda:5",
+            "batch_size": 16,
+            "aggregate_every_n_epoch": 200
           },
           "reader_0": {
             "table": {
@@ -228,7 +244,9 @@
         },
         "8": {
           "multi_label_0": {
-            "device": "cuda:5"
+            "device": "cuda:5",
+            "batch_size": 16,
+            "aggregate_every_n_epoch": 200
           },
           "reader_0": {
             "table": {
