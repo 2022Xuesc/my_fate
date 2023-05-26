@@ -31,8 +31,8 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
-        "max_iter": 100
-        "lr": 0.01,
+        "max_iter": 100,
+        "lr": 0.001,
         "num_labels": 80,
         "pretrained": true,
         "dataset": "ms-coco",
