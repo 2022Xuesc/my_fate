@@ -431,9 +431,9 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     batch_size = param.batch_size
     if batch_size < 0 or len(train_dataset) < batch_size:
         batch_size = len(train_dataset)
-    shuffle = False
+    shuffle = True
 
-    drop_last = True
+    drop_last = False
     num_workers = 32
 
     # Todo: 定义collate_fn
