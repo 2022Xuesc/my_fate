@@ -273,8 +273,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     inp_name = 'coco_glove_word2vec.pkl'
 
@@ -546,7 +546,7 @@ class GCNFitter(object):
                 else:
                     losses[OVERALL_LOSS_KEY].add(loss.item())
                 LOGGER.warn(
-                    f'[valid] epoch = {epoch}：{validate_step} / {steps},map={100 * self.ap_meter.value().mean().item()},loss={loss.item()}')
+                    f'[valid] epoch = {epoch}：{validate_step} / {steps},map={100 * self.ap_meter.value().mean().item()}, loss={loss.item()}')
         map = 100 * self.ap_meter.value().mean()
         loss = losses[OVERALL_LOSS_KEY].mean
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
@@ -758,7 +758,7 @@ class AveragePrecisionMeter(object):
         return ap
 
     @staticmethod
-    def average_precision(output, target, difficult_examples=True):
+    def average_precision(output, target, difficult_examples=False):
 
         # sort examples
         sorted, indices = torch.sort(output, dim=0, descending=True)

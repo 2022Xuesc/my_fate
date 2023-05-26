@@ -638,7 +638,7 @@ class Federation(object):
         for party in local_parties:
             # 这里对tagged_key仍然进行修改
             elements = tag.split('.')
-            if elements[-1].isdigit():
+            if elements[-1].isdigit() and elements[-2] != 'convergence':
                 elements[-1] = str(self.agg_iters[party.party_id])
                 tag = '.'.join(elements)
             _tagged_key = self._federation_object_key(name, tag, self._party, party)  # tagged_key中包含发送方和接收方
