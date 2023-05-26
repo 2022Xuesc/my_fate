@@ -31,8 +31,8 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
-        "max_iter": 100
-        "lr": 0.01,
+        "max_iter": 100,
+        "lr": 0.001,
         "num_labels": 80,
         "pretrained": true,
         "dataset": "ms-coco",
@@ -111,7 +111,7 @@
         },
         "1": {
           "multi_label_0": {
-            "device": "cuda:2",
+            "device": "cuda:3",
             "batch_size": 16,
             "aggregate_every_n_epoch": 200
           },
@@ -130,7 +130,7 @@
         },
         "2": {
           "multi_label_0": {
-            "device": "cuda:2",
+            "device": "cuda:3",
             "batch_size": 16,
             "aggregate_every_n_epoch": 200
           },
@@ -225,7 +225,7 @@
         },
         "7": {
           "multi_label_0": {
-            "device": "cuda:5",
+            "device": "cuda:4",
             "batch_size": 16,
             "aggregate_every_n_epoch": 200
           },
@@ -244,7 +244,7 @@
         },
         "8": {
           "multi_label_0": {
-            "device": "cuda:5",
+            "device": "cuda:4",
             "batch_size": 16,
             "aggregate_every_n_epoch": 200
           },
