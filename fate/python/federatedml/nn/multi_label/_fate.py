@@ -1,29 +1,25 @@
 # 服务器与客户端的通用逻辑
-import copy
-from collections import OrderedDict
-
-import numpy as np
-import typing
-import torchvision.transforms as transforms
-import torchnet.meter as tnt
 import math
-import os
-import csv
-
+import numpy as np
 import torch
 import torch.nn
+import torchnet.meter as tnt
+import torchvision.transforms as transforms
+from torch.nn.utils.rnn import *
 
-from federatedml.nn.backend.multi_label.config import config_scheduler
-from federatedml.nn.backend.multi_label.models import *
-from federatedml.nn.backend.pytorch.data import MultiLabelDataSet, COCO
-from federatedml.nn.homo_nn import _consts
-from federatedml.param.multi_label_param import MultiLabelParam
-from federatedml.util import LOGGER
+import copy
+import csv
+import os
+import typing
+from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
+from federatedml.nn.backend.multi_label.config import config_scheduler
+from federatedml.nn.backend.multi_label.models import *
+from federatedml.nn.backend.pytorch.data import COCO
+from federatedml.param.multi_label_param import MultiLabelParam
+from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
-
-from torch.nn.utils.rnn import *
 
 stats_dir = os.path.join(os.getcwd(), 'stats')
 if not os.path.exists(stats_dir):
@@ -311,13 +307,17 @@ class AveragePrecisionMeter(object):
         ap = torch.zeros(self.scores.size(1))
         rg = torch.arange(1, self.scores.size(0)).float()
         # compute average precision for each class
+        non_zero_labels = 0
         for k in range(self.scores.size(1)):
             # sort scores
             scores = self.scores[:, k]
             targets = self.targets[:, k]
             # compute average precision
             ap[k] = AveragePrecisionMeter.average_precision(scores, targets, self.difficult_examples)
-        return ap
+            if targets.sum() != 0:
+                non_zero_labels += 1
+        # Todo: 在这里判断不为空的标签个数，直接求均值
+        return ap.sum() / non_zero_labels
 
     @staticmethod
     def average_precision(output, target, difficult_examples=False):
@@ -708,7 +708,7 @@ class MultiLabelFitter(object):
             for num in self._num_per_labels:
                 weight += num ** alpha
 
-            self.aggregate_model(epoch,weight)
+            self.aggregate_model(epoch, weight)
             # 同步模式下，需要发送loss和mAP
             mean_mAP, status = self.context.do_convergence_check(
                 weight, mAP, loss
@@ -740,7 +740,7 @@ class MultiLabelFitter(object):
         valid_writer.writerow([epoch, mAP, loss])
         return mAP, loss
 
-    def aggregate_model(self, epoch,weight):
+    def aggregate_model(self, epoch, weight):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
         # 调用上下文执行聚合
@@ -816,8 +816,7 @@ class MultiLabelFitter(object):
                 losses[OVERALL_LOSS_KEY].add(loss.item())
 
             loss_writer.writerow(
-                [epoch, losses['Objective Loss'].mean,
-                 losses[OVERALL_LOSS_KEY].mean])
+                [epoch, losses['Objective Loss'].mean, losses[OVERALL_LOSS_KEY].mean])
 
             # 打印进度
             LOGGER.warn(
@@ -826,7 +825,7 @@ class MultiLabelFitter(object):
             loss.backward()
             optimizer.step()
 
-        mAP = 100 * self.ap_meter.value().mean()
+        mAP = 100 * self.ap_meter.value()
 
         return mAP, losses[OVERALL_LOSS_KEY].mean
 
@@ -875,7 +874,7 @@ class MultiLabelFitter(object):
                 LOGGER.warn(
                     f'[valid] epoch={epoch}, step={validate_step} / {total_steps},loss={loss}')
 
-        mAP = 100 * self.ap_meter.value().mean()
+        mAP = 100 * self.ap_meter.value()
         return mAP, losses[OVERALL_LOSS_KEY].mean
 
     def train_rnn_cnn(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
