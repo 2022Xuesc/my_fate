@@ -397,7 +397,9 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
         eps=param.early_stop_eps
     )
     context.init(init_aggregation_iteration=init_iteration)
-    fed_aggregator = SyncAggregator(context)
+    # Todo: 这里设置同步或异步的聚合方式
+    fed_aggregator = AsyncAggregator(context)
+    # fed_aggregator = SyncAggregator(context)
     return fed_aggregator
 
 
@@ -413,8 +415,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    category_dir = '/data/projects/dataset'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/data/projects/dataset'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -528,6 +530,8 @@ class AsyncAggregator(object):
     def __init__(self, context: FedServerContext):
         self.context = context
         self.global_models = None
+        # Todo: 这里设置总的聚合权重
+        self.total_degree = 2085.525075033302
         self.num_of_recv_models = 0
         self.client_num = 10
         self.max_num_of_models = self.client_num * self.context.max_num_aggregation
@@ -545,7 +549,7 @@ class AsyncAggregator(object):
 
             # Todo: 这里还需要分析权重
             degrees = [party_tuple[1] for party_tuple in recv_elements]
-
+            sum_degrees = sum(degrees)
             # 如果聚合权重是一个list，则分别聚合
             if isinstance(degrees[0], list):
                 self.aggregate_by_labels(tensors, degrees)
@@ -556,9 +560,9 @@ class AsyncAggregator(object):
             if self.global_models is None:
                 self.global_models = tensors[0]
             else:
-                alpha = 0.2
-                degrees = [1 - alpha, alpha]
+                degrees = [self.total_degree - sum_degrees, sum_degrees]
                 tensors = [self.global_models, tensors[0]]
+                # 这里不进行替换
                 self.aggregate_whole_model(tensors, degrees)
                 self.global_models = tensors[0]
 
@@ -571,16 +575,19 @@ class AsyncAggregator(object):
             #     break
 
             # Todo: 所有模型都已经聚合完毕
+
             if self.num_of_recv_models == self.max_num_of_models:
+                # 将全局模型保存下来
+                np.save('global_model', self.global_models)
                 break
 
     # 普通聚合
     def aggregate_whole_model(self, tensors, degrees):
-        total_degree = sum(degrees)
+        sum_degrees = sum(degrees)
         for i in range(len(tensors)):
             for j, tensor in enumerate(tensors[i]):
                 tensor *= degrees[i]
-                tensor /= total_degree
+                tensor /= sum_degrees
                 if i != 0:
                     tensors[0][j] += tensor
 
@@ -710,9 +717,9 @@ class MultiLabelFitter(object):
 
             self.aggregate_model(epoch, weight)
             # 同步模式下，需要发送loss和mAP
-            mean_mAP, status = self.context.do_convergence_check(
-                weight, mAP, loss
-            )
+            # mean_mAP, status = self.context.do_convergence_check(
+            #     weight, mAP, loss
+            # )
             # if status:
             #     self.context.set_converged()
             self._all_consumed_data_aggregated = True

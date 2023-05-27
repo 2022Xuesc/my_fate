@@ -164,7 +164,7 @@ class Variable(object):
     def get_parties(
         self,
         parties: Union[typing.List[Party], Party],
-        sync: bool = True,
+        sync: bool = False,
         suffix: Union[typing.Any, typing.Tuple] = tuple(),
     ):
         """
