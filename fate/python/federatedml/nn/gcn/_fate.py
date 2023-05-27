@@ -273,8 +273,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     inp_name = 'coco_glove_word2vec.pkl'
 
@@ -546,8 +546,8 @@ class GCNFitter(object):
                 else:
                     losses[OVERALL_LOSS_KEY].add(loss.item())
                 LOGGER.warn(
-                    f'[valid] epoch = {epoch}：{validate_step} / {steps},map={100 * self.ap_meter.value().mean().item()}, loss={loss.item()}')
-        map = 100 * self.ap_meter.value().mean()
+                    f'[valid] epoch = {epoch}：{validate_step} / {steps},map={100 * self.ap_meter.value().item()}, loss={loss.item()}')
+        map = 100 * self.ap_meter.value()
         loss = losses[OVERALL_LOSS_KEY].mean
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
@@ -603,7 +603,7 @@ class GCNFitter(object):
 
             # 打印进度，打印进度中只关注损失
             LOGGER.warn(
-                f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},map={100 * self.ap_meter.value().mean().item()},loss={loss.item()}")
+                f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},map={100 * self.ap_meter.value().item()},loss={loss.item()}")
 
             optimizer.zero_grad()
             loss.backward()
@@ -613,7 +613,7 @@ class GCNFitter(object):
 
             optimizer.step()
         # epoch结束后，处理相关的指标
-        map = 100 * self.ap_meter.value().mean()
+        map = 100 * self.ap_meter.value()
         loss = losses[OVERALL_LOSS_KEY].mean
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
@@ -749,13 +749,16 @@ class AveragePrecisionMeter(object):
         ap = torch.zeros(self.scores.size(1))
         rg = torch.arange(1, self.scores.size(0)).float()
         # compute average precision for each class
+        non_zero_labels = 0
         for k in range(self.scores.size(1)):
             # sort scores
             scores = self.scores[:, k]
             targets = self.targets[:, k]
             # compute average precision
             ap[k] = AveragePrecisionMeter.average_precision(scores, targets, self.difficult_examples)
-        return ap
+            if targets.sum() != 0:
+                non_zero_labels += 1
+        return ap.sum() / non_zero_labels
 
     @staticmethod
     def average_precision(output, target, difficult_examples=False):

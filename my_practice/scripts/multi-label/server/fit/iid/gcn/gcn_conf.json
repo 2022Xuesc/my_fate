@@ -179,7 +179,7 @@
         },
         "5": {
           "gcn_0": {
-            "device": "cuda:0"
+            "device": "cuda:4"
           },
           "reader_0": {
             "table": {
@@ -196,7 +196,7 @@
         },
         "6": {
           "gcn_0": {
-            "device": "cuda:0"
+            "device": "cuda:4"
           },
           "reader_0": {
             "table": {
