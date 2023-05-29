@@ -13,10 +13,10 @@
 import os
 import shutil
 
-job_id = 202304170213101149080
+job_id = 202305270744451099420
 module_name = 'multi_label_0'
-target_dir = 'λ_non_iid_agg_modify'
-client_num = 8
+target_dir = 'resnet_iid'
+client_num = 10
 
 
 # 当前目录为xxx/task_executor，进入到[子目录/stats]中，拷贝其中的avgloss.csv,train.csv,valid.csv文件
@@ -24,7 +24,6 @@ def mv_files(dir_path, target_path):
     files = os.listdir(dir_path)
     files_dir = os.path.join(dir_path, f'{files[0]}/stats')
     filenames = ['avgloss.csv', 'train.csv', 'valid.csv','loss.csv']
-    #filenames = ['loss.csv']
     for filename in filenames:
         file_path = os.path.join(files_dir, filename)
         shutil.copy(file_path, target_path)
@@ -42,6 +41,6 @@ def mv_stats(role, role_ids, target_dir):
         mv_files(dir_path, target_path)
 
 
-mv_stats('arbiter', 1, target_dir)
-mv_stats('guest', 2, target_dir)
-mv_stats('host', list(range(3, client_num + 2)), target_dir)
+mv_stats('arbiter', 999, target_dir)
+mv_stats('guest', 10, target_dir)
+mv_stats('host', list(range(1, client_num)), target_dir)
