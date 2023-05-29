@@ -13,7 +13,7 @@
 import os
 import shutil
 
-job_id = 202305270744451099420
+job_id = "resnet_iid" 
 module_name = 'multi_label_0'
 target_dir = 'resnet_iid'
 client_num = 10
