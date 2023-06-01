@@ -48,7 +48,7 @@ loss_writer.writerow(['epoch', 'obj_loss', 'reg_loss', 'overall_loss'])
 valid_file = open(os.path.join(stats_dir, 'valid.csv'), 'w', buffering=buf_size)
 valid_writer = csv.writer(valid_file)
 
-train_writer.writerow(
+valid_writer.writerow(
     ['epoch', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map', 'loss'])
 
 # Todo: 服务器端的相关记录
@@ -545,13 +545,13 @@ class GCNFitter(object):
                         losses[lc.name].add(lc.value.item())
                 else:
                     losses[OVERALL_LOSS_KEY].add(loss.item())
-                LOGGER.warn(
-                    f'[valid] epoch = {epoch}：{validate_step} / {steps},map={100 * self.ap_meter.value().item()}, loss={loss.item()}')
+                #LOGGER.warn(
+                #    f'[valid] epoch = {epoch}：{validate_step} / {steps},map={100 * self.ap_meter.value().item()}, loss={loss.item()}')
         map = 100 * self.ap_meter.value()
         loss = losses[OVERALL_LOSS_KEY].mean
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
-        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OF1_k, CP_k, CR_k, CF1_k, map.item(), loss]
+        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, map.item(), loss]
         # 将这些指标写入文件中
         # 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3'
         valid_writer.writerow([epoch] + metrics)
@@ -595,15 +595,9 @@ class GCNFitter(object):
             else:
                 losses[OVERALL_LOSS_KEY].add(loss.item())
 
-            REG_LOSS_KEY = 'L2Regularizer_loss'
-            # 依然使用l2正则化器
-            loss_writer.writerow(
-                [epoch, losses['Objective Loss'].mean, losses[REG_LOSS_KEY].mean if REG_LOSS_KEY in losses else -1,
-                 losses[OVERALL_LOSS_KEY].mean])
-
             # 打印进度，打印进度中只关注损失
-            LOGGER.warn(
-                f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},map={100 * self.ap_meter.value().item()},loss={loss.item()}")
+            #LOGGER.warn(
+            #    f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},map={100 * self.ap_meter.value().item()},loss={loss.item()}")
 
             optimizer.zero_grad()
             loss.backward()
@@ -612,6 +606,13 @@ class GCNFitter(object):
             torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=10.0)
 
             optimizer.step()
+
+        REG_LOSS_KEY = 'L2Regularizer_loss'
+        # 依然使用l2正则化器
+        # Todo: 注意损失函数的写入位置
+        loss_writer.writerow(
+            [epoch, losses['Objective Loss'].mean, losses[REG_LOSS_KEY].mean if REG_LOSS_KEY in losses else -1,
+             losses[OVERALL_LOSS_KEY].mean])
         # epoch结束后，处理相关的指标
         map = 100 * self.ap_meter.value()
         loss = losses[OVERALL_LOSS_KEY].mean
@@ -822,3 +823,4 @@ class AveragePrecisionMeter(object):
         CR = np.sum(Nc / Ng) / n_class
         CF1 = (2 * CP * CR) / (CP + CR)
         return OP, OR, OF1, CP, CR, CF1
+
