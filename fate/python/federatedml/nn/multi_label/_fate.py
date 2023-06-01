@@ -822,16 +822,15 @@ class MultiLabelFitter(object):
             else:
                 losses[OVERALL_LOSS_KEY].add(loss.item())
 
-            loss_writer.writerow(
-                [epoch, losses['Objective Loss'].mean, losses[OVERALL_LOSS_KEY].mean])
-
             # 打印进度
-            LOGGER.warn(
-                f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},loss={loss}')
+            # LOGGER.warn(
+            #    f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},loss={loss}')
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
+        loss_writer.writerow(
+            [epoch, losses['Objective Loss'].mean, losses[OVERALL_LOSS_KEY].mean])
         mAP = 100 * self.ap_meter.value()
 
         return mAP, losses[OVERALL_LOSS_KEY].mean
@@ -878,8 +877,8 @@ class MultiLabelFitter(object):
                 else:
                     losses[OVERALL_LOSS_KEY].add(loss.item())
                 # 一个batch走完后，计算ap_meter
-                LOGGER.warn(
-                    f'[valid] epoch={epoch}, step={validate_step} / {total_steps},loss={loss}')
+                # LOGGER.warn(
+                #    f'[valid] epoch={epoch}, step={validate_step} / {total_steps},loss={loss}')
 
         mAP = 100 * self.ap_meter.value()
         return mAP, losses[OVERALL_LOSS_KEY].mean
