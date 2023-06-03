@@ -16,6 +16,7 @@ from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.multi_label.config import config_scheduler
 from federatedml.nn.backend.multi_label.models import *
+
 from federatedml.nn.backend.pytorch.data import COCO
 from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
@@ -398,8 +399,8 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
     )
     context.init(init_aggregation_iteration=init_iteration)
     # Todo: 这里设置同步或异步的聚合方式
-    fed_aggregator = AsyncAggregator(context)
-    # fed_aggregator = SyncAggregator(context)
+    # fed_aggregator = AsyncAggregator(context)
+    fed_aggregator = SyncAggregator(context)
     return fed_aggregator
 
 
@@ -531,7 +532,11 @@ class AsyncAggregator(object):
         self.context = context
         self.global_models = None
         # Todo: 这里设置总的聚合权重
-        self.total_degree = 2085.525075033302
+        #  FLAG方式下的聚合总权重
+        # self.total_degree = 2085.525075033302
+        #  FedAvg方式下的聚合总权重
+        # 计算总样本数量
+        self.total_degree = 82081
         self.num_of_recv_models = 0
         self.client_num = 10
         self.max_num_of_models = self.client_num * self.context.max_num_aggregation
@@ -691,6 +696,7 @@ class MultiLabelFitter(object):
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
             mAP, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
+            print(f'epoch = {epoch},loss = {loss}')
             LOGGER.warn(f'epoch={epoch}/{self.end_epoch},mAP={mAP},loss={loss}')
             self.on_fit_epoch_end(epoch, valid_loader, mAP, loss)
             if self.context.should_stop():
@@ -715,11 +721,15 @@ class MultiLabelFitter(object):
             for num in self._num_per_labels:
                 weight += num ** alpha
 
-            self.aggregate_model(epoch, weight)
+            # FLAG聚合
+            # self.aggregate_model(epoch, weight)
+            # FedAvg聚合
+            LOGGER.warn(f'聚合时已经消耗的样本数量为: {self._num_data_consumed}')
+            self.aggregate_model(epoch, self._num_data_consumed)
             # 同步模式下，需要发送loss和mAP
-            # mean_mAP, status = self.context.do_convergence_check(
-            #     weight, mAP, loss
-            # )
+            mean_mAP, status = self.context.do_convergence_check(
+                weight, mAP, loss
+            )
             # if status:
             #     self.context.set_converged()
             self._all_consumed_data_aggregated = True
@@ -883,37 +893,10 @@ class MultiLabelFitter(object):
         mAP = 100 * self.ap_meter.value()
         return mAP, losses[OVERALL_LOSS_KEY].mean
 
-    def train_rnn_cnn(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
-        total_step = len(train_loader)
-        # Todo: 先使用本地import
-        for i, (images, labels, lengths) in enumerate(train_loader):
-            images = images.to(device)
-            labels = labels.to(device)
-            packed = pack_padded_sequence(labels, lengths, batch_first=True)
-            targets = packed[0]
-
-            # 前向传播
-            outputs = model(images, labels, lengths)
-            # Todo: 根据输出和目标计算precision和recall
-            #  targets的维度是164*1，表示164个位置中，正确的标签值
-            #  outputs的维度是164*92，表示164个位置中，每个标签的预测概率，选择max即可
-
-            # Todo: 这里可能会取出重复标签，但训练时候先不管，因为重复表明与target不符，
-            #  会被优化器主动优化
-            predicted_data = torch.argmax(outputs, dim=1)
-            predict_labels = pad_packed_sequence(packed._replace(data=predicted_data), batch_first=True)
-            # 对比labels计算平均precision和recall
-            accuracy = calculate_cnn_rnn_accuracy(labels, predict_labels[0], lengths)
-            loss = criterion(outputs, targets)
-            model.zero_grad()
-            loss.backward()
-            optimizer.step()
-        return accuracy, loss
-
 
 def _init_learner(param, device='cpu'):
     # Todo: 将通用部分提取出来
-    model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels)
+    model = SSTModel().to(device)
     # 这里的超参数设置
     optimizer = torch.optim.SGD(model.parameters(), lr=param.lr, momentum=0.9, weight_decay=1e-4)
     scheduler = None
@@ -921,55 +904,6 @@ def _init_learner(param, device='cpu'):
     if param.sched_dict:
         scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)
     return model, scheduler, optimizer
-
-
-def calculate_cnn_rnn_accuracy(labels, predict_labels, lengths):
-    total = sum(lengths)
-    right = 0
-    for end, label, predict_label in zip(lengths, labels, predict_labels):
-        label_set = set(label[:end].cpu().tolist())
-        predict_label_set = set(predict_label[:end].cpu().tolist())
-        right += len(label_set.intersection(predict_label_set))
-    return right / total
-
-
-# Todo: LSTM的代码改写
-def _init_lstm_learner(param, device='cpu'):
-    # 先使用硬编码的参数
-    embed_size = 8
-    hidden_size = 4
-    num_layers = 1
-    label_num = 92
-    learning_rate = 0.1
-    model = create_lstm_model(embed_size, hidden_size, num_layers, label_num, device)
-    params = list(model.decoder.parameters()) + list(model.encoder.cnn.parameters())
-    optimizer = torch.optim.Adam(params, lr=learning_rate)
-
-    # Todo: 为Lstm配置调度器
-    # if param.sched_dict:
-    #     scheduler = config_scheduler(model, optimizer, param.sched_dict, scheduler)
-
-    return model, optimizer
-
-
-# 设定阈值计算查准率和查全率
-# Todo: 关于阈值的设定方式
-def calculate_accuracy_mode1(model_pred, labels):
-    # 精度阈值
-    accuracy_th = 0.6
-    pred_res = model_pred > accuracy_th
-    pred_res = pred_res.float()
-    pred_sum = torch.sum(pred_res)
-    if pred_sum == 0:
-        return 0, 0
-    target_sum = torch.sum(labels)
-    # element-wise multiply
-    true_predict_sum = torch.sum(pred_res * labels)
-    # 模型预测的结果中有多少个结果正确
-    precision = true_predict_sum / pred_sum
-    # 模型预测正确的结果中，占样本真实标签的数量
-    recall = true_predict_sum / target_sum
-    return precision.item(), recall.item()
 
 
 def train_transforms():

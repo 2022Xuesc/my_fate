@@ -150,6 +150,8 @@ class FedClientContext(_FedBaseContext):
         agg_tensors = []
         for arr in recv_elements:
             agg_tensors.append(torch.from_numpy(arr).to(device))
+        # 考虑输出一下模型参数？
+        print(agg_tensors)
         for param, agg_tensor in zip(self._params, agg_tensors):
             # Todo: param.grad处理的是哪种情况
             if param.grad is None:
@@ -344,6 +346,7 @@ class AsyncGCNFedAggregator(object):
 
             # Todo: 这里还需要分析权重
             degrees = [party_tuple[1] for party_tuple in recv_elements]
+            LOGGER.warn('聚合权重为', degrees)
             sum_degrees = sum(degrees)
             # 先聚合接收到的客户端模型
             self.aggregate_whole_model(tensors, degrees)
