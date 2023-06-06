@@ -6,6 +6,7 @@ from federatedml.nn.backend.distiller.models.imagenet.alexnet_batchnorm import A
 
 from federatedml.nn.backend.multi_label.models.lstm.cnn_rnn import CnnRnn
 from federatedml.nn.backend.multi_label.models.transformers.transformer import *
+from federatedml.nn.backend.multi_label.models.srn.srn import *
 
 TORCHVISION_MODEL_NAMES = sorted(
     name for name in torch_models.__dict__
