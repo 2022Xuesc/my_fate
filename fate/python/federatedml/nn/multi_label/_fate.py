@@ -416,8 +416,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    # category_dir = '/data/projects/dataset'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/dataset'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -696,7 +696,6 @@ class MultiLabelFitter(object):
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
             mAP, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
-            print(f'epoch = {epoch},loss = {loss}')
             LOGGER.warn(f'epoch={epoch}/{self.end_epoch},mAP={mAP},loss={loss}')
             self.on_fit_epoch_end(epoch, valid_loader, mAP, loss)
             if self.context.should_stop():
@@ -740,9 +739,9 @@ class MultiLabelFitter(object):
             self._num_per_labels = [0] * self.param.num_labels
 
             self.context.increase_aggregation_iteration()
-        # 保存模型，每100个epoch保存一次
-        if (epoch + 1) % 100 == 0:
+        if (epoch + 1) % 50 == 0:
             torch.save(self.model.state_dict(), f'model_{epoch + 1}.path')
+
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
         mAP, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
@@ -911,9 +910,9 @@ def _init_learner(param, device='cpu'):
 def train_transforms():
     return transforms.Compose([
         # 将图像缩放为256*256
-        transforms.Resize(256),
+        transforms.Resize(512),
         # 随机裁剪出224*224大小的图像用于训练
-        transforms.RandomResizedCrop(224),
+        transforms.RandomResizedCrop(448),
         # 将图像进行水平翻转
         transforms.RandomHorizontalFlip(),
         # 转换为张量
@@ -925,9 +924,10 @@ def train_transforms():
 
 def valid_transforms():
     return transforms.Compose([
-        transforms.Resize(256),
+        transforms.Resize(512),
         # 输入图像是224*224
-        transforms.CenterCrop(224),
+        transforms.CenterCrop(448),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
+

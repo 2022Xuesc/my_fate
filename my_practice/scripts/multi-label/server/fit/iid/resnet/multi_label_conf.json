@@ -43,7 +43,7 @@
           "lr_schedulers": {
             "pruning_lr": {
               "class": "ExponentialLR",
-              "gamma": 0.99
+              "gamma": 0.9
             }
           },
           "regularizers": {
@@ -55,7 +55,7 @@
           "policies": {
             "lr_scheduler": {
               "instance_name": "pruning_lr",
-              "starting_epoch": 100,
+              "starting_epoch": 50,
               "ending_epoch": 400,
               "frequency": 5
             },
