@@ -740,7 +740,9 @@ class MultiLabelFitter(object):
             self._num_per_labels = [0] * self.param.num_labels
 
             self.context.increase_aggregation_iteration()
-
+        # 保存模型，每100个epoch保存一次
+        if (epoch + 1) % 100 == 0:
+            torch.save(self.model.state_dict(), f'model_{epoch + 1}.path')
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
         mAP, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
