@@ -9,13 +9,15 @@ import torchvision.models as torch_models
 
 
 # 全连接层中隐藏层的维度
-d_ff = 2048
+# Todo: 即论文中"the dimension of feed-forward head"
+d_ff = 512
 # 向量K和Q的维度，V的维度可以不同，这里为了方便，令其维度相同
-d_k = d_v = 128
-# encoder block和decoder block的个数
-n_layers = 2
+# Todo: 即论文中"the dimension of attention head"
+d_k = d_v = 64
+# 编码块的数量
+n_layers = 3
 # 多头，每套挖掘不同维度的注意力机制
-n_heads = 8
+n_heads = 4
 
 
 class PositionalEncoding(nn.Module):
@@ -149,7 +151,7 @@ class Encoder(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, d_model, seq_len=49, share=False, device='cpu'):
+    def __init__(self, d_model, seq_len, share=False, device='cpu'):
         super(Transformer, self).__init__()
         self.encoder = Encoder(d_model=d_model, seq_len=seq_len, share=share).to(device)
 
@@ -185,16 +187,17 @@ class OutputLayer(nn.Module):
 
 
 class SSTModel(nn.Module):
-    def __init__(self, channel_size=2048, num_labels=80):
+    def __init__(self, channel_size=2048, height_width=14, num_labels=80):
         super(SSTModel, self).__init__()
+        image_size = height_width * height_width
         model = torch_models.resnet101(pretrained=True, num_classes=1000)
         modules = list(model.children())[:-2]
         # 获取resnet101的features部分
         self.resnet = torch.nn.Sequential(*modules)
-
-        self.spatial_transformer = Transformer(d_model=channel_size)
+        # Todo: 空间加部分也共享参数
+        self.spatial_transformer = Transformer(d_model=channel_size, seq_len=image_size, share=True)
         # Todo: 语义部分共享参数
-        self.semantic_transformer = Transformer(d_model=80, share=True)
+        self.semantic_transformer = Transformer(d_model=image_size, seq_len=num_labels, share=True)
         # 将通道数量变为C，便于挖掘标签之间的语义相关性
         self.disentangler = Disentangler(channel_size, num_labels)
         # 第一个输出层，根据空间相关性特征计算输出
@@ -204,22 +207,25 @@ class SSTModel(nn.Module):
         self.channel_size = channel_size
         self.num_labels = num_labels
         # Todo: 这里是中间输出的feature map的宽度和高度
-        self.height = 7
-        self.width = 7
+        self.height = height_width
+        self.width = height_width
 
+    # 输入[batch_size,channel=3,height,width = (448,448)]
     def forward(self, x):
+        # 经过resnet后，[batch_size,2048,14,14]
         x = self.resnet(x)
         batch_size = x.size(0)
         # reshape到transformer可以接收的输入形式
+        # reshape后x = [batch_size,2048,256]，输入到编码器中
         x = x.reshape(batch_size, self.channel_size, -1).transpose(1, 2)
         x = self.spatial_transformer.encoder(x)
         # 恢复到原来的维度
         x = x.transpose(1, 2).reshape(batch_size, self.channel_size, self.height, self.width)
         y1 = self.output_layer1(x)
         x = self.disentangler(x)
-        x = x.reshape(batch_size, self.num_labels, -1).transpose(1, 2)
+        x = x.reshape(batch_size, self.num_labels, -1)
         x = self.semantic_transformer.encoder(x)
-        x = x.transpose(1, 2).reshape(batch_size, self.num_labels, self.height, self.width)
+        x = x.reshape(batch_size, self.num_labels, self.height, self.width)
         y2 = self.output_layer2(x)
         y = y1 + y2
         return y
