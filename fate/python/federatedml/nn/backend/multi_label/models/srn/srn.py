@@ -1,3 +1,4 @@
+import numpy
 import torch
 import torch.nn as nn
 import torchvision.models as torch_models
@@ -34,11 +35,16 @@ class AttentionLayer(nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
+        y_data = x.data.cpu().numpy()
+        numpy.save('/home/klaus125/research/fate/my_practice/knowledge/stats/attention_maps', y_data)
+
         # 此时x的维度是[batch_size,C,14,14]
         # 按照3，4维度进行
         exp_x = torch.exp(x)
         sum_exp_x = exp_x.sum(dim=[2, 3], keepdim=True)
-        return exp_x / sum_exp_x
+        y = exp_x / sum_exp_x
+        # 将y收集起来
+        return y
 
 
 class ConfidenceLayer(nn.Module):
