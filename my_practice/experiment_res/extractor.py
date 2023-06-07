@@ -13,9 +13,10 @@
 import os
 import shutil
 
-job_id = "resnet_iid"
+dir_id = "flag_resnet"
+job_id = "202306011216232843380"
 module_name = 'multi_label_0'
-target_dir = 'resnet_iid'
+target_dir = 'flag_resnet'
 client_num = 10
 
 
@@ -33,7 +34,7 @@ def mv_stats(role, role_ids, target_dir):
     if not isinstance(role_ids, list):
         role_ids = [role_ids]
     for role_id in role_ids:
-        dir_path = f'/data/projects/fate/fateflow/jobs/{job_id}/{role}/{role_id}/{module_name}/202305140624042428120_{module_name}/0/task_executor'
+        dir_path = f'/data/projects/fate/fateflow/jobs/{dir_id}/{role}/{role_id}/{module_name}/{job_id}_{module_name}/0/task_executor'
         # 目标路径
         target_path = f'{target_dir}/{role}/{role_id}'
         if not os.path.exists(target_path):
@@ -44,3 +45,4 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
