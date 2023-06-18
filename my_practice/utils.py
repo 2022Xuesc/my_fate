@@ -35,17 +35,16 @@ import os
 #            89.88833595376258]
 
 # 正确的聚合权重
-# weight = [1246.2886617819984,
-#           238.81240611792236,
-#           310.4816970248992,
-#           258.4196711232792,
-#           247.302001391808,
-#           253.49661755204045,
-#           255.5034760769801,
-#           255.86563879289457,
-#           168.07167592986622,
-#           145.6781246292006]
-
+weight = [1246.2886617819984,
+          238.81240611792236,
+          310.4816970248992,
+          258.4196711232792,
+          247.302001391808,
+          253.49661755204045,
+          255.5034760769801,
+          255.86563879289457,
+          168.07167592986622,
+          145.6781246292006]
 
 # import matplotlib.pyplot as plt
 #
@@ -87,6 +86,48 @@ import os
 #
 # print('文件拷贝完成')
 
+# import matplotlib.pyplot as plt
+#
+#
+# client_nums = 10
+# client_names = [f'client{i + 1}' for i in range(client_nums)]
+# # 画权重分布图
+# # 聚合权重分布
+# plt.figure(figsize=(6,6))
+# weight = [1246.2886617819984,
+#           238.81240611792236,
+#           310.4816970248992,
+#           258.4196711232792,
+#           247.302001391808,
+#           253.49661755204045,
+#           255.5034760769801,
+#           255.86563879289457,
+#           168.07167592986622,
+#           145.6781246292006]
+# weight_sum = sum(weight)
+# plt.bar(client_names, weight)
+# prob = [w / weight_sum for w in weight]
+# for i, v in enumerate(weight):
+#     plt.text(i, v + 5, str(round(prob[i],2)),ha='center')
 
-for i in range(1,11):
-    os.makedirs(f'client_')
+
+from torch.optim.lr_scheduler import ExponentialLR
+import torchvision.models as models
+from torch.optim import *
+
+model = models.resnet50(pretrained=False)
+optimizer = SGD(model.parameters(), lr=0.1)
+
+# 定义指数衰减学习率调度程序
+scheduler = ExponentialLR(optimizer, gamma=0.9)
+num_epochs = 50
+# 训练过程中循环迭代
+for epoch in range(num_epochs):
+    # 执行训练和更新参数的操作
+    ...
+
+    # 在每个epoch开始时更新学习率
+    scheduler.step(epoch=2)
+
+    # 输出当前epoch和学习率
+    print(f"Epoch [{epoch + 1}/{num_epochs}], Learning rate: {scheduler.get_last_lr()}")

@@ -21,6 +21,7 @@ def get_labels_cnts(data_dir):
         labels.extend(img_labels)
     return labels
 
+
 def draw_heatmap(save_dir, data):
     sns.set_context({"figure.figsize": (8, 8)})
     sns.heatmap(data=data, vmin=0.0, vmax=2.0, square=True)
@@ -60,7 +61,6 @@ def draw_hist(target_dir, data_dirs, num_labels=80):
         labels_cnts = get_labels_cnts(data_dir)
         info = data_dir.split('/')
         role, phase = info[-2], info[-1]
-        plt.figure(figsize=(12, 8))
         plt.hist(
             labels_cnts,
             bins=list(range(num_labels + 1)),
@@ -102,18 +102,20 @@ save_dir = 'clusters_distribution'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
-client_names = [f'client{i + 1}' for i in range(client_nums)]
+client_names = [f'c{i + 1}' for i in range(client_nums)]
 
 total_labels = []
 
 # Todo: 记录每个客户端的样本数量，画出直方图
 samples = []
 
+plt.figure(figsize=(12, 12))
 # 画直方图
 for i in range(client_nums):
     client_id = i + 1
     client_train_path = os.path.join(server_path, f'client{client_id}/train')
     client_valid_path = os.path.join(server_path, f'client{client_id}/val')
+
     # Todo: 作出分布直方图
     draw_hist(save_dir, [client_train_path, client_valid_path])
 
@@ -127,17 +129,41 @@ for i in range(client_nums):
 div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
 draw_heatmap(save_dir, div_frame)
 
+plt.figure(figsize=(12, 12))
 # Todo: 作出关于samples的柱状图
 log_samples = np.log10(samples)
 
-plt.bar(client_names,log_samples)
+plt.bar(client_names, log_samples)
 
 for i, v in enumerate(log_samples):
-    plt.text(i, v + 1, str(samples[i]), ha='center')
+    plt.text(i, v + 0.05, str(samples[i]), ha='center')
 
 plt.title('The distribution of the client data')
 plt.ylabel('The size of the client dataset ( log10 ) ')
 
 plt.savefig(f'{save_dir}/dataset_distribution.svg', dpi=600, format='svg')
-plt.cla()
 
+# 画权重分布图
+# 聚合权重分布
+plt.figure(figsize=(12, 12))
+weight = [1246.2886617819984,
+          238.81240611792236,
+          310.4816970248992,
+          258.4196711232792,
+          247.302001391808,
+          253.49661755204045,
+          255.5034760769801,
+          255.86563879289457,
+          168.07167592986622,
+          145.6781246292006]
+weight_sum = sum(weight)
+plt.bar(client_names, weight)
+prob = [w / weight_sum for w in weight]
+for i, v in enumerate(weight):
+    plt.text(i, v + 5, str(round(prob[i],2)),ha='center')
+plt.title('The agg-weight distribution of clients')
+plt.ylabel('The agg-weight')
+
+plt.savefig(f'{save_dir}/agg_distribution.svg', dpi=600, format='svg')
+
+# 各个客户端mAP值的统计数据

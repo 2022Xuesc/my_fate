@@ -42,6 +42,44 @@ def do_draw(path, file):
     phase = file.split('.')[0]
 
     epochs = data['epoch']
+    mAPs = data['mAP']
+    # 将其中
+
+    if mAPs[0][-1] == ')':
+        mAPs = [float(mAP.strip("tensor()").strip()) / 100 for mAP in mAPs]
+        mAPs = pd.Series(mAPs)
+    losses = data[f'{phase}_loss']
+
+    fig = plt.figure(figsize=(8, 6))
+
+    # 放在右边
+    ax1 = fig.add_subplot(111)
+    ax1.set_ylim(0, 1)
+    ax1.plot(epochs, mAPs, 'b', label='mAP')
+    ax1.set_xlabel('epoch')
+    ax1.set_ylabel('mAP')
+    ax1.legend(loc='upper left')
+
+    ax2 = ax1.twinx()
+
+    ax2.plot(epochs, losses, 'r', label='loss')
+    ax2.legend(loc='upper right')
+    ax2.set_ylabel('loss')
+
+    # 设置题目
+    plt.title('The learning curve on ' + path)
+    # 显示图片
+    plt.savefig(f'{path}_{file.split(".")[0]}.svg', dpi=600, format='svg')
+    # plt.show()
+    plt.close()
+
+
+def do_draw_p_r(path, file):
+    file_path = os.path.join(path, file)
+    data = pd.read_csv(file_path)
+    phase = file.split('.')[0]
+
+    epochs = data['epoch']
     precisions = data['precision']
     recalls = data['recall']
     losses = data[f'{phase}_loss']
@@ -116,23 +154,67 @@ def draw(paths, loss_file=None, train_file=None, valid_file=None):
         if loss_file:
             draw_loss(path, loss_file)
 
+def handle_tensor_mAP(mAPs):
+    mAPs = [float(mAP.strip("tensor()").strip()) / 100 for mAP in mAPs]
+    mAPs = pd.Series(mAPs)
+    return mAPs
+
+def draw_train_and_valid(paths):
+    if not isinstance(paths, list):
+        paths = [paths]
+    for path in paths:
+        train_path = os.path.join(path, 'train.csv')
+        valid_path = os.path.join(path, 'valid.csv')
+        train_data = pd.read_csv(train_path)
+        valid_data = pd.read_csv(valid_path)
+        epochs = valid_data['epoch']
+        train_mAP = handle_tensor_mAP(train_data['mAP'])
+        valid_mAP = handle_tensor_mAP(valid_data['mAP'])
+        losses = valid_data[f'valid_loss']
+
+        fig = plt.figure(figsize=(8, 6))
+
+        # 放在右边
+        ax1 = fig.add_subplot(111)
+        ax1.set_ylim(0, 1)
+        ax1.plot(epochs, train_mAP, 'b', label='train mAP')
+        ax1.plot(epochs, valid_mAP, 'g', label='valid mAP')
+        ax1.set_xlabel('epoch')
+        ax1.set_ylabel('rate')
+        ax1.legend(loc='upper left')
+
+        ax2 = ax1.twinx()
+
+        ax2.plot(epochs, losses, 'r', label='loss')
+        ax2.legend(loc='upper right')
+        ax2.set_ylabel('loss')
+
+        # 设置题目
+        plt.title('The learning curve on ' + path)
+        # 显示图片
+        plt.savefig(f'{path}.svg', dpi=600, format='svg')
+        # plt.show()
+        plt.close()
+
 
 # draw(host_path, train_file='train.csv', valid_file='valid.csv')
 # draw(guest_path, train_file='train.csv', valid_file='valid.csv')
 #
 #
 
-paths = ['λ_non_iid_agg_modify']
+paths = ['flag_resnet']
 for path in paths:
-    clients_path = [os.path.join(path, 'guest/2')]
+    clients_path = [os.path.join(path, 'guest/10')]
 
-    for i in range(3, 10):
+    for i in range(1, 10):
         clients_path.append(os.path.join(path, f'host/{i}'))
 
-    arbiter_path = os.path.join(path, 'arbiter/1')
+    # arbiter_path = os.path.join(path, 'arbiter/1')
 
-    draw(clients_path, train_file='train.csv', valid_file='valid.csv')
+    # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
 
-    draw(arbiter_path, loss_file='avgloss.csv')
+    # draw_train_and_valid(clients_path)
+
+    # draw(arbiter_path, loss_file='avgloss.csv')
 
     draw_losses(clients_path, 'loss.csv')
