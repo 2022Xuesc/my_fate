@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 import pandas as pd
-from collections import Counter
 
 sns.set(font_scale=1.5)
 
@@ -21,16 +20,6 @@ def get_labels_cnts(data_dir):
         img_labels = img_info['labels']
         labels.extend(img_labels)
     return labels
-
-
-def learn_heatmap():
-    data = sns.load_dataset('flights') \
-        .pivot('year', 'month', 'passengers')
-    # print(type(data))
-    sns.set_context({"figure.figsize": (8, 8)})
-    sns.heatmap(data=data, square=True)
-    plt.show()
-
 
 def draw_heatmap(save_dir, data):
     sns.set_context({"figure.figsize": (8, 8)})
@@ -47,14 +36,21 @@ def prob(label):
     return label.div(label.sum())
 
 
+# 计算KL散度
+# client_names是客户端的名称
+# label_tensors是每个客户端的标签张量，包含每个标签的样本数
 def calc_kl_divergence(client_names, label_tensors):
+    # 获取客户端的数目
     n = label_tensors.shape[0]
     # Todo: 创建DataFrame时指定数据类型为float，否则是object
     div_frame = pd.DataFrame(columns=client_names, index=client_names, dtype=float)
     for i in range(n):
+        # 每个标签向量，转换成prob，再求log
         log_prob_i = prob_log(label_tensors[i])
         for j in range(n):
+            # 每个待比较的向量，转为prob，无需求log
             prob_j = prob(label_tensors[j])
+            # 计算KL散度，调用kl_div()函数
             div_frame.iloc[i][j] = F.kl_div(log_prob_i, prob_j, reduction='sum').item()
     return div_frame
 
@@ -129,15 +125,15 @@ div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Te
 draw_heatmap(save_dir, div_frame)
 
 # Todo: 作出关于samples的柱状图
-samples = np.log10(samples)
+log_samples = np.log10(samples)
 
-plt.figure(figsize=(12, 8))
+plt.bar(client_names,log_samples)
 
-for i in range(client_nums):
-    plt.bar(client_names[i],samples[i],fc='r')
+for i, v in enumerate(log_samples):
+    plt.text(i, v + 1, str(samples[i]), ha='center')
 
 plt.title('The distribution of the client data')
-plt.ylabel('Client Data Size(log10)')
+plt.ylabel('The size of the client dataset ( log10 ) ')
 
-plt.savefig(f'{save_dir}/client_data_size_distribution.svg', dpi=600, format='svg')
+plt.savefig(f'{save_dir}/dataset_distribution.svg', dpi=600, format='svg')
 plt.cla()

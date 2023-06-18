@@ -246,4 +246,3 @@ coco_dir = '../../../dataset/coco'
 # for i in range(client_nums):
 #     client_id = i + 1
 #     generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'val')
-

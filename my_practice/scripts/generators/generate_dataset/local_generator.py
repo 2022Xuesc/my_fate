@@ -24,7 +24,8 @@ generate_2014(src_dir, 0.00105, 0.0011, host_val_dir)
 #
 
 coco_dir = '../../../dataset/coco'
-for dir in dirs:
-    generate_anno(coco_dir, dir)
+# for dir in dirs:
+#     generate_anno(coco_dir, dir)
+generate_anno(coco_dir,'/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train')
 #
 # generate_configs(dirs)

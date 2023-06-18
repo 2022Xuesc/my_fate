@@ -1,9 +1,1 @@
-[
-  {
-    "file_name": "COCO_val2014_000000008445.jpg",
-    "labels": [
-      8,
-      49
-    ]
-  }
-]
+[{"file_name": "COCO_val2014_000000352694.jpg", "labels": [49, 62]}]
