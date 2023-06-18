@@ -93,7 +93,10 @@ client_nums = 10
 class_nums = 80
 # server_path = '/data/projects/my_dataset'
 # save_dir = '.'
-server_path = '/data/projects/clustered_dataset'
+# server_path = '/data/projects/clustered_dataset'
+
+server_path = 'anno_json_dir'
+
 save_dir = 'clusters_distribution'
 
 if not os.path.exists(save_dir):
@@ -137,3 +140,4 @@ plt.ylabel('The size of the client dataset ( log10 ) ')
 
 plt.savefig(f'{save_dir}/dataset_distribution.svg', dpi=600, format='svg')
 plt.cla()
+

@@ -1,4 +1,5 @@
 import json
+import os
 
 # total_weights = 0
 # for i in range(1, 11):
@@ -46,23 +47,46 @@ import json
 #           145.6781246292006]
 
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+#
+# # 示例数据
+# x = ['A', 'B', 'C', 'D']
+# y = [10, 20, 15, 25]
+#
+# # 创建柱状图
+# plt.bar(x, y)
+#
+# # 在每个柱上显示值
+# for i, v in enumerate(y):
+#     plt.text(i, v + 1, str(v), ha='center')
+#
+# # 设置图形标题和轴标签
+# plt.title('Bar Chart with Values')
+# plt.xlabel('X-axis')
+# plt.ylabel('Y-axis')
+#
+# # 显示图形
+# plt.show()
+#
+#
+# import os
+# import shutil
+#
+# # 源目录和目标目录
+# source_dir = './'
+# target_dir = '/data/projects/fate/my_practice/draw_figures/anno_json_dir'
+#
+# # 遍历client[1-10]子目录
+# for i in range(1, 11):
+#     # 构造源文件路径和目标文件路径
+#     source_file = os.path.join(source_dir, f'client{i}', 'anno.json')
+#     target_file = os.path.join(target_dir, f'anno_{i}.json')
+#
+#     # 拷贝文件
+#     shutil.move(source_file, target_file)
+#
+# print('文件拷贝完成')
 
-# 示例数据
-x = ['A', 'B', 'C', 'D']
-y = [10, 20, 15, 25]
 
-# 创建柱状图
-plt.bar(x, y)
-
-# 在每个柱上显示值
-for i, v in enumerate(y):
-    plt.text(i, v + 1, str(v), ha='center')
-
-# 设置图形标题和轴标签
-plt.title('Bar Chart with Values')
-plt.xlabel('X-axis')
-plt.ylabel('Y-axis')
-
-# 显示图形
-plt.show()
+for i in range(1,11):
+    os.makedirs(f'client_')
