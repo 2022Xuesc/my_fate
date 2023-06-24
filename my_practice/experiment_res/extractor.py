@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "flag_resnet"
-job_id = "202306011216232843380"
+dir_id = "202306230844513394680"
+job_id = "202306230844513394680"
 module_name = 'multi_label_0'
-target_dir = 'flag_resnet'
+target_dir = 'sync_flag_resnet'
 client_num = 10
 
 
@@ -24,7 +24,7 @@ client_num = 10
 def mv_files(dir_path, target_path):
     files = os.listdir(dir_path)
     files_dir = os.path.join(dir_path, f'{files[0]}/stats')
-    filenames = ['avgloss.csv', 'train.csv', 'valid.csv','loss.csv']
+    filenames = ['avgloss.csv', 'train.csv', 'valid.csv']
     for filename in filenames:
         file_path = os.path.join(files_dir, filename)
         shutil.copy(file_path, target_path)
@@ -45,4 +45,5 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 

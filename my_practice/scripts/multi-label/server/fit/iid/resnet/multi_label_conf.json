@@ -32,9 +32,9 @@
     "common": {
       "multi_label_0": {
         "max_iter": 100,
-        "batch_size": 64,
+        "batch_size": 8,
         "aggregate_every_n_epoch": 5,
-        "lr": 0.01,
+        "lr": 0.005,
         "num_labels": 80,
         "pretrained": true,
         "dataset": "ms-coco",
@@ -73,7 +73,7 @@
       "guest": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:1"
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
@@ -92,7 +92,7 @@
       "host": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:1"
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
@@ -109,7 +109,7 @@
         },
         "1": {
           "multi_label_0": {
-            "device": "cuda:2"
+            "device": "cuda:1"
           },
           "reader_0": {
             "table": {
@@ -126,7 +126,7 @@
         },
         "2": {
           "multi_label_0": {
-            "device": "cuda:2"
+            "device": "cuda:1"
           },
           "reader_0": {
             "table": {
@@ -143,7 +143,7 @@
         },
         "3": {
           "multi_label_0": {
-            "device": "cuda:3"
+            "device": "cuda:2"
           },
           "reader_0": {
             "table": {
@@ -177,7 +177,7 @@
         },
         "5": {
           "multi_label_0": {
-            "device": "cuda:4"
+            "device": "cuda:3"
           },
           "reader_0": {
             "table": {
@@ -228,7 +228,7 @@
         },
         "8": {
           "multi_label_0": {
-            "device": "cuda:5"
+            "device": "cuda:3"
           },
           "reader_0": {
             "table": {
