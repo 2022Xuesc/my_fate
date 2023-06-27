@@ -64,6 +64,7 @@ def draw_loss(path, file):
     plt.savefig(f'{path}_{file.split(".")[0]}.svg', dpi=600, format='svg')
     plt.close()
 
+
 def do_draw(path, file):
     file_path = os.path.join(path, file)
     data = pd.read_csv(file_path)
@@ -137,6 +138,40 @@ def do_draw_p_r(path, file):
     plt.close()
 
 
+def compare_method(paths, file):
+    for path in paths:
+        # mAPs = []
+        # for path in paths:
+        #     for dir in dirs:
+        #         file_path = os.path.join(path, f'{dir}/valid.csv')
+        #         mAPs.append(pd.read_csv(file_path))
+        file_path1 = os.path.join('sync_flag_resnet', os.path.join(path, file))
+        data1 = pd.read_csv(file_path1)
+
+        file_path2 = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
+        data2 = pd.read_csv(file_path2)
+
+        epochs = data1['epoch']
+        flag_mAP = data1['mAP']
+        fpsl_mAP = data2['mAP']
+        plt.plot(epochs, flag_mAP, 'b')
+        plt.plot(epochs, fpsl_mAP, 'g')
+        plt.xlabel('epoch')
+        plt.ylabel('valid mAP')
+
+        plt.legend(['flag', 'fpsl ( without meta-learning )'])
+
+        # 设置题目
+        plt.title('The relation between mAP and total epochs of ' + path)
+        # 显示图片
+        # plt.savefig(f'compare/{path}.svg', dpi=600, format='svg')
+        id = path.split('/')[-1]
+        save_path = os.path.join('compare', f'{id}.svg')
+        plt.savefig(save_path, dpi=600, format='svg')
+        # plt.show()
+        plt.close()
+
+
 def draw_multiple_loss(path, file):
     file_path = os.path.join(path, file)
     data = pd.read_csv(file_path)
@@ -182,10 +217,12 @@ def draw(paths, loss_file=None, train_file=None, valid_file=None):
         if loss_file:
             draw_loss(path, loss_file)
 
+
 def handle_tensor_mAP(mAPs):
     # mAPs = [float(mAP.strip("tensor()").strip()) / 100 for mAP in mAPs]
     # mAPs = pd.Series(mAPs)
     return mAPs
+
 
 def draw_train_and_valid(paths):
     if not isinstance(paths, list):
@@ -237,12 +274,18 @@ for path in paths:
     for i in range(1, 10):
         clients_path.append(os.path.join(path, f'host/{i}'))
 
-    arbiter_path = os.path.join(path, 'arbiter/999')
+    # arbiter_path = os.path.join(path, 'arbiter/999')
 
     # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
 
-    draw_train_and_valid(clients_path)
+    # draw_train_and_valid(clients_path)
 
-    draw(arbiter_path, loss_file='avgloss.csv')
+    # draw(arbiter_path, loss_file='avgloss.csv')
 
     # draw_losses(clients_path, 'loss.csv')
+
+clients_path = ['guest/10']
+
+for i in range(1, 10):
+    clients_path.append(f'host/{i}')
+compare_method(clients_path, 'valid.csv')
