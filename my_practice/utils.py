@@ -1,26 +1,26 @@
 import json
 import os
 
-# total_weights = 0
-# for i in range(1, 11):
-#     anno_file = f'client{i}/train/anno.json'
-#     file_obj = open(anno_file, 'r')
-#     obj = json.load(file_obj)
-#     num_per_label = [0] * 80
-#     for info in obj:
-#         labels = info['labels']
-#         # 遍历每个label，将对应位置的数字加上1
-#         for label in labels:
-#             num_per_label[label] += 1
-#     # num_per_label计算weight
-#     weight = 0
-#     alpha = 0.3
-#     for num in num_per_label:
-#         weight += num ** alpha
-#     print(weight)
-#     total_weights += weight
-# print('===============================')
-# print(total_weights)
+total_weights = 0
+for i in range(1, 11):
+    anno_file = f'C:\Users\xuesc\Desktop\my_fate\my_practice\draw_figures/anno_json_dir/client{i}/train/anno.json'
+    file_obj = open(anno_file, 'r')
+    obj = json.load(file_obj)
+    num_per_label = [0] * 80
+    for info in obj:
+        labels = info['labels']
+        # 遍历每个label，将对应位置的数字加上1
+        for label in labels:
+            num_per_label[label] += 1
+    # num_per_label计算weight
+    weight = 0
+    alpha = 0.3
+    for num in num_per_label:
+        weight += num ** alpha
+    print(weight)
+    total_weights += weight
+print('===============================')
+print(total_weights)
 
 # 单个epoch每个客户端的FLAG聚合权重
 # weights = [769.0023070434984,
@@ -111,6 +111,26 @@ weight = [1246.2886617819984,
 #     plt.text(i, v + 5, str(round(prob[i],2)),ha='center')
 
 
+# from torch.optim.lr_scheduler import ExponentialLR
+# import torchvision.models as models
+# from torch.optim import *
+#
+# model = models.resnet50(pretrained=False)
+# optimizer = SGD(model.parameters(), lr=0.1)
+#
+# # 定义指数衰减学习率调度程序
+# scheduler = ExponentialLR(optimizer, gamma=0.9)
+# num_epochs = 50
+# # 训练过程中循环迭代
+# for epoch in range(num_epochs):
+#     # 执行训练和更新参数的操作
+#     ...
+#
+#     # 在每个epoch开始时更新学习率
+#     scheduler.step(epoch=2)
+#
+#     # 输出当前epoch和学习率
+#     print(f"Epoch [{epoch + 1}/{num_epochs}], Learning rate: {scheduler.get_last_lr()}")
 from torch.optim.lr_scheduler import *
 import torchvision.models as models
 from torch.optim import *
@@ -142,3 +162,4 @@ for epoch in range(10):
         one_cycle_scheduler.step()
         # 输出当前epoch和学习率
         # print(f"Epoch {epoch + 1}, Batch {batch + 1}, Learning rate: {one_cycle_scheduler.get_last_lr()}")
+
