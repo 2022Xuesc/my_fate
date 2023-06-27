@@ -230,7 +230,7 @@ def draw_train_and_valid(paths):
 #
 #
 
-paths = ['sync_flag_resnet']
+paths = ['sync_fpsl_resnet']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
 
