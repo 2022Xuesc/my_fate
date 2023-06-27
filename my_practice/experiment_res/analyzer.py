@@ -3,22 +3,51 @@ import os
 import pandas as pd
 
 
+# def draw_loss(path, file):
+#     file_path = os.path.join(path, file)
+#     data = pd.read_csv(file_path)
+#
+#     iters = data['agg_iter']
+#     precisions = data['precision']
+#     recalls = data['recall']
+#     avg_losses = data['avgloss']
+#
+#     fig = plt.figure(figsize=(8, 6))
+#
+#     # 放在右边
+#     ax1 = fig.add_subplot(111)
+#     ax1.set_ylim(0, 1)
+#     ax1.plot(iters, precisions, 'b', label='precision')
+#     ax1.plot(iters, recalls, 'g', label='recall')
+#     ax1.set_xlabel('agg_iter')
+#     ax1.set_ylabel('rate')
+#     ax1.legend(loc='upper left')
+#
+#     ax2 = ax1.twinx()
+#
+#     ax2.plot(iters, avg_losses, 'r', label='loss')
+#     ax2.legend(loc='upper right')
+#     ax2.set_ylabel('loss')
+#
+#     # 设置题目
+#     plt.title('The learning curve on ' + path)
+#     # 显示图片
+#     plt.savefig(f'{path}_{file.split(".")[0]}.svg', dpi=600, format='svg')
+#     plt.close()
 def draw_loss(path, file):
     file_path = os.path.join(path, file)
     data = pd.read_csv(file_path)
 
     iters = data['agg_iter']
-    precisions = data['precision']
-    recalls = data['recall']
+    mAPs = data['mAP']
     avg_losses = data['avgloss']
 
     fig = plt.figure(figsize=(8, 6))
 
     # 放在右边
     ax1 = fig.add_subplot(111)
-    ax1.set_ylim(0, 1)
-    ax1.plot(iters, precisions, 'b', label='precision')
-    ax1.plot(iters, recalls, 'g', label='recall')
+    ax1.set_ylim(0, 100)
+    ax1.plot(iters, mAPs, 'g', label='mAP')
     ax1.set_xlabel('agg_iter')
     ax1.set_ylabel('rate')
     ax1.legend(loc='upper left')
@@ -34,7 +63,6 @@ def draw_loss(path, file):
     # 显示图片
     plt.savefig(f'{path}_{file.split(".")[0]}.svg', dpi=600, format='svg')
     plt.close()
-
 
 def do_draw(path, file):
     file_path = os.path.join(path, file)
@@ -155,8 +183,8 @@ def draw(paths, loss_file=None, train_file=None, valid_file=None):
             draw_loss(path, loss_file)
 
 def handle_tensor_mAP(mAPs):
-    mAPs = [float(mAP.strip("tensor()").strip()) / 100 for mAP in mAPs]
-    mAPs = pd.Series(mAPs)
+    # mAPs = [float(mAP.strip("tensor()").strip()) / 100 for mAP in mAPs]
+    # mAPs = pd.Series(mAPs)
     return mAPs
 
 def draw_train_and_valid(paths):
@@ -176,7 +204,7 @@ def draw_train_and_valid(paths):
 
         # 放在右边
         ax1 = fig.add_subplot(111)
-        ax1.set_ylim(0, 1)
+        ax1.set_ylim(0, 100)
         ax1.plot(epochs, train_mAP, 'b', label='train mAP')
         ax1.plot(epochs, valid_mAP, 'g', label='valid mAP')
         ax1.set_xlabel('epoch')
@@ -202,19 +230,19 @@ def draw_train_and_valid(paths):
 #
 #
 
-paths = ['flag_resnet']
+paths = ['sync_fpsl_resnet']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
 
     for i in range(1, 10):
         clients_path.append(os.path.join(path, f'host/{i}'))
 
-    # arbiter_path = os.path.join(path, 'arbiter/1')
+    arbiter_path = os.path.join(path, 'arbiter/999')
 
     # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
 
-    # draw_train_and_valid(clients_path)
+    draw_train_and_valid(clients_path)
 
-    # draw(arbiter_path, loss_file='avgloss.csv')
+    draw(arbiter_path, loss_file='avgloss.csv')
 
-    draw_losses(clients_path, 'loss.csv')
+    # draw_losses(clients_path, 'loss.csv')

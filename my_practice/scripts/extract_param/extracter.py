@@ -4,11 +4,11 @@ import shutil
 jobs_dir = '../../../fateflow/jobs'
 logs_dir = '../../../fateflow/logs'
 
-job_id = "202305191537149543650"
+job_id = "202306231621351374190"
 
-arbiter_path = "arbiter/10000/gcn_0"
-guest_path = "guest/9999/gcn_0"
-host_path = "host/9997/gcn_0"
+arbiter_path = "arbiter/10000/multi_label_0"
+guest_path = "guest/9999/multi_label_0"
+host_path = "host/9997/multi_label_0"
 
 
 def del_session_stops(job_id):
@@ -26,7 +26,7 @@ def extract_params(job_id):
     filename = 'fate_flow_schedule.log'
     file_path = os.path.join(log_dir, filename)
     fp = open(file_path, 'r')
-    pattern = "--component_name gcn_0"
+    pattern = "--component_name multi_label_0"
     param = '--job_id'
     for line in fp:
         if pattern in line:

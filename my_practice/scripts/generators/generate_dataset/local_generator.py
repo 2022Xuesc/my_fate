@@ -15,17 +15,17 @@ dirs = [guest_train_dir, guest_val_dir, host_train_dir, host_val_dir]
 # 共40000张图片，每个客户端训练2000张，测试200张
 
 
-generate_2014(src_dir, 0, 0.0005, guest_train_dir)
-generate_2014(src_dir, 0.0005, 0.001, host_train_dir)
-
-generate_2014(src_dir, 0.001, 0.00105, guest_val_dir)
-generate_2014(src_dir, 0.00105, 0.0011, host_val_dir)
+# generate_2014(src_dir, 0, 0.0005, guest_train_dir)
+# generate_2014(src_dir, 0.0005, 0.001, host_train_dir)
+#
+# generate_2014(src_dir, 0.001, 0.00105, guest_val_dir)
+# generate_2014(src_dir, 0.00105, 0.0011, host_val_dir)
 #
 #
 
 coco_dir = '../../../dataset/coco'
-# for dir in dirs:
-#     generate_anno(coco_dir, dir)
-generate_anno(coco_dir,'/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train')
+for dir in dirs:
+    generate_anno(coco_dir, dir)
+# generate_anno(coco_dir,'/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train')
 #
 # generate_configs(dirs)

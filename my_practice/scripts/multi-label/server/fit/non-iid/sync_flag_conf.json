@@ -31,60 +31,33 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
-        "max_iter": 100,
+        "max_iter": 10,
         "batch_size": 8,
-        "aggregate_every_n_epoch": 5,
-        "lr": 0.005,
+        "aggregate_every_n_epoch": 4,
+        "lr": 0.0001,
         "num_labels": 80,
         "pretrained": true,
         "dataset": "ms-coco",
-        "arch": "resnet",
-        "sched_dict": {
-          "lr_schedulers": {
-            "pruning_lr": {
-              "class": "ExponentialLR",
-              "gamma": 0.9
-            }
-          },
-          "regularizers": {
-            "l2_regularizer": {
-              "class": "L2Regularizer",
-              "lamda": 0.000025
-            }
-          },
-          "policies": {
-            "lr_scheduler": {
-              "instance_name": "pruning_lr",
-              "starting_epoch": 50,
-              "ending_epoch": 400,
-              "frequency": 5
-            },
-            "regularizer": {
-              "instance_name": "l2_regularizer",
-              "starting_epoch": 0,
-              "ending_epoch": 500,
-              "frequency": 1
-            }
-          }
-        }
+        "arch": "resnet"
       }
     },
     "role": {
       "guest": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:0"
+            "device": "cuda:1",
+            "batch_size": 64
           },
           "reader_0": {
             "table": {
               "name": "client1_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client1_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         }
@@ -97,47 +70,47 @@
           "reader_0": {
             "table": {
               "name": "client2_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client2_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         },
         "1": {
           "multi_label_0": {
-            "device": "cuda:1"
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
               "name": "client3_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client3_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         },
         "2": {
           "multi_label_0": {
-            "device": "cuda:1"
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
               "name": "client4_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client4_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         },
@@ -148,64 +121,64 @@
           "reader_0": {
             "table": {
               "name": "client5_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client5_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         },
         "4": {
           "multi_label_0": {
-            "device": "cuda:3"
+            "device": "cuda:2"
           },
           "reader_0": {
             "table": {
               "name": "client6_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client6_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         },
         "5": {
           "multi_label_0": {
-            "device": "cuda:3"
+            "device": "cuda:2"
           },
           "reader_0": {
             "table": {
               "name": "client7_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client7_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         },
         "6": {
           "multi_label_0": {
-            "device": "cuda:4"
+            "device": "cuda:3"
           },
           "reader_0": {
             "table": {
               "name": "client8_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client8_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         },
@@ -216,30 +189,30 @@
           "reader_0": {
             "table": {
               "name": "client9_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client9_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         },
         "8": {
           "multi_label_0": {
-            "device": "cuda:3"
+            "device": "cuda:5"
           },
           "reader_0": {
             "table": {
               "name": "client10_train",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           },
           "reader_1": {
             "table": {
               "name": "client10_val",
-              "namespace": "coco-clients10-iid"
+              "namespace": "coco-clients10"
             }
           }
         }
