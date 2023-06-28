@@ -3,7 +3,7 @@ import os
 
 # total_weights = 0
 # for i in range(1, 11):
-#     anno_file = f'client{i}/train/anno.json'
+#     anno_file = f'C:\Users\xuesc\Desktop\my_fate\my_practice\draw_figures/anno_json_dir/client{i}/train/anno.json'
 #     file_obj = open(anno_file, 'r')
 #     obj = json.load(file_obj)
 #     num_per_label = [0] * 80
@@ -111,19 +111,40 @@ weight = [1246.2886617819984,
 #     plt.text(i, v + 5, str(round(prob[i],2)),ha='center')
 
 
+# from torch.optim.lr_scheduler import ExponentialLR
+# import torchvision.models as models
+# from torch.optim import *
+#
+# model = models.resnet50(pretrained=False)
+# optimizer = SGD(model.parameters(), lr=0.1)
+#
+# # 定义指数衰减学习率调度程序
+# scheduler = ExponentialLR(optimizer, gamma=0.9)
+# num_epochs = 50
+# # 训练过程中循环迭代
+# for epoch in range(num_epochs):
+#     # 执行训练和更新参数的操作
+#     ...
+#
+#     # 在每个epoch开始时更新学习率
+#     scheduler.step(epoch=2)
+#
+#     # 输出当前epoch和学习率
+#     print(f"Epoch [{epoch + 1}/{num_epochs}], Learning rate: {scheduler.get_last_lr()}")
 from torch.optim.lr_scheduler import *
 import torchvision.models as models
 from torch.optim import *
 
 model = models.resnet50(pretrained=False)
 # 设立设定了初始的学习率
-optimizer = Adam(model.parameters(),weight_decay=1e-4)
+optimizer = Adam(model.parameters(), weight_decay=1e-4)
 
 # 定义指数衰减学习率调度程序
 # exp_scheduler = ExponentialLR(optimizer,gamma=0.9)
-
+#
+# optimizer = torch.optim.SGD(model.parameters(), lr=initial_lr)
 # one_cycle_lr会根据总步数自动确定初始学习率，以及从初始学习率增加到最大学习率再到降低到最终学习率的调度方式
-one_cycle_scheduler = OneCycleLR(optimizer, max_lr=0.1,steps_per_epoch=10,epochs=10)
+one_cycle_scheduler = OneCycleLR(optimizer, max_lr=0.001, steps_per_epoch=10, epochs=10)
 num_epochs = 50
 # 训练过程中循环迭代
 for epoch in range(10):

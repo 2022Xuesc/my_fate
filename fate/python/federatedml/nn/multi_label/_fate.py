@@ -23,6 +23,7 @@ from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.multi_label.meta_learning.maml import MAML
 
 stats_dir = os.path.join(os.getcwd(), 'stats')
 if not os.path.exists(stats_dir):
@@ -33,7 +34,7 @@ buf_size = 1
 
 train_file = open(os.path.join(stats_dir, 'train.csv'), 'w', buffering=buf_size)
 train_writer = csv.writer(train_file)
-train_writer.writerow(['epoch', 'mAP', 'train_loss'])
+train_writer.writerow(['epoch', 'mAP', 'support_loss', 'query_loss'])
 
 valid_file = open(os.path.join(stats_dir, 'valid.csv'), 'w', buffering=buf_size)
 valid_writer = csv.writer(valid_file)
@@ -145,14 +146,9 @@ class FedClientContext(_FedBaseContext):
         return self.recv_loss()
 
     # 配置聚合参数，将优化器中的参数提取出来
-    def configure_aggregation_params(self, optimizer):
-        if optimizer is not None:
-            self._params = [
-                param
-                # 不是完全倒序，对于嵌套for循环，先声明的在前面
-                for param_group in optimizer.param_groups
-                for param in param_group["params"]
-            ]
+    def configure_aggregation_params(self, model):
+        if model is not None:
+            self._params = list(model.parameters())
             return
         raise TypeError(f"params and optimizer can't be both none")
 
@@ -506,6 +502,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
         transforms=valid_transforms(),
         category_dir=category_dir
     )
+    # param.batch_size
     batch_size = param.batch_size
     if batch_size < 0 or len(train_dataset) < batch_size:
         batch_size = len(train_dataset)
@@ -514,6 +511,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     drop_last = False
     num_workers = 32
 
+    # 对训练数据集进行划分
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
         drop_last=drop_last, shuffle=shuffle
@@ -544,6 +542,7 @@ class MultiLabelFitter(object):
         self.best_precision = 0
         self.context = context
         self.label_mapping = label_mapping
+
 
         # Todo: 原始的ResNet101分类器
         (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
@@ -578,7 +577,7 @@ class MultiLabelFitter(object):
         self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
                                                                 max_lr=self.param.lr,
                                                                 epochs=self.end_epoch,
-                                                                steps_per_epoch=len(train_loader))
+                                                                steps_per_epoch=len(train_loader) // 2 + 1)
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
@@ -603,7 +602,7 @@ class MultiLabelFitter(object):
             self.aggregate_model(epoch, self._num_data_consumed)
             # 同步模式下，需要发送loss和mAP
             mean_mAP, status = self.context.do_convergence_check(
-                self._num_data_consumed, mAP, loss
+                weight, mAP, loss
             )
             self._all_consumed_data_aggregated = True
 
@@ -624,7 +623,6 @@ class MultiLabelFitter(object):
         # accuracy, loss = self.train_rnn_cnn(train_loader, self.model, self.criterion, self.optimizer,
         #                                     epoch, self.param.device, scheduler)
 
-        train_writer.writerow([epoch, mAP, loss])
         return mAP, loss
 
     def validate_one_epoch(self, epoch, valid_loader, scheduler):
@@ -635,7 +633,7 @@ class MultiLabelFitter(object):
 
     def aggregate_model(self, epoch, weight):
         # 配置参数，将优化器optimizer中的参数写入到list中
-        self.context.configure_aggregation_params(self.optimizer)
+        self.context.configure_aggregation_params(self.model)
 
         # Partial Supervised聚合策略
         weight_list = list(self._num_per_labels)
@@ -650,6 +648,7 @@ class MultiLabelFitter(object):
             self.scheduler.on_epoch_end(epoch, self.optimizer)
         return mAP, loss
 
+    # 训练的实现函数
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_samples = len(train_loader.sampler)
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
@@ -661,33 +660,84 @@ class MultiLabelFitter(object):
         # 对Loss进行更新
         OVERALL_LOSS_KEY = 'Overall Loss'
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
+        SUPPORT_LOSS_KEY = 'Support Loss'
+        QUERY_LOSS_KEY = 'Query Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
-                              (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # 这里不使用inp
-        for train_step, (inputs, target) in enumerate(train_loader):
+                              (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter()),
+                              (SUPPORT_LOSS_KEY, tnt.AverageValueMeter()),
+                              (QUERY_LOSS_KEY, tnt.AverageValueMeter())])
+
+        total_samples = len(train_loader.dataset)
+        num_samples = total_samples // 2
+
+        support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset, [num_samples, num_samples])
+        support_loader = torch.utils.data.DataLoader(
+            dataset=support_dataset,
+            batch_size=train_loader.batch_size,
+            shuffle=True,
+            num_workers=train_loader.num_workers
+        )
+        query_loader = torch.utils.data.DataLoader(
+            dataset=query_dataset,
+            batch_size=train_loader.batch_size,
+            shuffle=True,
+            num_workers=train_loader.num_workers
+        )
+        # Todo: 以下开始一个epoch的训练
+
+        INNER_LR = 1e-4
+        # 对模型进行克隆
+        clone = MAML(model, lr=INNER_LR).clone()
+
+        # support set上进行训练
+        for support_step, (inputs, target) in enumerate(support_loader):
             inputs = inputs.to(device)
             target = target.to(device)
 
-            # Debug看这里的统计是否准确
+            # 统计每个标签对应的样本数量
             self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
-            # 也可在聚合时候统计，这里为明了起见，直接统计
-            self._num_label_consumed += target.sum().item()
+            support_output = clone(inputs)
 
-            output = model(inputs)
-            self.ap_meter.add(output.data, target.data)
+            support_loss = criterion(support_output, target)
+            losses[SUPPORT_LOSS_KEY].add(support_loss.item())
 
-            loss = criterion(output, target)
-            losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+            # 手动进行梯度下降
+            clone.adapt(support_loss)
 
-            optimizer.zero_grad()
-            loss.backward()
+        for query_step, (inputs, target) in enumerate(query_loader):
+            inputs = inputs.to(device)
+            target = target.to(device)
+
+            # 统计每个标签对应的样本数量
+            self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
+
+            query_output = clone(inputs)
+            # 统计一下query set上的mAP值
+            self.ap_meter.add(query_output.data, target.data)
+
+            query_loss = criterion(query_output, target)
+            losses[QUERY_LOSS_KEY].add(query_loss.item())
+            # Todo 计算好损失后记得zero_grad()
+            model.zero_grad()
+            clone.zero_grad()
+
+            clone.save_classifier_grad()
+            # 反向传播，计算梯度
+            query_loss.backward()
+            clone.adapt(query_loss, do_calc=False)
+
+            # 优化器进行优化
             optimizer.step()
+            model.fc.load_state_dict(clone.module.fc.state_dict())
+            # 更新OneCycleLR
             self.lr_scheduler.step()
 
         mAP = 100 * self.ap_meter.value()
 
-        return mAP.item(), losses[OBJECTIVE_LOSS_KEY].mean
+        # Todo: 记录support loss、query loss以及query mAP
+        train_writer.writerow([epoch, mAP, losses[SUPPORT_LOSS_KEY].mean, losses[QUERY_LOSS_KEY].mean])
+        return mAP.item(), losses[QUERY_LOSS_KEY].mean
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         # 对Loss进行更新
@@ -701,8 +751,6 @@ class MultiLabelFitter(object):
 
         total_steps = math.ceil(total_samples / batch_size)
 
-        sigmoid_func = torch.nn.Sigmoid()
-
         model.eval()
         # Todo: 在开始训练之前，重置ap_meter
         self.ap_meter.reset()
@@ -711,7 +759,7 @@ class MultiLabelFitter(object):
                 inputs = inputs.to(device)
                 target = target.to(device)
                 output = model(inputs)
-                loss = criterion(sigmoid_func(output), target)
+                loss = criterion(output, target)
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
                 # 将输出和对应的target加入到ap_meter中
@@ -723,10 +771,11 @@ class MultiLabelFitter(object):
 
 
 def _init_learner(param, device='cpu'):
+
     # Todo: 将通用部分提取出来
     model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels)
-    # 使用Adam优化器
-    optimizer = torch.optim.Adam(model.parameters(), lr=param.lr, weight_decay=1e-4)
+    # 使用Adam优化器,只优化特征层的参数
+    optimizer = torch.optim.Adam(list(model.parameters())[:-2], lr=param.lr, weight_decay=1e-4)
     scheduler = None
     return model, scheduler, optimizer
 
