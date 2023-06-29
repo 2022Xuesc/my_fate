@@ -543,7 +543,6 @@ class MultiLabelFitter(object):
         self.context = context
         self.label_mapping = label_mapping
 
-
         # Todo: 原始的ResNet101分类器
         (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
 
@@ -602,7 +601,7 @@ class MultiLabelFitter(object):
             self.aggregate_model(epoch, self._num_data_consumed)
             # 同步模式下，需要发送loss和mAP
             mean_mAP, status = self.context.do_convergence_check(
-                weight, mAP, loss
+                self._num_data_consumed, mAP, loss
             )
             self._all_consumed_data_aggregated = True
 
@@ -771,7 +770,6 @@ class MultiLabelFitter(object):
 
 
 def _init_learner(param, device='cpu'):
-
     # Todo: 将通用部分提取出来
     model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels)
     # 使用Adam优化器,只优化特征层的参数
