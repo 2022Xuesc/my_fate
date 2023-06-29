@@ -487,8 +487,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    # category_dir = '/data/projects/dataset'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/dataset'
+    #category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -669,7 +669,7 @@ class MultiLabelFitter(object):
         total_samples = len(train_loader.dataset)
         num_samples = total_samples // 2
 
-        support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset, [num_samples, num_samples])
+        support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset, [num_samples,total_samples -  num_samples])
         support_loader = torch.utils.data.DataLoader(
             dataset=support_dataset,
             batch_size=train_loader.batch_size,
