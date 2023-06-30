@@ -23,8 +23,8 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
-        "max_iter": 2,
-        "batch_size": 4,
+        "max_iter": 20,
+        "batch_size": 1,
         "aggregate_every_n_epoch": 1,
         "lr": 0.0001,
         "pretrained": true,
@@ -36,7 +36,7 @@
       "guest": {
         "0": {
           "multi_label_0": {
-            "device": "cpu"
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
@@ -55,7 +55,7 @@
       "host": {
         "0": {
           "multi_label_0": {
-            "device": "cpu"
+            "device": "cuda:0"
           },
           "reader_0": {
             "table": {
