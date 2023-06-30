@@ -488,7 +488,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
 
     # 使用绝对路径
     category_dir = '/data/projects/dataset'
-    #category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -576,7 +576,7 @@ class MultiLabelFitter(object):
         self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
                                                                 max_lr=self.param.lr,
                                                                 epochs=self.end_epoch,
-                                                                steps_per_epoch=len(train_loader) // 2 + 1)
+                                                                steps_per_epoch=len(train_loader) * 9 // 10 + 1)
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
@@ -667,9 +667,10 @@ class MultiLabelFitter(object):
                               (QUERY_LOSS_KEY, tnt.AverageValueMeter())])
 
         total_samples = len(train_loader.dataset)
-        num_samples = total_samples // 2
+        num_samples = total_samples // 10
 
-        support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset, [num_samples,total_samples -  num_samples])
+        support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset,
+                                                                       [num_samples, total_samples - num_samples])
         support_loader = torch.utils.data.DataLoader(
             dataset=support_dataset,
             batch_size=train_loader.batch_size,
@@ -735,7 +736,7 @@ class MultiLabelFitter(object):
         mAP = 100 * self.ap_meter.value()
 
         # Todo: 记录support loss、query loss以及query mAP
-        train_writer.writerow([epoch, mAP, losses[SUPPORT_LOSS_KEY].mean, losses[QUERY_LOSS_KEY].mean])
+        train_writer.writerow([epoch, mAP.item(), losses[SUPPORT_LOSS_KEY].mean, losses[QUERY_LOSS_KEY].mean])
         return mAP.item(), losses[QUERY_LOSS_KEY].mean
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
