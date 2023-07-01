@@ -118,7 +118,7 @@ class FedClientContext(_FedBaseContext):
         tensor_arrs = []
         for tensor in tensors:
             # 说明是替换后的层
-            if tensor == []:
+            if len(tensor) == 0:
                 tensor_arrs.append([])
                 continue
             tensor_arr = tensor.data.cpu().numpy()
@@ -126,7 +126,7 @@ class FedClientContext(_FedBaseContext):
 
         mask_arrs = []
         for mask in masks:
-            if mask == []:
+            if len(mask) == 0:
                 mask_arrs.append([])
                 continue
             mask_arr = mask.data.cpu().numpy()
@@ -848,7 +848,7 @@ def save_largest_part_of_weights(client_weights, global_weights, layer_ratio):
         # 跳过删除后的层
         if len(client_weights[i]) == 0:
             # 添加占位符
-            masks.append([])
+            masks.append(torch.Tensor())
             continue
         # 需要对参数的形状进行判定
         layer_shape = client_weights[i].shape
@@ -889,4 +889,4 @@ def select_layers(client_weights, select_list):
     for i in range(len(client_weights)):
         if select_list[i] is False:
             # 如果不保留第i层，直接清空
-            client_weights[i] = []
+            client_weights[i] = torch.Tensor()
