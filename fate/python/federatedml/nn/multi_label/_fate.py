@@ -155,16 +155,58 @@ class FedClientContext(_FedBaseContext):
 
         recv_elements: typing.List = self.recv_model()
         # 直接覆盖
+        global_model, total_weight_list = recv_elements
+        agg_ratio = weight / total_weight_list
         LOGGER.warn("模型接收完毕")
         agg_tensors = []
-        for arr in recv_elements:
+        for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
         # Todo: 记录接收到的全局模型，便于比较
         self.last_global_model = agg_tensors
+
         for param, agg_tensor in zip(self._params, agg_tensors):
             if param.grad is None:
                 continue
             param.data.copy_(agg_tensor)
+
+    def agg_local_model(self, agg_tensors, agg_ratio):
+        # 遍历每个层
+        layer_nums = len(self._params)
+        # 计算聚合权重
+
+        for i, layer_tensor in enumerate(self._params.data):
+            # 深层当时没有传输，则不必聚合
+            mask = self._masks[i]
+            if len(mask) == 0:
+                continue
+            # 如果是最后两层
+            if i == layer_nums - 2 or i == layer_nums - 1:
+                # 遍历每一个分类器分量
+                for j in range(len(layer_tensor)):
+                    # layer_tensor[j]是1维或两维
+                    if len(layer_tensor[j].shape) == 1:
+                        layer_tensor[j] = self.get_updated_val(layer_tensor[j],
+                                                               agg_tensors[i][j],
+                                                               agg_ratio[j],
+                                                               mask[j])
+                    else:  # 两维的
+                        for k in range(len(layer_tensor[j])):
+                            layer_tensor[j][k] = self.get_updated_val(layer_tensor[j][k],
+                                                                      agg_tensors[i][j][k],
+                                                                      agg_ratio[j],
+                                                                      mask[j][k])
+            # 如果是之前的特征层
+            else:
+                # 每层向量是layer_tensor
+                # mask为0的位置设置为聚合值，mask为1的位置设置为全局值
+                layer_tensor.copy_(
+                    torch.where(mask, agg_ratio[-1] * layer_tensor + (1 - agg_ratio[-1]) * agg_tensors[i]))
+
+    def get_updated_val(self, local_val, global_val, ratio, mask):
+        if mask == 1:
+            return global_val
+        else:
+            return ratio * local_val + (1 - ratio) * global_val
 
     def do_convergence_check(self, weight, mAP, loss_value):
         self.loss_summary.append(loss_value)
@@ -462,7 +504,8 @@ class SyncAggregator(object):
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
-            self.context.send_model(tensors[0])
+            # 将weight_list也发送回去
+            self.context.send_model((tensors[0], np.array(degrees).sum(axis=0)))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
@@ -541,7 +584,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    # param.max_iter = 100
+    param.max_iter = 100
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
@@ -554,8 +597,8 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 1
-    # param.max_iter = 100
+    param.batch_size = 1
+    param.max_iter = 100
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -689,7 +732,6 @@ class MultiLabelFitter(object):
             self._num_data_consumed = 0
             self._num_label_consumed = 0
             self._num_per_labels = [0] * self.param.num_labels
-
             self.context.increase_aggregation_iteration()
 
         # if (epoch + 1) % 50 == 0:
