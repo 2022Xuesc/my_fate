@@ -145,21 +145,31 @@ def compare_method(paths, file):
         #     for dir in dirs:
         #         file_path = os.path.join(path, f'{dir}/valid.csv')
         #         mAPs.append(pd.read_csv(file_path))
-        file_path1 = os.path.join('sync_flag_resnet', os.path.join(path, file))
+        file_path1 = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
         data1 = pd.read_csv(file_path1)
 
-        file_path2 = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
+        file_path2 = os.path.join('sync_fpsl_sr_drop', os.path.join(path, file))
         data2 = pd.read_csv(file_path2)
-
-        epochs = data1['epoch']
-        flag_mAP = data1['mAP']
-        fpsl_mAP = data2['mAP']
-        plt.plot(epochs, flag_mAP, 'b')
-        plt.plot(epochs, fpsl_mAP, 'g')
+        fpsl_st_mAP = data2['mAP']
+        if len(fpsl_st_mAP) == 39:
+            epochs = data1['epoch'][:-1]
+            fpsl_mAP = data1['mAP'][:-1]
+        else:
+            epochs = data1['epoch']
+            fpsl_mAP = data1['mAP']
+        fpsl_st_mAP = data2['mAP']
+        plt.plot(epochs, fpsl_mAP, 'b')
+        plt.plot(epochs, fpsl_st_mAP, 'r')
+        plt.ylim(0,max(max(fpsl_st_mAP),max(fpsl_mAP)) + 10)
         plt.xlabel('epoch')
         plt.ylabel('valid mAP')
 
-        plt.legend(['flag', 'fpsl ( without meta-learning )'])
+        cliffs = [12, 20, 24, 32, 36]
+        cliff_heights = fpsl_st_mAP[cliffs]
+        plt.vlines(cliffs, 0, cliff_heights,label='label test', linestyles="dashed", colors='green')
+        for i in range(len(cliffs)):
+            plt.text(cliffs[i] + 1, 2, cliffs[i], ha='center',color="red")
+        plt.legend(['FPSL', 'FPSL with ST'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -267,23 +277,23 @@ def draw_train_and_valid(paths):
 #
 #
 
-paths = ['sync_fpsl_resnet']
+paths = ['sync_fpsl_sr_drop']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
 
     for i in range(1, 10):
         clients_path.append(os.path.join(path, f'host/{i}'))
 
-    # arbiter_path = os.path.join(path, 'arbiter/999')
-
     # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
 
+    # Todo: 各个客户端的结果分析
+    # arbiter_path = os.path.join(path, 'arbiter/999')
     # draw_train_and_valid(clients_path)
-
     # draw(arbiter_path, loss_file='avgloss.csv')
 
     # draw_losses(clients_path, 'loss.csv')
 
+# Todo: 比较方法
 clients_path = ['guest/10']
 
 for i in range(1, 10):
