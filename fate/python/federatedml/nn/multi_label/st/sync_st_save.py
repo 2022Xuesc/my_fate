@@ -187,7 +187,7 @@ class FedClientContext(_FedBaseContext):
                 # 遍历每一个分类器分量
                 for j in range(len(layer_tensor)):
                     # layer_tensor[j]是实数还是一维向量
-                    if len(layer_tensor[j]) == 1:
+                    if len(layer_tensor[j].shape) == 0:
                         layer_tensor[j].data.copy_(self.get_updated_val(layer_tensor[j],
                                                                         agg_tensors[i][j],
                                                                         agg_ratio[j],

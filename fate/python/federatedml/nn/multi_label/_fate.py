@@ -190,7 +190,7 @@ class FedClientContext(_FedBaseContext):
                 # 遍历每一个分类器分量
                 for j in range(len(layer_tensor)):
                     # layer_tensor[j]是实数还是一维向量
-                    if len(layer_tensor[j]) == 1:
+                    if len(layer_tensor[j].shape) == 0:
                         layer_tensor[j].data.copy_(self.get_updated_val(layer_tensor[j],
                                                                         agg_tensors[i][j],
                                                                         agg_ratio[j],
@@ -587,7 +587,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    # param.max_iter = 100
+    param.max_iter = 100
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
@@ -600,8 +600,8 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 1
-    # param.max_iter = 100
+    param.batch_size = 1
+    param.max_iter = 100
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -614,8 +614,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    category_dir = '/data/projects/dataset'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/data/projects/dataset'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
