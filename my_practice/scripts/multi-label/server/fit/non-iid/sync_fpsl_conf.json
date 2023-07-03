@@ -46,7 +46,7 @@
         "0": {
           "multi_label_0": {
             "device": "cuda:0",
-            "batch_size": 32
+            "batch_size": 8
           },
           "reader_0": {
             "table": {
@@ -150,7 +150,7 @@
         },
         "5": {
           "multi_label_0": {
-            "device": "cuda:2"
+            "device": "cuda:3"
           },
           "reader_0": {
             "table": {
@@ -167,7 +167,7 @@
         },
         "6": {
           "multi_label_0": {
-            "device": "cuda:3"
+            "device": "cuda:4"
           },
           "reader_0": {
             "table": {
@@ -184,7 +184,7 @@
         },
         "7": {
           "multi_label_0": {
-            "device": "cuda:3"
+            "device": "cuda:4"
           },
           "reader_0": {
             "table": {
@@ -201,7 +201,7 @@
         },
         "8": {
           "multi_label_0": {
-            "device": "cuda:4"
+            "device": "cuda:5"
           },
           "reader_0": {
             "table": {
