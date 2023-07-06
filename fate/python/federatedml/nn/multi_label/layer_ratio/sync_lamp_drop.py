@@ -549,7 +549,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    # param.max_iter = 100
+    param.max_iter = 100
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
@@ -562,8 +562,8 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 1
-    # param.max_iter = 100
+    param.batch_size = 1
+    param.max_iter = 100
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -576,8 +576,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    category_dir = '/data/projects/dataset'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/data/projects/dataset'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -607,6 +607,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
         dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
         drop_last=drop_last, shuffle=shuffle
     )
+    # Todo: [WARN]
+    param.device = 'cuda:0'
     fitter = MultiLabelFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
 
@@ -897,13 +899,14 @@ def save_largest_part_of_weights(client_weights, normalized_scores, threshold):
         layer_ratios.append(mask.sum() / client_weights[i].numel())
         masks.append(mask)
     # 还需要返回每层的传输比例
-    return masks,layer_ratios
+    return masks, layer_ratios
 
 
 # 确保输入的client_weights和mask都是一维向量
 # noinspection PyTypeChecker
 def get_mask(client_weights, threshold):
-    return torch.where(client_weights >= threshold, torch.tensor(1),torch.tensor(0)).to(client_weights.device)
+    device = client_weights.device
+    return torch.where(client_weights >= threshold, torch.tensor(1).to(device), torch.tensor(0).to(device)).to(device)
 
 
 # 选择传输的函数，过滤层
