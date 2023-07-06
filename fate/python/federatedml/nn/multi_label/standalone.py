@@ -305,6 +305,11 @@ torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
 
 model = model.to(device)
 
+named_parameters = list(model.named_parameters())
+for name,param in model.named_parameters():
+    print(f'name = {name}')
+    print(f'param = {param}')
+
 INNER_LR = 0.0001
 # 将原模型封装起来
 maml = MAML(model, lr=INNER_LR)
