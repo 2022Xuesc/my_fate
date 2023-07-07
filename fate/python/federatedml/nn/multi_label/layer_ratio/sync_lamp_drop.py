@@ -896,7 +896,7 @@ def save_largest_part_of_weights(client_weights, normalized_scores, threshold):
         # 对client_weights和mask进行reshape
         client_weights[i] = client_weights[i].reshape(layer_shape)
         mask = mask.reshape(layer_shape)
-        layer_ratios.append(mask.sum() / client_weights[i].numel())
+        layer_ratios.append((mask.sum() / client_weights[i].numel()).item())
         masks.append(mask)
     # 还需要返回每层的传输比例
     return masks, layer_ratios
