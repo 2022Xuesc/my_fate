@@ -198,8 +198,12 @@ class FedClientContext(_FedBaseContext):
             self.last_transmission_iter = self.aggregation_iteration
             LOGGER.error(f"回合 {self.aggregation_iteration} 传输所有层")
         else:
-            # Todo: 在本地看一下参数的组成
-            select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
+            # Todo: 截断传输，conv和bn分别划分到浅层和深层中
+            # select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
+            # Todo: 将conv和对应的bn绑定，都划分到深层中去
+            select_list = [i <= 155 for i in range(layers_num)]
+            # Todo: 将conv和对应bn绑定，都划分到浅层中去，按理说一定比上面两种情况要好，体现不出分割的影响
+            # select_list = [i <= 158 for i in range(layers_num)]
             LOGGER.error(f"回合 {self.aggregation_iteration} 只传输浅层")
         LOGGER.error(f"每层的参数传输率为{layer_ratio}")
         select_layers(self._params2server, select_list=select_list)

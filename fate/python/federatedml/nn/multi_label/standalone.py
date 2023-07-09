@@ -306,7 +306,11 @@ torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
 model = model.to(device)
 
 named_parameters = list(model.named_parameters())
-for name,param in model.named_parameters():
+layers_num = len(named_parameters)
+select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
+
+select_list_1 = [i <= 155 for i in range(layers_num)]
+for name, param in model.named_parameters():
     print(f'name = {name}')
     print(f'param = {param}')
 
