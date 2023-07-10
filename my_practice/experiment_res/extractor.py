@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202307060942416167420"
-job_id = "202307060942416167420"
+dir_id = "202307090633491193810"
+job_id = "202307090633491193810"
 module_name = 'multi_label_0'
-target_dir = 'sync_fpsl_split_half'
+target_dir = 'sync_fpsl_split_correct'
 client_num = 10
 
 

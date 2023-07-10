@@ -138,6 +138,72 @@ def do_draw_p_r(path, file):
     plt.close()
 
 
+def compare_layer_ratio_method(paths, file):
+    is_arbiter = False
+    for path in paths:
+        if path.startswith('arbiter'):
+            file = 'avgloss.csv'
+            is_arbiter = True
+            x_axis = 'agg_iter'
+        else:
+            file = 'valid.csv'
+            x_axis = 'epoch'
+        # mAPs = []
+        # for path in paths:
+        #     for dir i dirs:
+        #         file_path = os.path.join(path, f'{dir}/valid.csv')
+        #         mAPs.append(pd.read_csv(file_path))
+        file_path1 = os.path.join('sync_fpsl_fixed_ratio_drop', os.path.join(path, file))
+        data1 = pd.read_csv(file_path1)
+
+        file_path2 = os.path.join('sync_fpsl_fixed_ratio_save', os.path.join(path, file))
+        data2 = pd.read_csv(file_path2)
+
+        baseline_path = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
+        data3 = pd.read_csv(baseline_path)
+        fpsl_st_mAP = data2['mAP']
+        if len(fpsl_st_mAP) == 39:
+            epochs = data1[x_axis][:-1]
+            fpsl_mAP = data1['mAP'][:-1]
+        else:
+            epochs = data1[x_axis]
+            fpsl_mAP = data1['mAP']
+        fpsl_st_mAP = data2['mAP']
+
+        fpsl_baseline_mAP = data3['mAP']
+        plt.plot(epochs, fpsl_baseline_mAP, 'g')
+        plt.plot(epochs, fpsl_mAP, 'b')
+        plt.plot(epochs, fpsl_st_mAP, 'r')
+        # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
+        plt.ylim(60,80)
+        plt.xlabel(x_axis)
+        plt.ylabel('valid mAP')
+
+        # 加竖线
+        # cliffs = [12, 20, 24, 32, 36]
+        # cliff_heights = fpsl_st_mAP[cliffs]
+        # plt.vlines(cliffs, 0, cliff_heights,label='label test', linestyles="dashed", colors='green')
+        # for i in range(len(cliffs)):
+        #     plt.text(cliffs[i] + 1, 2, cliffs[i], ha='center',color="red")
+
+        plt.legend(['FPSL-Full','FPSL-Drop', 'FPSL-Save'])
+
+        # 设置题目
+        plt.title('The relation between mAP and total epochs of ' + path)
+        # 显示图片
+        # plt.savefig(f'compare/{path}.svg', dpi=600, format='svg')
+        if is_arbiter:
+            id = 'arbiter'
+        else:
+            id = path.split('/')[-1]
+        dir_name = 'compare_layer_ratio'
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+        save_path = os.path.join(dir_name, f'{id}.svg')
+        plt.savefig(save_path, dpi=600, format='svg')
+        # plt.show()
+        plt.close()
+
 def compare_method(paths, file):
     is_arbiter = False
     for path in paths:
@@ -158,6 +224,9 @@ def compare_method(paths, file):
 
         file_path2 = os.path.join('sync_fpsl_fixed_ratio_save', os.path.join(path, file))
         data2 = pd.read_csv(file_path2)
+
+        baseline_path = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
+        data3 = pd.read_csv(baseline_path)
         fpsl_st_mAP = data2['mAP']
         if len(fpsl_st_mAP) == 39:
             epochs = data1[x_axis][:-1]
@@ -166,9 +235,13 @@ def compare_method(paths, file):
             epochs = data1[x_axis]
             fpsl_mAP = data1['mAP']
         fpsl_st_mAP = data2['mAP']
+
+        fpsl_baseline_mAP = data3['mAP']
+        plt.plot(epochs, fpsl_baseline_mAP, 'g')
         plt.plot(epochs, fpsl_mAP, 'b')
         plt.plot(epochs, fpsl_st_mAP, 'r')
-        plt.ylim(0, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
+        # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
+        plt.ylim(60,80)
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
@@ -179,7 +252,7 @@ def compare_method(paths, file):
         # for i in range(len(cliffs)):
         #     plt.text(cliffs[i] + 1, 2, cliffs[i], ha='center',color="red")
 
-        plt.legend(['FPSL-Drop', 'FPSL-Save'])
+        plt.legend(['FPSL-Full','FPSL-Drop', 'FPSL-Save'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -196,7 +269,6 @@ def compare_method(paths, file):
         plt.savefig(save_path, dpi=600, format='svg')
         # plt.show()
         plt.close()
-
 
 def draw_multiple_loss(path, file):
     file_path = os.path.join(path, file)
