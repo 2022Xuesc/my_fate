@@ -100,7 +100,7 @@ class FedClientContext(_FedBaseContext):
         # 上一次深层传输的回合数量
         self.last_transmission_iter = 0
         # 选择比例随训练进度衰减的权重，该值越大，衰减得越厉害
-        self.lambda_k = 0
+        self.lambda_k = 1
         # 保存接收到的全局模型，用于验证保留较小权重的效果
         self.last_global_model = None
 
@@ -154,6 +154,8 @@ class FedClientContext(_FedBaseContext):
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
+        # Todo: 将全局模型和本地的训练进度合并
+        #  关注self._masks中0元素所在的位置
         # 直接覆盖
         LOGGER.warn("模型接收完毕")
         agg_tensors = []
@@ -172,14 +174,14 @@ class FedClientContext(_FedBaseContext):
         return self.recv_loss()
 
     # 计算层传输率，这对于每一层来说是相等的
-    def calculate_layer_ratio(self):
+    def calculate_global_ratio(self):
         # Todo: 对lambda_k的选取进行修改
         return 1 / (self.lambda_k * self.aggregation_iteration + 1)
 
     # 配置聚合参数，将优化器中的参数提取出来
     # Todo: 在这里应用选择传输的算法
     def configure_aggregation_params(self, optimizer):
-        layer_ratio = self.calculate_layer_ratio()
+        global_ratio = self.calculate_global_ratio()
         # 获取优化器中的参数列表
         self._params = [
             param
@@ -191,25 +193,25 @@ class FedClientContext(_FedBaseContext):
         self._params2server = copy.deepcopy(self._params)
         # 先对层进行筛选
         layers_num = len(self._params2server)
-        # 根据训练进度判断是否传深层
-        if self.last_transmission_iter + self.deep_theta == self.aggregation_iteration:
-            select_list = [True for i in range(layers_num)]
-            self.deep_theta += 1
-            self.last_transmission_iter = self.aggregation_iteration
-            LOGGER.error(f"回合 {self.aggregation_iteration} 传输所有层")
-        else:
-            # Todo: 截断传输，conv和bn分别划分到浅层和深层中
-            # select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
-            # Todo: 将conv和对应的bn绑定，都划分到深层中去
-            select_list = [i <= 155 for i in range(layers_num)]
-            # Todo: 将conv和对应bn绑定，都划分到浅层中去，按理说一定比上面两种情况要好，体现不出分割的影响
-            # select_list = [i <= 158 for i in range(layers_num)]
-            LOGGER.error(f"回合 {self.aggregation_iteration} 只传输浅层")
-        LOGGER.error(f"每层的参数传输率为{layer_ratio}")
+
+        # Todo: 传输所有层
+        select_list = [True for i in range(layers_num)]
         select_layers(self._params2server, select_list=select_list)
+
+        layer_ratios = []
         # 返回值是每一层的布尔矩阵
         # 已经对self._params进行了修改，保留变化最大的前p部分参数，将其余参数置为0
-        self._masks = save_largest_part_of_weights(self._params2server, self.last_global_model, layer_ratio)
+        if self.last_global_model is not None:
+            normalized_weight_diffs = get_normalized_weight_diffs(self._params2server, self.last_global_model)
+            # 需要计算阈值
+            concat_diffs = torch.cat(normalized_weight_diffs, dim=0)
+            # 计算总的需要保留的参数
+            total_num = sum([self._params2server[i].numel() for i in range(len(self._params2server))])
+            topks, _ = torch.topk(concat_diffs, int(total_num * global_ratio))
+            threshold = topks[-1]
+            self._masks, layer_ratios = save_largest_part_of_weights(self._params2server, normalized_weight_diffs,
+                                                                     threshold)
+        LOGGER.warn(f"回合 {self.aggregation_iteration}时，每层的参数传输率为{layer_ratios}")
         # 至此，self._params已经配置完成，将其和self._selected_list一起发送给服务器端
 
     def should_aggregate_on_epoch(self, epoch_index):
@@ -281,7 +283,6 @@ class FedServerContext(_FedBaseContext):
         return is_converged, mean_loss
 
 
-# Todo: 学习apMeter
 class AveragePrecisionMeter(object):
     """
     计算每个类（标签）的平均精度
@@ -467,6 +468,8 @@ class SyncAggregator(object):
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
+            # Todo: 这里不仅要发送全局模型，还要发送聚合的总权重以及最后一层中各个类的总权重
+
             self.context.send_model(tensors[0])
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
@@ -484,19 +487,15 @@ class SyncAggregator(object):
         client_nums = len(tensors)
         for i in range(client_nums):
             layer_nums = len(tensors[i])
-            has_mask = len(masks[i]) != 0
             # 遍历每一层参数
             for j in range(layer_nums):
                 tensor = tensors[i][j]
+                mask = masks[i][j]
                 # Todo: 注意处理tensor和mask为空的情况
                 if tensor == []:
                     # 使用self.model[j]替代
                     tensors[i][j] = self.model[j]
                 else:
-                    # 该层无mask,说明不需要传输比例为1
-                    if has_mask is False:
-                        continue
-                    mask = masks[i][j]
                     tensor[np.logical_not(mask)] = self.model[j][np.logical_not(mask)]
 
     def aggregate_by_labels(self, tensors, degrees):
@@ -608,6 +607,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
         dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
         drop_last=drop_last, shuffle=shuffle
     )
+    # Todo: [WARN]
+    # param.device = 'cuda:0'
     fitter = MultiLabelFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
 
@@ -843,16 +844,39 @@ def valid_transforms():
     ])
 
 
+# 根据度量指标和全局传输率自适应确定每层的传输率
+def get_normalized_weight_diffs(client_weights, global_weights):
+    # 遍历每一层，计算weight_diffs
+    normalized_weight_diffs = []
+    for i in range(len(client_weights)):
+        weight_diff = torch.abs(client_weights[i].flatten() - global_weights[i].flatten())
+        # 对weight_diff进行处理
+        # 1. 升序排列
+        sorted_diff, sorted_idx = weight_diff.sort(descending=False)
+        # 2. 求前缀和
+        diff_cumsum_tmp = sorted_diff.cumsum(dim=0)
+        diff_cumsum = torch.zeros(diff_cumsum_tmp.shape, device=weight_diff.device)
+        # 3. 前缀和右移一个单位
+        diff_cumsum[1:] = diff_cumsum_tmp[:len(diff_cumsum_tmp) - 1]
+        # 进行归一化
+        sorted_diff /= (weight_diff.sum() - diff_cumsum)
+        # 整理并返回
+        new_diff = torch.zeros(diff_cumsum.shape, device=weight_diff.device)
+        new_diff[sorted_idx] = sorted_diff
+        # new_diff是正则化后的值
+        normalized_weight_diffs.append(new_diff)
+    return normalized_weight_diffs
+
+
 # 选择传输部分的代码
 # 客户端权重、最近全局模型的权重、选取的层比例
 # client_weights和客户端的优化器绑定
-def save_largest_part_of_weights(client_weights, global_weights, layer_ratio):
+def save_largest_part_of_weights(client_weights, normalized_scores, threshold):
     # 每一层选择的位置的布尔矩阵
     masks = []
-    if global_weights is None or layer_ratio == 1:
-        # 无需mask，直接返回即可
-        return masks
+    layer_ratios = []
     # 依次遍历每一层
+    # 该层无需选择传输
     for i in range(len(client_weights)):
         # 跳过删除后的层
         if len(client_weights[i]) == 0:
@@ -863,32 +887,26 @@ def save_largest_part_of_weights(client_weights, global_weights, layer_ratio):
         layer_shape = client_weights[i].shape
         # 将其展平成一维向量
         client_weights[i] = client_weights[i].flatten()
-        # 对global_weights也进行reshape操作
-        global_weights[i] = global_weights[i].flatten()
-        weights_diff = torch.abs(client_weights[i] - global_weights[i])
         # 获取最大的p部分的布尔矩阵
-        mask = get_mask(weights_diff, layer_ratio)
+        mask = get_mask(normalized_scores[i], threshold)
         # 对client_weights进行原地修改，如果不传输，则将其设定为最近全局模型 -->
         # Todo: 直接设置为0，因为会接收模型，进行聚合。也就是说，不保留较小的训练进度
         with torch.no_grad():
             client_weights[i].mul_(mask)
         # 对client_weights和mask进行reshape
         client_weights[i] = client_weights[i].reshape(layer_shape)
-        # Todo: 这一步可能不太需要，先保留
-        global_weights[i] = global_weights[i].reshape(layer_shape)
         mask = mask.reshape(layer_shape)
-
+        layer_ratios.append((mask.sum() / client_weights[i].numel()).item())
         masks.append(mask)
-    return masks
+    # 还需要返回每层的传输比例
+    return masks, layer_ratios
 
 
 # 确保输入的client_weights和mask都是一维向量
-def get_mask(client_weights, percentage):
-    mask = torch.zeros(len(client_weights)).to(client_weights.device)
-    _, topk_indices = torch.topk(client_weights, k=int(len(client_weights) * percentage))
-    # 将掩码矩阵对应的位置设置为1
-    mask.scatter_(0, topk_indices, 1)
-    return mask
+# noinspection PyTypeChecker
+def get_mask(client_weights, threshold):
+    device = client_weights.device
+    return torch.where(client_weights >= threshold, torch.tensor(1).to(device), torch.tensor(0).to(device)).to(device)
 
 
 # 选择传输的函数，过滤层
