@@ -212,6 +212,7 @@ class FedClientContext(_FedBaseContext):
             self._masks, layer_ratios = save_largest_part_of_weights(self._params2server, normalized_weight_diffs,
                                                                      threshold)
         LOGGER.warn(f"回合 {self.aggregation_iteration}时，每层的参数传输率为{layer_ratios}")
+        # train_writer.writerow([layer_ratios])
         # 至此，self._params已经配置完成，将其和self._selected_list一起发送给服务器端
 
     def should_aggregate_on_epoch(self, epoch_index):
@@ -576,6 +577,9 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
+
+
+    # Todo: [WARN]
     category_dir = '/data/projects/dataset'
     # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
@@ -896,7 +900,8 @@ def save_largest_part_of_weights(client_weights, normalized_scores, threshold):
         # 对client_weights和mask进行reshape
         client_weights[i] = client_weights[i].reshape(layer_shape)
         mask = mask.reshape(layer_shape)
-        layer_ratios.append((mask.sum() / client_weights[i].numel()).item())
+        # 在旧的torch版本上，需要显式地乘以1.0转化成浮点数
+        layer_ratios.append((mask.sum() * 1.0 / client_weights[i].numel()).item())
         masks.append(mask)
     # 还需要返回每层的传输比例
     return masks, layer_ratios
