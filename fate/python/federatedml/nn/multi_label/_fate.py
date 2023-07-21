@@ -26,7 +26,10 @@ from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 # 导入依赖图相关的包
-from federatedml.nn.backend.multi_label.prunners.depgraph import *
+from federatedml.nn.backend.multi_label.prunners.depgraph.dependency import *
+from federatedml.nn.backend.multi_label.prunners.depgraph.function import *
+from federatedml.nn.backend.multi_label.prunners.depgraph.importance import *
+from federatedml.nn.backend.multi_label.prunners.depgraph.meta_pruner import *
 
 stats_dir = os.path.join(os.getcwd(), 'stats')
 if not os.path.exists(stats_dir):
