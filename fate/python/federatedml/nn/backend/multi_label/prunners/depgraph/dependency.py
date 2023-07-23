@@ -323,8 +323,7 @@ class DependencyGraph(object):
                              torch.nn.Module, typing.Union[torch.Tensor, typing.Sequence]], torch.Tensor] = None,
                          output_transform: typing.Callable = None,
                          unwrapped_parameters: typing.Dict[nn.Parameter, int] = None,
-                         customized_pruners: typing.Dict[typing.Any,
-                         function.BasePruningFunc] = None,
+                         customized_pruners: typing.Dict[typing.Any, function.BasePruningFunc] = None,
                          verbose: bool = True,
                          ):
         # 详细输出

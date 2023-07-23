@@ -10,6 +10,7 @@ def linear_scheduler(ch_sparsity_dict, steps):
     return [((i) / float(steps)) * ch_sparsity_dict for i in range(steps + 1)]
 
 
+
 # 元剪枝器的实现
 class MetaPruner:
     def __init__(
@@ -148,6 +149,7 @@ class MetaPruner:
         print("Number of ones:", num_ones)
         print("Sparsity: ", num_zeros / (num_zeros + num_ones))
         return name2masks
+
     # Todo: 两个重要的剪枝函数 --> 局部剪枝和全局剪枝
 
     def prune_local(self):
@@ -190,6 +192,7 @@ class MetaPruner:
             return
         # 计算每个组的重要性
         global_importance = []
+
         for group in self.DG.get_all_groups(ignored_layers=self.ignored_layers,
                                             root_module_types=self.root_module_types):
             if self._check_sparsity(group):

@@ -135,21 +135,23 @@ class GradCam:
         target = target.cpu().data.numpy()[0, :]
         # 共4个维度(batch_size,channel_size,h,w)，整合第2维和第3维度求平均，保留前两个维度；然后再取出第1维，得到每个通道的权重
         weights = np.mean(grads_val, axis=(2, 3))[0, :]
-        cam = np.zeros(target.shape[1:], dtype=np.float32)
-        maxL2Norm = 0
-        maxIndex = 0
+        # cam = np.zeros(target.shape[1:], dtype=np.float32)
+        ch_cams = []
         for i, w in enumerate(weights):
             ch_cam = np.linalg.norm(w * target[i, :, :], ord=2)
-            if ch_cam > maxL2Norm:
-                maxL2Norm = ch_cam
-                maxIndex = i
+            ch_cams.append(ch_cam)
             # cam += w * target[i,:,:]
         # cam = np.maximum(cam, 0)  # 进行ReLU
         # cam = cv2.resize(cam, (224, 224))  # 上采样到(224,224)
         # cam = cam - np.min(cam)
         # cam = cam / np.max(cam)  # 再进行归一化
         # print('最显著的通道是', maxIndex)
-        return maxIndex
+        # Todo: 剪枝掉前10%的通道
+        ratio = 0.1
+        k = int(ratio * len(ch_cams))
+        # k = 10
+        top_values, top_indices = top_k_values_with_indices(ch_cams, k=k)
+        return top_indices
 
 
 # 数据集处理方式
@@ -225,9 +227,15 @@ def top_k_values_with_indices(lst, k):
 
     return top_k_values, top_k_indices
 
+def write_lists_to_file(lists,filename):
+    with open(filename, 'a') as file:
+        for lst in lists:
+            file.write(' '.join(map(str, lst)) + '\n')
+
 if __name__ == '__main__':
     # 最外层遍历target_layers
-    target_layers = ["2","4","5","6","7"]
+    target_layers = ["2", "4", "5", "6", "7"]
+    num_channels = [64, 256, 512, 1024, 2048]
     dir_name = 'my_imgs'
     device = 'cuda:0'
     model = create_resnet101_model(pretrained=False, device=device)
@@ -241,15 +249,16 @@ if __name__ == '__main__':
         param[1].data.copy_(agg_tensor)
     transforms = valid_transforms()
     # 写到文件中
-    for target_layer in target_layers:
+    for i in range(len(target_layers)):
+        target_layer = target_layers[i]
         # Todo: 使用训练好的全局模型
         grad_cam = GradCam(model=model, target_layer_names=[target_layer], use_cuda=True)
         times = [0] * 2048
         files = os.listdir(dir_name)
         n = len(files)
-        cnt = 100
-        for i in range(n):
-            file_name = files[i]
+        cnt = 500
+        for j in range(n):
+            file_name = files[j]
             if not file_name.startswith("COCO"):
                 continue
             image_path = os.path.join(dir_name, file_name)
@@ -259,16 +268,23 @@ if __name__ == '__main__':
             input = transforms(input)
             input.unsqueeze_(0)
             target_index = 49
-            index = grad_cam(input, target_index)
-            times[index] += 1
-            # print(f'progress: {i} / {n}')
-            if i == cnt - 1:
+            indexes = grad_cam(input, target_index)
+            for index in indexes:
+                times[index] += 1
+            print(f'progress: layer {i}: {j} / {cnt}')
+            if j == cnt - 1:
                 break
 
         times = [item / cnt for item in times]
-        top_k_values,top_k_indices = top_k_values_with_indices(times,k=10)
-        print(top_k_values)
-        print(top_k_indices)
+        top_k_values, top_k_indices = top_k_values_with_indices(times, k=500)
+        pruned_nums = int(0.1 * num_channels[i])
+        # print(top_k_values)
+        # print(top_k_indices)
+        candidates = top_k_indices[:min(top_k_values.index(0), pruned_nums)]
+        print(f'{len(candidates)} / {pruned_nums}')
+        print(candidates)
+        write_lists_to_file([candidates],'output.txt')
+        # Todo: 这里和通道数进行索引比较
         print("*" * 50)
     # 使用cv2处理
     # img = cv2.imread(image_path, 1)
