@@ -138,6 +138,12 @@ def do_draw_p_r(path, file):
     plt.close()
 
 
+# 比较的方法包括：
+# 1. 基线resnet
+# 2. fixed_ratio
+# 3. lamp
+# 4. dep_graph
+# 全局传输比例大约是[1,0.9,0.8,...,0.1]
 def compare_layer_ratio_method(paths, file):
     is_arbiter = False
     for path in paths:
@@ -153,29 +159,41 @@ def compare_layer_ratio_method(paths, file):
         #     for dir i dirs:
         #         file_path = os.path.join(path, f'{dir}/valid.csv')
         #         mAPs.append(pd.read_csv(file_path))
-        file_path1 = os.path.join('sync_fpsl_fixed_ratio_drop', os.path.join(path, file))
-        data1 = pd.read_csv(file_path1)
-
-        file_path2 = os.path.join('sync_fpsl_fixed_ratio_save', os.path.join(path, file))
-        data2 = pd.read_csv(file_path2)
-
         baseline_path = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
-        data3 = pd.read_csv(baseline_path)
-        fpsl_st_mAP = data2['mAP']
-        if len(fpsl_st_mAP) == 39:
-            epochs = data1[x_axis][:-1]
-            fpsl_mAP = data1['mAP'][:-1]
-        else:
-            epochs = data1[x_axis]
-            fpsl_mAP = data1['mAP']
-        fpsl_st_mAP = data2['mAP']
+        baseline_data = pd.read_csv(baseline_path)
 
-        fpsl_baseline_mAP = data3['mAP']
-        plt.plot(epochs, fpsl_baseline_mAP, 'g')
-        plt.plot(epochs, fpsl_mAP, 'b')
-        plt.plot(epochs, fpsl_st_mAP, 'r')
+        fixed_drop_path = os.path.join('sync_fpsl_fixed_ratio_drop', os.path.join(path, file))
+        fixed_drop_data = pd.read_csv(fixed_drop_path)
+
+        fixed_save_path = os.path.join('sync_fpsl_fixed_ratio_save', os.path.join(path, file))
+        fixed_save_data = pd.read_csv(fixed_save_path)
+
+        lamp_path = os.path.join('sync_fpsl_lamp', os.path.join(path, file))
+        lamp_data = pd.read_csv(lamp_path)
+
+        dep_path = os.path.join('sync_fpsl_dep_global', os.path.join(path, file))
+        dep_data = pd.read_csv(dep_path)
+
+        dep_drop_person_path = os.path.join('sync_fpsl_dep_drop_person_0.1', os.path.join(path, file))
+        dep_drop_data = pd.read_csv(dep_drop_person_path)
+
+        epochs = baseline_data[x_axis]
+
+        baseline_mAP = baseline_data['mAP']
+        fixed_drop_mAP = fixed_drop_data['mAP']
+        fixed_save_mAP = fixed_save_data['mAP']
+        lamp_mAP = lamp_data['mAP']
+        dep_mAP = dep_data['mAP']
+        dep_drop_mAP = dep_drop_data['mAP']
+
+        plt.plot(epochs, baseline_mAP, 'g')
+        plt.plot(epochs, fixed_drop_mAP, 'b')
+        # plt.plot(epochs, fixed_save_mAP, 'brown')
+        plt.plot(epochs, lamp_mAP, 'r')
+        plt.plot(epochs, dep_mAP, 'orange')
+        plt.plot(epochs, dep_drop_mAP, 'purple')
         # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
-        plt.ylim(60, 80)
+        # plt.ylim(60, 80)
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
@@ -186,7 +204,7 @@ def compare_layer_ratio_method(paths, file):
         # for i in range(len(cliffs)):
         #     plt.text(cliffs[i] + 1, 2, cliffs[i], ha='center',color="red")
 
-        plt.legend(['FPSL-Full', 'FPSL-Drop', 'FPSL-Save'])
+        plt.legend(['FPSL-FULL', 'FPSL-Drop', 'FPSL-LAMP', 'FPSL-DEP_GLOBAL', 'FPSL-DEP_DROP'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -231,9 +249,14 @@ def compare_method(paths, file):
         half_mAP = data1['mAP']
         correct_mAP = data2['mAP']
         fpsl_baseline_mAP = data3['mAP']
+
+        last_path = os.path.join("sync_fpsl_split_last",os.path.join(path,file))
+        last_data = pd.read_csv(last_path)
+        last_mAP = last_data['mAP']
         plt.plot(data3[x_axis], fpsl_baseline_mAP, 'g')
         plt.plot(data1[x_axis], half_mAP, 'b')
         plt.plot(data2[x_axis], correct_mAP, 'r')
+        plt.plot(last_data[x_axis],last_mAP,'orange')
         # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
         plt.ylim(0, 100)
         plt.xlabel(x_axis)
@@ -246,7 +269,7 @@ def compare_method(paths, file):
         # for i in range(len(cliffs)):
         #     plt.text(cliffs[i] + 1, 2, cliffs[i], ha='center',color="red")
 
-        plt.legend(['FPSL-Full', 'FPSL-Half', 'FPSL-Correct'])
+        plt.legend(['FPSL-Full', 'FPSL-Half', 'FPSL-Correct','FPSL-LAST'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -360,20 +383,20 @@ def draw_train_and_valid(paths):
 #
 #
 
-paths = ['sync_fpsl_fixed_ratio_drop', 'sync_fpsl_fixed_ratio_save', 'sync_fpsl_split_half']
+# paths = ["sync_fpsl_lamp", 'sync_fpsl_split_last', 'sync_fpsl_dep_global','sync_fpsl_dep_drop_person_0.1']
 # for path in paths:
 #     clients_path = [os.path.join(path, 'guest/10')]
 #
 #     for i in range(1, 10):
 #         clients_path.append(os.path.join(path, f'host/{i}'))
-
-# draw(clients_path, train_file='train.csv', valid_file='valid.csv')
-# draw_losses(clients_path, 'loss.csv')
-
-# # Todo: 各个客户端的结果分析
-# arbiter_path = os.path.join(path, 'arbiter/999')
-# draw_train_and_valid(clients_path)
-# draw(arbiter_path, loss_file='avgloss.csv')
+#
+#     # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
+#     # draw_losses(clients_path, 'loss.csv')
+#
+#     # Todo: 各个客户端的结果分析
+#     arbiter_path = os.path.join(path, 'arbiter/999')
+#     draw_train_and_valid(clients_path)
+#     draw(arbiter_path, loss_file='avgloss.csv')
 
 
 # Todo: 比较方法
@@ -383,4 +406,6 @@ for i in range(1, 10):
     clients_path.append(f'host/{i}')
 # 将服务器端也加进去
 clients_path.append('arbiter/999')
+
 compare_method(clients_path, 'valid.csv')
+# compare_layer_ratio_method(clients_path, 'valid.csv')
