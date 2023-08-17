@@ -853,9 +853,17 @@ def drop_channels_from_person(dep_model):
     layer_ratios = []
     # dep_model就是需要移除的模型，其参数就是需要移除的参数
     example_inputs = torch.randn(1,3,224,224).to(dep_model.conv1.weight.device)
+
+    layers_to_prune = None
+    json_path = '/home/klaus125/research/fate/fate/python/federatedml/nn/multi_label/data.json'
+
+
+    with open(json_path, 'r') as json_file:
+        layers_to_prune = json.load(json_file)
     pruner = SpecificChannelPruner(
         dep_model,
         example_inputs,
+        layer_prune_idxs=layers_to_prune
     )
     # name2masks = pruner.step()
     masks = list(pruner.step().values())

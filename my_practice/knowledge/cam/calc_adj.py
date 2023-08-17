@@ -3,7 +3,7 @@ import numpy as np
 import pickle
 
 # 分析训练集中的数据
-image_id2labels = json.load(open('train_image_id.json', 'r'))
+image_id2labels = json.load(open('val_image_id.json', 'r'))
 adjList = np.zeros((80, 80))
 for image_id in image_id2labels:
     image_info = image_id2labels[image_id]
