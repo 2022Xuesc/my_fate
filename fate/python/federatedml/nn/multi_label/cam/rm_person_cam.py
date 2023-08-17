@@ -855,8 +855,8 @@ def drop_channels_from_person(dep_model):
     example_inputs = torch.randn(1,3,224,224).to(dep_model.conv1.weight.device)
 
     layers_to_prune = None
-    json_path = '/home/klaus125/research/fate/fate/python/federatedml/nn/multi_label/data.json'
-
+    # json_path = '/home/klaus125/research/fate/fate/python/federatedml/nn/multi_label/data.json'
+    json_path = '/data/projects/fate/fate/python/federatedml/nn/multi_label/data.json'
 
     with open(json_path, 'r') as json_file:
         layers_to_prune = json.load(json_file)
