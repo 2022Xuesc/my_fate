@@ -198,7 +198,8 @@ class FedClientContext(_FedBaseContext):
             self.last_transmission_iter = self.aggregation_iteration
             LOGGER.error(f"回合 {self.aggregation_iteration} 传输所有层")
         else:
-            select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
+            # select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
+            select_list = [i <= 155 for i in range(layers_num)]
             LOGGER.error(f"回合 {self.aggregation_iteration} 只传输浅层")
         LOGGER.error(f"每层的参数传输率为{layer_ratio}")
         select_layers(self._params2server, select_list=select_list)
@@ -486,7 +487,7 @@ class SyncAggregator(object):
                 # Todo: 注意处理tensor和mask为空的情况
                 if tensor == []:
                     # 使用self.model[j]替代
-                    tensors[i][j] = self.model[j]
+                    tensors[i][j] = np.copy(self.model[j])
                 else:
                     tensor[np.logical_not(mask)] = self.model[j][np.logical_not(mask)]
 
