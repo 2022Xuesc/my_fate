@@ -115,8 +115,7 @@ class MetaPruner:
     # 步进剪枝
     # 如果设定交互式，则以yield方式返回剪枝结果
     # 否则，直接执行剪枝
-    def step(self, interactive=False):
-
+    def step(self,select_all=True, interactive=False):
         name2masks = {}
         # 进行实际的剪枝操作
         for name, p in self.model.named_parameters():
@@ -135,7 +134,8 @@ class MetaPruner:
             if interactive:
                 return self.prune_local()
             else:
-                for group in self.prune_local():
+                # Todo: 对于每个组，进行剪枝
+                for group in self.prune_local(select_all):
                     group.prune(name2masks)
         # print(name2masks)
         num_zeros = 0
@@ -145,19 +145,30 @@ class MetaPruner:
             num_zeros += (tensor == 0).sum().item()
             num_ones += (tensor == 1).sum().item()
 
-        print("Number of zeros:", num_zeros)
-        print("Number of ones:", num_ones)
-        print("Sparsity: ", num_zeros / (num_zeros + num_ones))
+        # print("Number of zeros:", num_zeros)
+        # print("Number of ones:", num_ones)
+        # print("Sparsity: ", num_zeros / (num_zeros + num_ones))
         return name2masks
 
     # Todo: 两个重要的剪枝函数 --> 局部剪枝和全局剪枝
 
-    def prune_local(self):
+    def prune_local(self,select_all=True):
         if self.current_step > self.iterative_steps:
             return
         # 每个组分别考虑
         for group in self.DG.get_all_groups(ignored_layers=self.ignored_layers,
                                             root_module_types=self.root_module_types):
+            # 提取层名
+            select = {'layer2', 'layer1', 'conv1'}
+            group_name = group.items[0].dep.target._name
+            first_dot_index = group_name.find(".")
+            layer_name = None
+            if first_dot_index != -1:
+                layer_name = group_name[:first_dot_index]
+            else:
+                layer_name = group_name
+            if not select_all and layer_name not in select:
+                continue
             if self._check_sparsity(group):
                 module = group[0][0].target.module
                 pruning_fn = group[0][0].handler
@@ -171,18 +182,10 @@ class MetaPruner:
                     self.layer_init_out_ch[module] *
                     (1 - target_sparsity)
                 )
-                # if self.round_to:
-                #     n_pruned = n_pruned - (n_pruned % self.round_to)
-                # if n_pruned <= 0:
-                #     continue
-                # if ch_groups > 1:
-                #     imp = imp[:len(imp) // ch_groups]
+
                 imp_argsort = torch.argsort(imp)
                 pruning_idxs = imp_argsort[:(n_pruned // ch_groups)]
-                # if ch_groups > 1:
-                #     group_size = current_channels // ch_groups
-                #     pruning_idxs = torch.cat(
-                #         [pruning_idxs + group_size * i for i in range(ch_groups)], 0)
+
                 group = self.DG.get_pruning_group(module, pruning_fn, pruning_idxs.tolist())
                 if self.DG.check_pruning_group(group):
                     yield group
