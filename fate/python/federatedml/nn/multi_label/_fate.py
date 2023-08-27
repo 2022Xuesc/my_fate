@@ -25,11 +25,6 @@ from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
-# 导入依赖图相关的包
-from federatedml.nn.backend.multi_label.prunners.depgraph.dependency import *
-from federatedml.nn.backend.multi_label.prunners.depgraph.function import *
-from federatedml.nn.backend.multi_label.prunners.depgraph.importance import *
-from federatedml.nn.backend.multi_label.prunners.depgraph.meta_pruner import *
 
 stats_dir = os.path.join(os.getcwd(), 'stats')
 if not os.path.exists(stats_dir):
@@ -93,6 +88,7 @@ class FedClientContext(_FedBaseContext):
         )
         self.aggregate_every_n_epoch = aggregate_every_n_epoch
         self._params: list = []
+        self._params2server: list = []
         self._masks: list = []
 
         self._should_stop = False
@@ -104,7 +100,7 @@ class FedClientContext(_FedBaseContext):
         # 上一次深层传输的回合数量
         self.last_transmission_iter = 0
         # 选择比例随训练进度衰减的权重，该值越大，衰减得越厉害
-        self.lambda_k = 1
+        self.lambda_k = 0
         # 保存接收到的全局模型，用于验证保留较小权重的效果
         self.last_global_model = None
 
@@ -154,12 +150,10 @@ class FedClientContext(_FedBaseContext):
     # 发送、接收全局模型并更新本地模型
     def do_aggregation(self, weight, device):
         # 发送全局模型
-        self.send_model(self._params, self._masks, weight)
+        self.send_model(self._params2server, self._masks, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
-        # Todo: 将全局模型和本地的训练进度合并
-        #  关注self._masks中0元素所在的位置
         # 直接覆盖
         LOGGER.warn("模型接收完毕")
         agg_tensors = []
@@ -181,15 +175,10 @@ class FedClientContext(_FedBaseContext):
     def calculate_layer_ratio(self):
         # Todo: 对lambda_k的选取进行修改
         return 1 / (self.lambda_k * self.aggregation_iteration + 1)
-        # sparsities = [0, 0.07, 0.14, 0.2, 0.26, 0.33, 0.39, 0.46, 0.55, 0.66]
-        # if self.aggregation_iteration < len(sparsities):
-        #     return sparsities[self.aggregation_iteration]
-        # else:
-        #     return 0
 
     # 配置聚合参数，将优化器中的参数提取出来
     # Todo: 在这里应用选择传输的算法
-    def configure_aggregation_params(self, dep_model, optimizer):
+    def configure_aggregation_params(self, optimizer):
         layer_ratio = self.calculate_layer_ratio()
         # 获取优化器中的参数列表
         self._params = [
@@ -198,27 +187,33 @@ class FedClientContext(_FedBaseContext):
             for param_group in optimizer.param_groups
             for param in param_group["params"]
         ]
-
+        # Todo: 对self._params进行拷贝
+        self._params2server = copy.deepcopy(self._params)
         # 先对层进行筛选
-        layers_num = len(self._params)
-        select_all = True
+        layers_num = len(self._params2server)
+        # 根据训练进度判断是否传深层
         if self.last_transmission_iter + self.deep_theta == self.aggregation_iteration:
+            select_list = [True for i in range(layers_num)]
             self.deep_theta += 1
             self.last_transmission_iter = self.aggregation_iteration
             LOGGER.error(f"回合 {self.aggregation_iteration} 传输所有层")
         else:
-            select_all = False
+            # Todo: 方案1：截断传输，conv和bn分别划分到浅层和深层中
+            # select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
+            # Todo: 方案2：将conv和对应的bn绑定，都划分到深层中去
+            select_list = [i <= 71 for i in range(layers_num)]
+            # Todo: 将conv和对应bn绑定，都划分到浅层中去，按理说一定比上面两种情况要好，体现不出分割的影响
+            # select_list = [i <= 158 for i in range(layers_num)]
+            # Todo: 方案3：仅将最后一个fc作为深层，跑一下实验看看结果
+            # select_list = [i <= 312 for i in range(layers_num)]
+
             LOGGER.error(f"回合 {self.aggregation_iteration} 只传输浅层")
-
-        LOGGER.warn(f"回合 {self.aggregation_iteration}时，总的参数传输率为{layer_ratio}")
-
+        LOGGER.error(f"每层的参数传输率为{layer_ratio}")
+        select_layers(self._params2server, select_list=select_list)
         # 返回值是每一层的布尔矩阵
         # 已经对self._params进行了修改，保留变化最大的前p部分参数，将其余参数置为0
-        # Todo: 需要传入select_list在其中进行判定
-        self._masks, layer_ratios = save_largest_part_of_weights(dep_model, self._params, self.last_global_model,
-                                                                 layer_ratio, select_all=select_all)
+        self._masks = save_largest_part_of_weights(self._params2server, self.last_global_model, layer_ratio)
         # 至此，self._params已经配置完成，将其和self._selected_list一起发送给服务器端
-        LOGGER.warn(f"回合 {self.aggregation_iteration}时，每层的参数传输率为{layer_ratios}")
 
     def should_aggregate_on_epoch(self, epoch_index):
         return (epoch_index + 1) % self.aggregate_every_n_epoch == 0
@@ -289,6 +284,7 @@ class FedServerContext(_FedBaseContext):
         return is_converged, mean_loss
 
 
+# Todo: 学习apMeter
 class AveragePrecisionMeter(object):
     """
     计算每个类（标签）的平均精度
@@ -491,15 +487,19 @@ class SyncAggregator(object):
         client_nums = len(tensors)
         for i in range(client_nums):
             layer_nums = len(tensors[i])
+            has_mask = len(masks[i]) != 0
             # 遍历每一层参数
             for j in range(layer_nums):
                 tensor = tensors[i][j]
-                mask = masks[i][j]
                 # Todo: 注意处理tensor和mask为空的情况
-                if tensor == [] or mask == []:
+                if tensor == []:
                     # 使用self.model[j]替代
                     tensors[i][j] = np.copy(self.model[j])
                 else:
+                    # 该层无mask,说明不需要传输比例为1
+                    if has_mask is False:
+                        continue
+                    mask = masks[i][j]
                     tensor[np.logical_not(mask)] = self.model[j][np.logical_not(mask)]
 
     def aggregate_by_labels(self, tensors, degrees):
@@ -568,7 +568,6 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
     # param.batch_size = 1
     # param.max_iter = 100
-    # param.device = 'cuda:0'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -637,6 +636,7 @@ class MultiLabelFitter(object):
 
         # Todo: 原始的ResNet101分类器
         (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
+
         # 使用对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
@@ -725,9 +725,7 @@ class MultiLabelFitter(object):
 
     def aggregate_model(self, epoch, weight):
         # 配置参数，将优化器optimizer中的参数写入到list中
-        # 拷贝模型作为依赖模型，将其中参数更新为绝对值
-        dep_model = copy.deepcopy(self.model)
-        self.context.configure_aggregation_params(dep_model, self.optimizer)
+        self.context.configure_aggregation_params(self.optimizer)
 
         # Partial Supervised聚合策略
         weight_list = list(self._num_per_labels)
@@ -851,18 +849,32 @@ def valid_transforms():
 # 选择传输部分的代码
 # 客户端权重、最近全局模型的权重、选取的层比例
 # client_weights和客户端的优化器绑定
-def save_largest_part_of_weights(dep_model, client_weights, global_weights, layer_ratio, select_all):
+def save_largest_part_of_weights(client_weights, global_weights, layer_ratio):
     # 每一层选择的位置的布尔矩阵
     masks = []
-    layer_ratios = []
     if global_weights is None or layer_ratio == 1:
         # 无需mask，直接返回即可
-        return masks, layer_ratios
-    # 获取依赖模型的参数列表，对其进行赋值
-    parameters = list(dep_model.parameters())
+        return masks
     # 依次遍历每一层
     for i in range(len(client_weights)):
+        # 跳过删除后的层
+        if len(client_weights[i]) == 0:
+            # 添加占位符
+            masks.append(torch.Tensor())
+            continue
+        # 需要对参数的形状进行判定
+        layer_shape = client_weights[i].shape
+        # 将其展平成一维向量
+        client_weights[i] = client_weights[i].flatten()
+        # 对global_weights也进行reshape操作
+        global_weights[i] = global_weights[i].flatten()
+        weights_diff = torch.abs(client_weights[i] - global_weights[i])
+        # 获取最大的p部分的布尔矩阵
+        mask = get_mask(weights_diff, layer_ratio)
+        # 对client_weights进行原地修改，如果不传输，则将其设定为最近全局模型 -->
+        # Todo: 直接设置为0，因为会接收模型，进行聚合。也就是说，不保留较小的训练进度
         with torch.no_grad():
+<<<<<<< HEAD
             # Todo: 这里是绝对值，而不是本值
             #  批注：里面会取abs()
             parameters[i].data.copy_(client_weights[i] - global_weights[i])
