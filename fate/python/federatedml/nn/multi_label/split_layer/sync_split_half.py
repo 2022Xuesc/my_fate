@@ -201,11 +201,11 @@ class FedClientContext(_FedBaseContext):
             # Todo: 方案1：截断传输，conv和bn分别划分到浅层和深层中
             # select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
             # Todo: 方案2：将conv和对应的bn绑定，都划分到深层中去
-            select_list = [i <= 155 for i in range(layers_num)]
+            select_list = [i <= 71 for i in range(layers_num)]
             # Todo: 将conv和对应bn绑定，都划分到浅层中去，按理说一定比上面两种情况要好，体现不出分割的影响
             # select_list = [i <= 158 for i in range(layers_num)]
             # Todo: 方案3：仅将最后一个fc作为深层，跑一下实验看看结果
-            select_list = [i <= 312 for i in range(layers_num)]
+            # select_list = [i <= 312 for i in range(layers_num)]
 
             LOGGER.error(f"回合 {self.aggregation_iteration} 只传输浅层")
         LOGGER.error(f"每层的参数传输率为{layer_ratio}")
@@ -494,7 +494,7 @@ class SyncAggregator(object):
                 # Todo: 注意处理tensor和mask为空的情况
                 if tensor == []:
                     # 使用self.model[j]替代
-                    tensors[i][j] = self.model[j]
+                    tensors[i][j] = np.copy(self.model[j])
                 else:
                     # 该层无mask,说明不需要传输比例为1
                     if has_mask is False:
