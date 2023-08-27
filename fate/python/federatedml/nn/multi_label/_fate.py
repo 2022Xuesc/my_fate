@@ -874,32 +874,15 @@ def save_largest_part_of_weights(client_weights, global_weights, layer_ratio):
         # 对client_weights进行原地修改，如果不传输，则将其设定为最近全局模型 -->
         # Todo: 直接设置为0，因为会接收模型，进行聚合。也就是说，不保留较小的训练进度
         with torch.no_grad():
-<<<<<<< HEAD
-            # Todo: 这里是绝对值，而不是本值
-            #  批注：里面会取abs()
-            parameters[i].data.copy_(client_weights[i] - global_weights[i])
+            client_weights[i].mul_(mask)
+        # 对client_weights和mask进行reshape
+        client_weights[i] = client_weights[i].reshape(layer_shape)
+        # Todo: 这一步可能不太需要，先保留
+        global_weights[i] = global_weights[i].reshape(layer_shape)
+        mask = mask.reshape(layer_shape)
 
-    # 拷贝完成后，使用dep graph
-    imp = MagnitudeImportance(p=1)
-    example_inputs = torch.randn(1, 3, 224, 224).to(dep_model.conv1.weight.device)
-    # Todo: 设置为非全局剪枝 --> 和对照组相吻合
-    pruner = MetaPruner(
-        dep_model,
-        example_inputs,
-        global_pruning=False,
-        importance=imp,
-        ch_sparsity=layer_ratio
-    )
-    masks = list(pruner.step(select_all=select_all).values())
-    # 不是不是传输所有层，则将其后面的部分置为空
-    if not select_all:
-        masks = [[] if i > 71 else masks[i] for i in range(len(masks))]
-    # Todo: 查看masks中的信息
-    # for j in range(len(masks)):
-    #     layer_mask = masks[j]
-    #     layer_ratios.append((layer_mask.sum() * 1.0 / layer_mask.numel()).item())
-
-    return masks, layer_ratios
+        masks.append(mask)
+    return masks
 
 
 # 确保输入的client_weights和mask都是一维向量
