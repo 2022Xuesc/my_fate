@@ -881,7 +881,7 @@ def save_largest_part_of_weights(dep_model, client_weights, global_weights, laye
     masks = list(pruner.step(select_all=select_all).values())
     # 不是不是传输所有层，则将其后面的部分置为空
     if not select_all:
-        masks = [[] if i > 77 else masks[i] for i in range(len(masks))]
+        masks = [[] if i > 71 else masks[i] for i in range(len(masks))]
     # Todo: 查看masks中的信息
     # for j in range(len(masks)):
     #     layer_mask = masks[j]
