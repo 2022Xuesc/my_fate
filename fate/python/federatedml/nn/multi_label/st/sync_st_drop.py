@@ -199,7 +199,7 @@ class FedClientContext(_FedBaseContext):
             LOGGER.error(f"回合 {self.aggregation_iteration} 传输所有层")
         else:
             # select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
-            select_list = [i <= 155 for i in range(layers_num)]
+            select_list = [i <= 71 for i in range(layers_num)]
             LOGGER.error(f"回合 {self.aggregation_iteration} 只传输浅层")
         LOGGER.error(f"每层的参数传输率为{layer_ratio}")
         select_layers(self._params2server, select_list=select_list)
@@ -569,8 +569,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    # category_dir = '/data/projects/dataset'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/dataset'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
