@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202307231222374674240"
-job_id = "202307231222374674240"
+dir_id = "202308261138265113260"
+job_id = "202308261138265113260"
 module_name = 'multi_label_0'
-target_dir = 'sync_fpsl_dep_drop_person_0.1'
+target_dir = 'sync_fpsl_st_dep'
 client_num = 10
 
 
@@ -45,6 +45,7 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
 
 
