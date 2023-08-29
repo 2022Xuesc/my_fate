@@ -100,7 +100,7 @@ class FedClientContext(_FedBaseContext):
         # 上一次深层传输的回合数量
         self.last_transmission_iter = 0
         # 选择比例随训练进度衰减的权重，该值越大，衰减得越厉害
-        self.lambda_k = 0
+        self.lambda_k = 1
         # 保存接收到的全局模型，用于验证保留较小权重的效果
         self.last_global_model = None
 
@@ -198,15 +198,8 @@ class FedClientContext(_FedBaseContext):
             self.last_transmission_iter = self.aggregation_iteration
             LOGGER.error(f"回合 {self.aggregation_iteration} 传输所有层")
         else:
-            # Todo: 方案1：截断传输，conv和bn分别划分到浅层和深层中
             # select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
-            # Todo: 方案2：将conv和对应的bn绑定，都划分到深层中去
             select_list = [i <= 71 for i in range(layers_num)]
-            # Todo: 将conv和对应bn绑定，都划分到浅层中去，按理说一定比上面两种情况要好，体现不出分割的影响
-            # select_list = [i <= 158 for i in range(layers_num)]
-            # Todo: 方案3：仅将最后一个fc作为深层，跑一下实验看看结果
-            # select_list = [i <= 312 for i in range(layers_num)]
-
             LOGGER.error(f"回合 {self.aggregation_iteration} 只传输浅层")
         LOGGER.error(f"每层的参数传输率为{layer_ratio}")
         select_layers(self._params2server, select_list=select_list)
@@ -487,19 +480,15 @@ class SyncAggregator(object):
         client_nums = len(tensors)
         for i in range(client_nums):
             layer_nums = len(tensors[i])
-            has_mask = len(masks[i]) != 0
             # 遍历每一层参数
             for j in range(layer_nums):
                 tensor = tensors[i][j]
+                mask = masks[i][j]
                 # Todo: 注意处理tensor和mask为空的情况
                 if tensor == []:
                     # 使用self.model[j]替代
                     tensors[i][j] = np.copy(self.model[j])
                 else:
-                    # 该层无mask,说明不需要传输比例为1
-                    if has_mask is False:
-                        continue
-                    mask = masks[i][j]
                     tensor[np.logical_not(mask)] = self.model[j][np.logical_not(mask)]
 
     def aggregate_by_labels(self, tensors, degrees):
@@ -902,3 +891,4 @@ def select_layers(client_weights, select_list):
         if select_list[i] is False:
             # 如果不保留第i层，直接清空
             client_weights[i] = torch.Tensor()
+
