@@ -100,14 +100,17 @@ class FedClientContext(_FedBaseContext):
 
     # 发送模型
     # 这里tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, weight):
+    def send_model(self, tensors, bn_data, weight):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
             tensor_arrs.append(tensor_arr)
-
+        bn_arrs = []
+        for bn_item in bn_data:
+            bn_arr = bn_item.data.cpu().numpy()
+            bn_arrs.append(bn_arr)
         self.aggregator.send_model(
-            (tensor_arrs, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
         )
 
     # 接收模型
@@ -123,21 +126,27 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, weight, device):
+    def do_aggregation(self, bn_data, weight, device):
         # 发送全局模型
-        self.send_model(self._params, weight)
+        self.send_model(self._params, bn_data, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
+        global_model, bn_data = recv_elements
         agg_tensors = []
-        for arr in recv_elements:
+        for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
         for param, agg_tensor in zip(self._params, agg_tensors):
             # param.grad处理的是哪种情况
             if param.grad is None:
                 continue
             param.data.copy_(agg_tensor)
+
+        bn_tensors = []
+        for arr in bn_data:
+            bn_tensors.append(torch.from_numpy(arr).to(device))
+        return bn_tensors
 
     def do_convergence_check(self, weight, mAP, loss_value):
         self.loss_summary.append(loss_value)
@@ -392,6 +401,7 @@ class SyncAggregator(object):
     def __init__(self, context: FedServerContext):
         self.context = context
         self.model = None
+        self.bn_data = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -402,22 +412,61 @@ class SyncAggregator(object):
             LOGGER.warn(f'收到{len(recv_elements)}客户端发送过来的模型')
 
             tensors = [party_tuple[0] for party_tuple in recv_elements]
-            degrees = [party_tuple[1] for party_tuple in recv_elements]
-
+            # 还有bn层的统计数据
+            bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
+            # Todo: 对BN层的统计数据进行处理
+            # 抽取出
+            degrees = [party_tuple[2] for party_tuple in recv_elements]
+            self.bn_data = self.aggregate_bn_data(bn_tensors, degrees)
             # 分标签进行聚合
             self.aggregate_by_labels(tensors, degrees)
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
-            self.context.send_model(tensors[0])
+
+            self.context.send_model((tensors[0], self.bn_data))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
             self.context.do_convergence_check()
             # 同步方式下，服务器端也需要记录聚合轮次
             self.context.increase_aggregation_iteration()
+
+        # Todo: 除了保存参数之外，还要保存BN层的统计数据mean和var
         if self.context.finished():
+            print(os.getcwd())
             np.save('global_model', self.model)
+            np.save('bn_data', self.bn_data)
+
+    def aggregate_bn_data(self, bn_tensors, degrees):
+        degrees = np.array(degrees)
+        degrees_sum = degrees.sum(axis=0)
+
+        client_nums = len(bn_tensors)
+        layer_nums = len(bn_tensors[0]) // 2
+        bn_data = []
+        # 遍历每一层
+        for i in range(layer_nums):
+            mean_idx = i * 2
+            mean_var_dim = len(bn_tensors[0][mean_idx])
+            mean = np.zeros(mean_var_dim)
+            # 遍历每个客户端
+            for idx in range(client_nums):
+                # 该层在该客户端上的mean是bn_tensors[id][i * 2],方差是bn_tensors[id][i * 2 + 1]
+                client_mean = bn_tensors[idx][mean_idx]
+                mean += client_mean * degrees[idx][-1]
+            mean /= degrees_sum[-1]
+            bn_data.append(mean)
+            # 计算完均值之后，开始计算方差
+            var_idx = mean_idx + 1
+            var = np.zeros(mean_var_dim)
+            for idx in range(client_nums):
+                client_mean = bn_tensors[idx][mean_idx]
+                client_var = bn_tensors[idx][var_idx]
+                var += (client_var + client_mean ** 2 - mean ** 2) * degrees[idx][-1]
+            var /= degrees_sum[-1]
+            bn_data.append(var)
+        return bn_data
 
     def aggregate_by_labels(self, tensors, degrees):
         # degrees是91个元素的列表，前90个元素是最后一层各个类别的聚合权重，而最后一个元素是之前层的聚合权重
@@ -469,6 +518,8 @@ class SyncAggregator(object):
 
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
+    # Todo: [WARN]
+    # param.max_iter = 100
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
@@ -480,6 +531,9 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
+    # Todo: [WARN]
+    # param.batch_size = 1
+    # param.max_iter = 100
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
         max_num_aggregation=param.max_iter,
@@ -491,8 +545,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    # category_dir = '/data/projects/dataset'
-    category_dir = '/my_practice/dataset/coco'
+    category_dir = '/data/projects/dataset'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -637,10 +691,25 @@ class MultiLabelFitter(object):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
 
+        # bn_data添加
+        bn_data = []
+        for layer in self.model.modules():
+            if isinstance(layer, torch.nn.BatchNorm2d):
+                bn_data.append(layer.running_mean)
+                bn_data.append(layer.running_var)
+
         # Partial Supervised聚合策略
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
-        self.context.do_aggregation(weight=weight_list, device=self.param.device)
+
+        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data, device=self.param.device)
+        idx = 0
+        for layer in self.model.modules():
+            if isinstance(layer, torch.nn.BatchNorm2d):
+                layer.running_mean.data.copy_(agg_bn_data[idx])
+                idx += 1
+                layer.running_var.data.copy_(agg_bn_data[idx])
+                idx += 1
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         mAP, loss = self.train_one_epoch(epoch, train_loader, scheduler)
