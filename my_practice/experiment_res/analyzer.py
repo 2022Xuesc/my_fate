@@ -238,38 +238,39 @@ def compare_method(paths, file):
         #     for dir i dirs:
         #         file_path = os.path.join(path, f'{dir}/valid.csv')
         #         mAPs.append(pd.read_csv(file_path))
-        file_path1 = os.path.join('sync_fpsl_split_half', os.path.join(path, file))
+        file_path1 = os.path.join('sync_fpsl_st', os.path.join(path, file))
         data1 = pd.read_csv(file_path1)
 
-        file_path2 = os.path.join('sync_fpsl_split_correct', os.path.join(path, file))
+        file_path2 = os.path.join('sync_fpsl_st_dep', os.path.join(path, file))
         data2 = pd.read_csv(file_path2)
 
         baseline_path = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
         data3 = pd.read_csv(baseline_path)
-        half_mAP = data1['mAP']
-        correct_mAP = data2['mAP']
+        st_mAP = data1['mAP']
+        st_dep_mAP = data2['mAP']
         fpsl_baseline_mAP = data3['mAP']
 
-        last_path = os.path.join("sync_fpsl_split_last",os.path.join(path,file))
-        last_data = pd.read_csv(last_path)
-        last_mAP = last_data['mAP']
+        ratio_path = os.path.join("sync_fpsl_fixed_ratio_drop", os.path.join(path, file))
+        ratio_data = pd.read_csv(ratio_path)
+        ratio_mAP = ratio_data['mAP']
+
         plt.plot(data3[x_axis], fpsl_baseline_mAP, 'g')
-        plt.plot(data1[x_axis], half_mAP, 'b')
-        plt.plot(data2[x_axis], correct_mAP, 'r')
-        plt.plot(last_data[x_axis],last_mAP,'orange')
+        plt.plot(ratio_data[x_axis], ratio_mAP, 'orange')
+        plt.plot(data1[x_axis], st_mAP, 'b')
+        plt.plot(data2[x_axis], st_dep_mAP, 'r')
         # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
-        plt.ylim(0, 100)
+        plt.ylim(40, 85)
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
         # 加竖线
-        # cliffs = [12, 20, 24, 32, 36]
-        # cliff_heights = half_mAP.values[cliffs]
-        # plt.vlines(cliffs, 0, cliff_heights,label='label test', linestyles="dashed", colors='green')
-        # for i in range(len(cliffs)):
-        #     plt.text(cliffs[i] + 1, 2, cliffs[i], ha='center',color="red")
+        cliffs = [12, 20, 24, 32, 36]
+        cliff_heights = st_dep_mAP.values[cliffs]
+        plt.vlines(cliffs, 0, cliff_heights,label='label test', linestyles="dashed", colors='black')
+        for j in range(len(cliffs)):
+            plt.text(cliffs[j] + 1, 42, cliffs[j], ha='center',color="black")
 
-        plt.legend(['FPSL-Full', 'FPSL-Half', 'FPSL-Correct','FPSL-LAST'])
+        plt.legend(['FPSL-Full', 'FPSL-Ratio', 'FPSL-ST', 'FPSL-ST-DEP'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -279,7 +280,7 @@ def compare_method(paths, file):
             id = 'arbiter'
         else:
             id = path.split('/')[-1]
-        dir_name = 'compare_split'
+        dir_name = 'compare_st'
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
         save_path = os.path.join(dir_name, f'{id}.svg')
@@ -383,7 +384,8 @@ def draw_train_and_valid(paths):
 #
 #
 
-# paths = ["sync_fpsl_lamp", 'sync_fpsl_split_last', 'sync_fpsl_dep_global','sync_fpsl_dep_drop_person_0.1']
+# Todo: 各个客户端自身的结果分析
+# paths = ["sync_fpsl_st", 'sync_fpsl_st_dep']
 # for path in paths:
 #     clients_path = [os.path.join(path, 'guest/10')]
 #
@@ -405,7 +407,7 @@ clients_path = ['guest/10']
 for i in range(1, 10):
     clients_path.append(f'host/{i}')
 # 将服务器端也加进去
-clients_path.append('arbiter/999')
+# clients_path.append('arbiter/999')
 
 compare_method(clients_path, 'valid.csv')
 # compare_layer_ratio_method(clients_path, 'valid.csv')
