@@ -9,9 +9,11 @@ num_labels = 80
 
 all_labels = list(range(num_labels))
 
-dir_name = "/home/klaus125/research/dataset/val2014"
-target_dir = "/home/klaus125/research/dataset/label_imgs"
-json_path = "val_image_id.json"
+#dir_name = "/home/klaus125/research/dataset/val2014"
+dir_name = "/data/projects/dataset/val2014"
+#target_dir = "/home/klaus125/research/dataset/label_imgs"
+target_dir = "/data/projects/dataset/label_imgs"
+json_path = "../val_image_id.json"
 val_json = json.load(open(json_path, 'r'))
 
 # Todo: 遍历每一个val_json中的每一项，建立从file_name到labels的映射
@@ -31,7 +33,7 @@ for label in range(num_labels):
         os.makedirs(target_path)
 
 label_cnts = [0] * num_labels
-max_cnt = 10
+max_cnt = 100
 files = os.listdir(dir_name)
 for file_name in files:
     # Todo: 为什么没有呢？
