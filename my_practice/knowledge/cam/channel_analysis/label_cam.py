@@ -1,31 +1,23 @@
-import copy
-import torch
-from torch.autograd import Variable
-from torch.autograd import Function
-from torchvision import models
-from torchvision import utils
-import cv2
-import sys
 import numpy as np
-import argparse
-from federatedml.nn.backend.multi_label.models import *
-import pickle
-import torchvision.transforms as transforms
-
-from torchvision.datasets import ImageFolder
-from torch.utils.data import DataLoader
-import math
 import torch
 import torch.nn as nn
-import torchvision.models as torch_models
+import torchvision.transforms as transforms
 from PIL import Image
+from torch.autograd import Variable
 from torch.utils.data import Dataset
-
-from federatedml.nn.backend.multi_label.meta_learning.maml import MAML
-
+import copy
 import json
 import os
 import pickle
+
+import torchvision.models as torch_models
+def create_resnet101_model(pretrained, device, num_classes=80):
+    # Todo: 先下载1000类的全连接层
+    model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
+    # 将最后的全连接层替换掉
+    model.fc = torch.nn.Sequential(torch.nn.Linear(2048, num_classes))
+    torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
+    return model.to(device)
 
 
 # 一些utils方法
@@ -212,11 +204,12 @@ class GradCam:
         # return indices
 
 
+
 if __name__ == '__main__':
     # dir_name = '/home/klaus125/research/dataset/label_imgs'
     dir_name = '/data/projects/dataset/label_imgs'
     # Todo: 设置GPU卡
-    device = 'cuda:5'
+    device = 'cuda:0'
     model = create_resnet101_model(pretrained=False, device=device)
     # Todo: 注意该语句对模型输出的影响
     #  需要得到running_mean和running_var
