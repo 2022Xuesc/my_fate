@@ -146,7 +146,6 @@ class GradCam:
             one_hot = torch.sum(one_hot * output)
         self.extractor.features.zero_grad()
         self.model.fc.zero_grad()
-        # self.model.features._modules['34'].weight.grad
         # Todo: 过程中收集到的是feature map激活值的梯度，而不是卷积参数的梯度！
         one_hot.backward()
 
