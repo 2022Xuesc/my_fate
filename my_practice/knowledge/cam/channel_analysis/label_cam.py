@@ -9,8 +9,16 @@ import copy
 import json
 import os
 import pickle
-
+import logging
 import torchvision.models as torch_models
+
+
+logging.basicConfig(
+    filename='app.log',   # 指定日志文件的路径
+    level=logging.DEBUG,   # 设置日志级别为DEBUG，记录所有级别的日志信息
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
 def create_resnet101_model(pretrained, device, num_classes=80):
     # Todo: 先下载1000类的全连接层
     model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
@@ -206,8 +214,8 @@ class GradCam:
 
 
 if __name__ == '__main__':
-    # dir_name = '/home/klaus125/research/dataset/label_imgs'
-    dir_name = '/data/projects/dataset/label_imgs'
+    dir_name = '/home/klaus125/research/dataset/label_imgs'
+    # dir_name = '/data/projects/dataset/label_imgs'
     # Todo: 设置GPU卡
     device = 'cuda:0'
     model = create_resnet101_model(pretrained=False, device=device)
@@ -279,7 +287,7 @@ if __name__ == '__main__':
         total += cnt
         for i in range(n):
             # Todo: 打印进度
-            print(f'label = {label} , progress = {i + 1} / {cnt}')
+            logging.info(f'label = {label} , progress = {i + 1} / {cnt}')
             hook_features.clear()
             hook_gradients.clear()
             file_name = files[i]
