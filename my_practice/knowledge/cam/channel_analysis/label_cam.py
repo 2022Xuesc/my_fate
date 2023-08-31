@@ -213,8 +213,10 @@ class GradCam:
 
 
 if __name__ == '__main__':
-    dir_name = '/home/klaus125/research/dataset/label_imgs'
-    device = 'cuda:0'
+    # dir_name = '/home/klaus125/research/dataset/label_imgs'
+    dir_name = '/data/projects/dataset/label_imgs'
+    # Todo: 设置GPU卡
+    device = 'cuda:5'
     model = create_resnet101_model(pretrained=False, device=device)
     # Todo: 注意该语句对模型输出的影响
     #  需要得到running_mean和running_var
@@ -224,12 +226,21 @@ if __name__ == '__main__':
 
     # 读取训练好的全局模型
     # 读取bn层的统计数据
-    arrs = np.load('../global_model.npy', allow_pickle=True)
+    arrs = np.load('../../../../state/global_model.npy', allow_pickle=True)
     agg_tensors = []
     for arr in arrs:
         agg_tensors.append(torch.from_numpy(arr).to(device))
     for param, agg_tensor in zip(model.named_parameters(), agg_tensors):
         param[1].data.copy_(agg_tensor)
+    bn_data = np.load("../../../../state/bn_data.npy",allow_pickle=True)
+    idx = 0
+    for layer in model.modules():
+        if isinstance(layer, torch.nn.BatchNorm2d):
+            layer.running_mean.data.copy_(torch.from_numpy(bn_data[idx]).to(device))
+            idx += 1
+            layer.running_var.data.copy_(torch.from_numpy(bn_data[idx]).to(device))
+            idx += 1
+
     transforms = valid_transforms()
 
     # 目标层
