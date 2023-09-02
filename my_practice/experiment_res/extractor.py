@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202308261138265113260"
-job_id = "202308261138265113260"
+dir_id = "202308291235590686010"
+job_id = "202308291235590686010"
 module_name = 'multi_label_0'
-target_dir = 'sync_fpsl_st_dep'
+target_dir = 'sync_fpsl_agg_bn'
 client_num = 10
 
 
