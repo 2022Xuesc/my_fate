@@ -12,12 +12,12 @@ import pickle
 import logging
 import torchvision.models as torch_models
 
-
 logging.basicConfig(
-    filename='app.log',   # 指定日志文件的路径
-    level=logging.DEBUG,   # 设置日志级别为DEBUG，记录所有级别的日志信息
+    filename='app.log',  # 指定日志文件的路径
+    level=logging.DEBUG,  # 设置日志级别为DEBUG，记录所有级别的日志信息
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
 
 def create_resnet101_model(pretrained, device, num_classes=80):
     # Todo: 先下载1000类的全连接层
@@ -206,11 +206,10 @@ class GradCam:
                 ch_cams[j] = w * np.linalg.norm(target[j, :, :], ord=2)
             layer_cams.append(ch_cams)
         return layer_cams
-            # k = int(self.ratio * len(ch_cams))
-            # top_values, top_indices = top_k_values_with_indices(ch_cams, k=k)
-            # indices.append(top_indices)
+        # k = int(self.ratio * len(ch_cams))
+        # top_values, top_indices = top_k_values_with_indices(ch_cams, k=k)
+        # indices.append(top_indices)
         # return indices
-
 
 
 if __name__ == '__main__':
@@ -233,7 +232,7 @@ if __name__ == '__main__':
         agg_tensors.append(torch.from_numpy(arr).to(device))
     for param, agg_tensor in zip(model.named_parameters(), agg_tensors):
         param[1].data.copy_(agg_tensor)
-    bn_data = np.load("../../../../state/bn_data.npy",allow_pickle=True)
+    bn_data = np.load("../../../../state/bn_data.npy", allow_pickle=True)
     idx = 0
     for layer in model.modules():
         if isinstance(layer, torch.nn.BatchNorm2d):
@@ -272,8 +271,10 @@ if __name__ == '__main__':
             all_layers.append(name)
 
     total = 0
+    insufficient_labels = {35, 69}
     # 遍历每一个标签
-    for label in range(num_labels):
+    # for label in range(num_labels):
+    for label in insufficient_labels:
         # 遍历模型，初始化
         layer_cams = []
         for name, module in model.named_modules():
@@ -307,9 +308,9 @@ if __name__ == '__main__':
                 layer_cams[j] += layer_cam[j]
 
             # 每个标签只选取cnt张图片进行实验
-            if i == cnt - 1:
-                # Todo: 放到标签对应
+            # Todo: 有的标签对应的图片数量不到cnt张
+            if i == cnt - 1 or i == n - 1:
                 statistics.append(copy.copy(layer_cams))
                 break
-    with open('server_statistics.pkl', 'wb') as file:
+    with open('complement_statistics.pkl', 'wb') as file:
         pickle.dump(statistics, file)
