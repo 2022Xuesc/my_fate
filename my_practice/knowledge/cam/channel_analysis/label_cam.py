@@ -214,8 +214,8 @@ class GradCam:
 
 
 if __name__ == '__main__':
-    dir_name = '/home/klaus125/research/dataset/label_imgs'
-    # dir_name = '/data/projects/dataset/label_imgs'
+    # dir_name = '/home/klaus125/research/dataset/label_imgs'
+    dir_name = '/data/projects/dataset/label_imgs'
     # Todo: 设置GPU卡
     device = 'cuda:0'
     model = create_resnet101_model(pretrained=False, device=device)
