@@ -5,8 +5,15 @@ import numpy as np
 file_name = 'server_statistics.pkl'
 file = open(file_name, 'rb')
 data = pickle.load(file)
-arr = np.transpose(np.array(data))
 
+# complement_labels = [35,69]
+# Todo: 有两个不充足标签(分别加到索引35和索引69的位置上)
+# complement_data = pickle.load(open('server_statistics.pkl', 'rb'))[:2]
+# data.insert(complement_labels[0], complement_data[0])
+# data.insert(complement_labels[1], complement_data[1])
+
+
+arr = np.transpose(np.array(data))
 remove_labels = {5, 13, 14, 18, 26, 27, 39, 41, 42, 47, 49, 57, 62, 75}
 
 num_labels = 80
