@@ -12,6 +12,26 @@ import pickle
 import logging
 import torchvision.models as torch_models
 
+
+# utils方法
+def calculate_l2_norm(arr):
+    # 将数组展平为一维数组
+    flattened_arr = arr.flatten()
+
+    # 初始化累加平方和为0
+    sum_of_squares = 0.0
+
+    # 遍历一维数组中的每个元素
+    for element in flattened_arr:
+        # 将元素的平方加到累加平方和中
+        sum_of_squares += element ** 2
+
+    # 对累加平方和取平方根，得到L2范数
+    l2_norm = np.sqrt(sum_of_squares)
+
+    return l2_norm
+
+
 logging.basicConfig(
     filename='app.log',  # 指定日志文件的路径
     level=logging.DEBUG,  # 设置日志级别为DEBUG，记录所有级别的日志信息
@@ -203,7 +223,9 @@ class GradCam:
             # Todo: 对于较深的层，不为0的通道数很少
             ch_cams = np.zeros(len(weights))
             for j, w in enumerate(weights):
-                ch_cams[j] = w * np.linalg.norm(target[j, :, :], ord=2)
+                # Todo: ord=2时计算的是最大的奇异值
+                # ch_cams[j] = w * np.linalg.norm(target[j, :, :], ord=2)
+                ch_cams[j] = w * np.linalg.norm(target[j, :, :])
             layer_cams.append(ch_cams)
         return layer_cams
         # k = int(self.ratio * len(ch_cams))
@@ -213,8 +235,8 @@ class GradCam:
 
 
 if __name__ == '__main__':
-    # dir_name = '/home/klaus125/research/dataset/label_imgs'
-    dir_name = '/data/projects/dataset/label_imgs'
+    dir_name = '/home/klaus125/research/dataset/label_imgs'
+    # dir_name = '/data/projects/dataset/label_imgs'
     # Todo: 设置GPU卡
     device = 'cuda:0'
     model = create_resnet101_model(pretrained=False, device=device)
@@ -273,8 +295,8 @@ if __name__ == '__main__':
     total = 0
     insufficient_labels = {35, 69}
     # 遍历每一个标签
-    # for label in range(num_labels):
-    for label in insufficient_labels:
+    for label in range(num_labels):
+        # for label in insufficient_labels:
         # 遍历模型，初始化
         layer_cams = []
         for name, module in model.named_modules():
@@ -284,7 +306,7 @@ if __name__ == '__main__':
         label_dir = os.path.join(dir_name, str(label))
         files = os.listdir(label_dir)
         n = len(files)
-        cnt = 100
+        cnt = 10
         total += cnt
         for i in range(n):
             # Todo: 打印进度
