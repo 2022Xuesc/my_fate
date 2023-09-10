@@ -241,13 +241,14 @@ def compare_method(paths, file):
         file_path1 = os.path.join('sync_fpsl_st', os.path.join(path, file))
         data1 = pd.read_csv(file_path1)
 
-        file_path2 = os.path.join('sync_fpsl_st_dep', os.path.join(path, file))
+        file_path2 = os.path.join('sync_fpsl_bn_only_split', os.path.join(path, file))
         data2 = pd.read_csv(file_path2)
 
         baseline_path = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
         data3 = pd.read_csv(baseline_path)
+
         st_mAP = data1['mAP']
-        st_dep_mAP = data2['mAP']
+        fpsl_split_mAP = data2['mAP']
         fpsl_baseline_mAP = data3['mAP']
 
         ratio_path = os.path.join("sync_fpsl_fixed_ratio_drop", os.path.join(path, file))
@@ -257,20 +258,20 @@ def compare_method(paths, file):
         plt.plot(data3[x_axis], fpsl_baseline_mAP, 'g')
         plt.plot(ratio_data[x_axis], ratio_mAP, 'orange')
         plt.plot(data1[x_axis], st_mAP, 'b')
-        plt.plot(data2[x_axis], st_dep_mAP, 'r')
+        plt.plot(data2[x_axis], fpsl_split_mAP, 'r')
         # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
         plt.ylim(40, 85)
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
         # 加竖线
-        cliffs = [12, 20, 24, 32, 36]
-        cliff_heights = st_dep_mAP.values[cliffs]
-        plt.vlines(cliffs, 0, cliff_heights,label='label test', linestyles="dashed", colors='black')
-        for j in range(len(cliffs)):
-            plt.text(cliffs[j] + 1, 42, cliffs[j], ha='center',color="black")
+        # cliffs = [12, 20, 24, 32, 36]
+        # cliff_heights = st_dep_mAP.values[cliffs]
+        # plt.vlines(cliffs, 0, cliff_heights,label='label test', linestyles="dashed", colors='black')
+        # for j in range(len(cliffs)):
+        #     plt.text(cliffs[j] + 1, 42, cliffs[j], ha='center',color="black")
 
-        plt.legend(['FPSL-Full', 'FPSL-Ratio', 'FPSL-ST', 'FPSL-ST-DEP'])
+        plt.legend(['FPSL-Full', 'FPSL-Ratio', 'FPSL-Split', 'FPSL-ST'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -407,7 +408,7 @@ clients_path = ['guest/10']
 for i in range(1, 10):
     clients_path.append(f'host/{i}')
 # 将服务器端也加进去
-# clients_path.append('arbiter/999')
+clients_path.append('arbiter/999')
 
 compare_method(clients_path, 'valid.csv')
 # compare_layer_ratio_method(clients_path, 'valid.csv')
