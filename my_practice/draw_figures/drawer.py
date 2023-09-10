@@ -110,24 +110,25 @@ total_labels = []
 samples = []
 
 plt.figure(figsize=(12, 12))
+
 # 画直方图
-for i in range(client_nums):
-    client_id = i + 1
-    client_train_path = os.path.join(server_path, f'client{client_id}/train')
-    client_valid_path = os.path.join(server_path, f'client{client_id}/val')
-
-    # Todo: 作出分布直方图
-    draw_hist(save_dir, [client_train_path, client_valid_path])
-
-    labels = get_labels_cnts(client_train_path)
-
-    total_labels.append(get_labels_feature(labels))
-
-    # 只选取训练集大小
-    samples.append(get_sample_size(client_train_path))
-
-div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
-draw_heatmap(save_dir, div_frame)
+# for i in range(client_nums):
+#     client_id = i + 1
+#     client_train_path = os.path.join(server_path, f'client{client_id}/train')
+#     client_valid_path = os.path.join(server_path, f'client{client_id}/val')
+#
+#     # Todo: 作出分布直方图
+#     draw_hist(save_dir, [client_train_path, client_valid_path])
+#
+#     labels = get_labels_cnts(client_train_path)
+#
+#     total_labels.append(get_labels_feature(labels))
+#
+#     # 只选取训练集大小
+#     samples.append(get_sample_size(client_train_path))
+#
+# div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
+# draw_heatmap(save_dir, div_frame)
 
 plt.figure(figsize=(12, 12))
 # Todo: 作出关于samples的柱状图
