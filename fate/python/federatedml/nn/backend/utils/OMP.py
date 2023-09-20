@@ -46,8 +46,8 @@ def OMP(features, predicts, A):
         # Todo: 维护相似集合，以及相似图像的特征向量和预测向量
         S = set()
         indexes = []
-        featureX = torch.empty(0, feature_dim).to(device)
-        predictX = torch.empty(0, label_dim).to(device)
+        featureX = torch.empty(0, feature_dim, dtype=torch.float64).to(device)
+        predictX = torch.empty(0, label_dim, dtype=torch.float64).to(device)
         for j in range(k):
             # 找到最相似的图像i‘
             predict_inner_products = torch.matmul(torch.matmul(predicts, A), predict)
