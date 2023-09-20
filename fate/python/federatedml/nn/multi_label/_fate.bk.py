@@ -100,7 +100,7 @@ class FedClientContext(_FedBaseContext):
         # 上一次深层传输的回合数量
         self.last_transmission_iter = 0
         # 选择比例随训练进度衰减的权重，该值越大，衰减得越厉害
-        self.lambda_k = 1
+        self.lambda_k = 0
         # 保存接收到的全局模型，用于验证保留较小权重的效果
         self.last_global_model = None
 
@@ -114,7 +114,7 @@ class FedClientContext(_FedBaseContext):
 
     # 发送模型
     # 这里tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, masks, weight):
+    def send_model(self, tensors, masks, bn_data, weight):
         tensor_arrs = []
         for tensor in tensors:
             # 说明是替换后的层
@@ -131,8 +131,14 @@ class FedClientContext(_FedBaseContext):
                 continue
             mask_arr = mask.data.cpu().numpy()
             mask_arrs.append(mask_arr)
+
+        bn_arrs = []
+        for bn_item in bn_data:
+            bn_arr = bn_item.data.cpu().numpy()
+            bn_arrs.append(bn_arr)
+
         self.aggregator.send_model(
-            (tensor_arrs, mask_arrs, weight), suffix=self._suffix()
+            (tensor_arrs, mask_arrs, bn_arrs,weight), suffix=self._suffix()
         )
 
     # 接收模型
@@ -148,65 +154,28 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, weight, device):
+    def do_aggregation(self, bn_data, weight, device):
         # 发送全局模型
-        self.send_model(self._params2server, self._masks, weight)
+        self.send_model(self._params2server, self._masks,bn_data, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         # 直接覆盖
-        global_model, total_weight_list = recv_elements
-        agg_ratio = weight / total_weight_list
         LOGGER.warn("模型接收完毕")
+        global_model, bn_data = recv_elements
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
         # Todo: 记录接收到的全局模型，便于比较
         self.last_global_model = agg_tensors
-
         for param, agg_tensor in zip(self._params, agg_tensors):
             if param.grad is None:
                 continue
             param.data.copy_(agg_tensor)
-
-    def agg_local_model(self, agg_tensors, agg_ratio):
-        # 遍历每个层
-        layer_nums = len(self._params)
-        # 计算聚合权重
-
-        for i, layer_tensor in enumerate(self._params.data):
-            # 深层当时没有传输，则不必聚合
-            mask = self._masks[i]
-            if len(mask) == 0:
-                continue
-            # 如果是最后两层
-            if i == layer_nums - 2 or i == layer_nums - 1:
-                # 遍历每一个分类器分量
-                for j in range(len(layer_tensor)):
-                    # layer_tensor[j]是1维或两维
-                    if len(layer_tensor[j].shape) == 1:
-                        layer_tensor[j] = self.get_updated_val(layer_tensor[j],
-                                                               agg_tensors[i][j],
-                                                               agg_ratio[j],
-                                                               mask[j])
-                    else:  # 两维的
-                        for k in range(len(layer_tensor[j])):
-                            layer_tensor[j][k] = self.get_updated_val(layer_tensor[j][k],
-                                                                      agg_tensors[i][j][k],
-                                                                      agg_ratio[j],
-                                                                      mask[j][k])
-            # 如果是之前的特征层
-            else:
-                # 每层向量是layer_tensor
-                # mask为0的位置设置为聚合值，mask为1的位置设置为全局值
-                layer_tensor.copy_(
-                    torch.where(mask, agg_ratio[-1] * layer_tensor + (1 - agg_ratio[-1]) * agg_tensors[i]))
-
-    def get_updated_val(self, local_val, global_val, ratio, mask):
-        if mask == 1:
-            return global_val
-        else:
-            return ratio * local_val + (1 - ratio) * global_val
+        bn_tensors = []
+        for arr in bn_data:
+            bn_tensors.append(torch.from_numpy(arr).to(device))
+        return bn_tensors
 
     def do_convergence_check(self, weight, mAP, loss_value):
         self.loss_summary.append(loss_value)
@@ -240,7 +209,8 @@ class FedClientContext(_FedBaseContext):
             self.last_transmission_iter = self.aggregation_iteration
             LOGGER.error(f"回合 {self.aggregation_iteration} 传输所有层")
         else:
-            select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
+            select_list = [i <= 71 for i in range(layers_num)]
+
             LOGGER.error(f"回合 {self.aggregation_iteration} 只传输浅层")
         LOGGER.error(f"每层的参数传输率为{layer_ratio}")
         select_layers(self._params2server, select_list=select_list)
@@ -485,6 +455,7 @@ class SyncAggregator(object):
     def __init__(self, context: FedServerContext):
         self.context = context
         self.model = None
+        self.bn_data = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -496,7 +467,11 @@ class SyncAggregator(object):
 
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             masks = [party_tuple[1] for party_tuple in recv_elements]
-            degrees = [party_tuple[2] for party_tuple in recv_elements]
+            bn_tensors = [party_tuple[2] for party_tuple in recv_elements]
+            degrees = [party_tuple[3] for party_tuple in recv_elements]
+
+            self.bn_data = self.aggregate_bn_data(bn_tensors, degrees)
+
             # 对tensors进行重新组合
             self.replace_tensors(tensors, masks)
             # 分标签进行聚合
@@ -504,8 +479,7 @@ class SyncAggregator(object):
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
-            # 将weight_list也发送回去
-            self.context.send_model((tensors[0], np.array(degrees).sum(axis=0)))
+            self.context.send_model((tensors[0],self.bn_data))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
@@ -514,7 +488,37 @@ class SyncAggregator(object):
             self.context.increase_aggregation_iteration()
         if self.context.finished():
             np.save('global_model', self.model)
+            np.save('bn_data', self.bn_data)
 
+    def aggregate_bn_data(self, bn_tensors, degrees):
+        degrees = np.array(degrees)
+        degrees_sum = degrees.sum(axis=0)
+
+        client_nums = len(bn_tensors)
+        layer_nums = len(bn_tensors[0]) // 2
+        bn_data = []
+        # 遍历每一层
+        for i in range(layer_nums):
+            mean_idx = i * 2
+            mean_var_dim = len(bn_tensors[0][mean_idx])
+            mean = np.zeros(mean_var_dim)
+            # 遍历每个客户端
+            for idx in range(client_nums):
+                # 该层在该客户端上的mean是bn_tensors[id][i * 2],方差是bn_tensors[id][i * 2 + 1]
+                client_mean = bn_tensors[idx][mean_idx]
+                mean += client_mean * degrees[idx][-1]
+            mean /= degrees_sum[-1]
+            bn_data.append(mean)
+            # 计算完均值之后，开始计算方差
+            var_idx = mean_idx + 1
+            var = np.zeros(mean_var_dim)
+            for idx in range(client_nums):
+                client_mean = bn_tensors[idx][mean_idx]
+                client_var = bn_tensors[idx][var_idx]
+                var += (client_var + client_mean ** 2 - mean ** 2) * degrees[idx][-1]
+            var /= degrees_sum[-1]
+            bn_data.append(var)
+        return bn_data
     def replace_tensors(self, tensors, masks):
         if self.model is None:
             return
@@ -522,15 +526,19 @@ class SyncAggregator(object):
         client_nums = len(tensors)
         for i in range(client_nums):
             layer_nums = len(tensors[i])
+            has_mask = len(masks[i]) != 0
             # 遍历每一层参数
             for j in range(layer_nums):
                 tensor = tensors[i][j]
-                mask = masks[i][j]
                 # Todo: 注意处理tensor和mask为空的情况
                 if tensor == []:
                     # 使用self.model[j]替代
-                    tensors[i][j] = self.model[j]
+                    tensors[i][j] = np.copy(self.model[j])
                 else:
+                    # 该层无mask,说明不需要传输比例为1
+                    if has_mask is False:
+                        continue
+                    mask = masks[i][j]
                     tensor[np.logical_not(mask)] = self.model[j][np.logical_not(mask)]
 
     def aggregate_by_labels(self, tensors, degrees):
@@ -584,7 +592,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    param.max_iter = 100
+    # param.max_iter = 100
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
@@ -597,8 +605,8 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 1
-    param.max_iter = 100
+    # param.batch_size = 1
+    # param.max_iter = 100
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -732,6 +740,7 @@ class MultiLabelFitter(object):
             self._num_data_consumed = 0
             self._num_label_consumed = 0
             self._num_per_labels = [0] * self.param.num_labels
+
             self.context.increase_aggregation_iteration()
 
         # if (epoch + 1) % 50 == 0:
@@ -757,11 +766,24 @@ class MultiLabelFitter(object):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
 
+        bn_data = []
+        for layer in self.model.modules():
+            if isinstance(layer, torch.nn.BatchNorm2d):
+                bn_data.append(layer.running_mean)
+                bn_data.append(layer.running_var)
+
         # Partial Supervised聚合策略
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
-        self.context.do_aggregation(weight=weight_list, device=self.param.device)
 
+        agg_bn_data = self.context.do_aggregation(bn_data=bn_data,weight=weight_list, device=self.param.device)
+        idx = 0
+        for layer in self.model.modules():
+            if isinstance(layer, torch.nn.BatchNorm2d):
+                layer.running_mean.data.copy_(agg_bn_data[idx])
+                idx += 1
+                layer.running_var.data.copy_(agg_bn_data[idx])
+                idx += 1
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         mAP, loss = self.train_one_epoch(epoch, train_loader, scheduler)
         if valid_loader:

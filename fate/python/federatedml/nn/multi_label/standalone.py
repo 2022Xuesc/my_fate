@@ -8,7 +8,8 @@ import torchvision.transforms as transforms
 from PIL import Image
 from torch.utils.data import Dataset
 
-from federatedml.nn.backend.multi_label.meta_learning.maml import MAML
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.multi_label.losses.SmoothLoss import *
 
 import json
 import os
@@ -256,47 +257,9 @@ train_loader = torch.utils.data.DataLoader(
     drop_last=True, shuffle=True
 )
 
-#
-# support_loader = torch.utils.data.DataLoader(
-#     dataset=support_dataset, batch_size=4, num_workers=16,
-#     drop_last=True, shuffle=True
-# )
-# query_loader = torch.utils.data.DataLoader(
-#     dataset=query_dataset, batch_size=4, num_workers=16,
-#     drop_last=True, shuffle=True
-# )
-
-total_samples = len(train_dataset)
-
-# 计算每个加载器所需的样本数
-num_samples = total_samples // 2
-
-# 创建一个索引列表
-# indices = list(range(total_samples))
-
-# 随机打乱索引列表
-torch.manual_seed(42)  # 可选的随机种子
-indices = torch.randperm(total_samples)
-
-# 将索引列表划分为两个子集
-support_indices = indices[:num_samples]
-query_indices = indices[num_samples:]
-
-# 创建支持集的数据加载器
-support_loader = torch.utils.data.DataLoader(
-    dataset=train_dataset,
-    sampler=torch.utils.data.SubsetRandomSampler(support_indices),
-    batch_size=4,
-)
-
-# 创建查询集的数据加载器
-query_loader = torch.utils.data.DataLoader(
-    dataset=train_dataset,
-    sampler=torch.utils.data.SubsetRandomSampler(query_indices)
-)
-
 device = 'cuda:0'
-criterion = torch.nn.BCELoss()
+feature_smooth_loss = FeatureSmoothLoss()
+label_smooth_loss = LabelSmoothLoss()
 
 model = torch_models.resnet101(pretrained=True, num_classes=1000)
 # 将最后的全连接层替换掉
@@ -305,111 +268,49 @@ torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
 
 model = model.to(device)
 
-named_parameters = list(model.named_parameters())
-layers_num = len(named_parameters)
-select_list = [i + 1 <= layers_num / 2 for i in range(layers_num)]
-
-select_list_1 = [i <= 155 for i in range(layers_num)]
-for name, param in model.named_parameters():
-    print(f'name = {name}')
-    print(f'param = {param}')
-
-INNER_LR = 0.0001
-# 将原模型封装起来
-maml = MAML(model, lr=INNER_LR)
-
-# 克隆模型，在训练数据集上进行训练
-clone = maml.clone()
-sigmoid_func = torch.nn.Sigmoid()
-
-# 1. 对整个train_loader划分support set和query set
 ap_meter = AveragePrecisionMeter()
-for epoch in range(100):
-    # 在support set上进行训练
-    for support_step, (inputs, target) in enumerate(support_loader):
-        inputs = inputs.to(device)
-        target = target.to(device)
 
-        # 计算clone模型在support set的输出
-        support_output = clone(inputs)
-        # 计算损失
-        support_loss = criterion(sigmoid_func(support_output), target)
-        # 计算梯度并更新权重，这里会保存中间模型，但并不会直接更新原来的模型
-        clone.adapt(support_loss)
-        print(f'step={support_step}, loss={support_loss.item()}')
+model.train()
 
-    for query_step, (inputs, target) in enumerate(query_loader):
-        inputs = inputs.to(device)
-        target = target.to(device)
-        # 计算元模型在query set上的梯度并更新
-        query_output = clone(inputs)
-        query_loss = criterion(sigmoid_func(query_output), target)
+# 定义钩子函数
+features = None
 
-        model.zero_grad()
-        clone.zero_grad()
-        # 让克隆模型保存分类器的梯度，便于进行手动的梯度下降，这样的话分类器的参数进行了两轮更新
-        clone.save_classifier_grad()
-        # 进行反向传播，model也会具有梯度
-        query_loss.backward()
-        # Todo: 进行梯度下降，更新分类器的参数
-        clone.adapt(query_loss, do_calc=False)
-        # 使用Adam优化器进行更新
-        # Todo: 封装特征提取器层的参数
-        #  特征提取器使用meta_learning学到的参数，而分类器使用clone模型的梯度
-        torch.optim.Adam(params=list(model.parameters())[:-2], lr=0.0001).step()
 
-        model.fc.load_state_dict(clone.module.fc.state_dict())
-    # 在验证集上统计模型的的mAP指标
-    model.eval()
-    ap_meter.reset()
-    with torch.no_grad():
-        for validate_step, (inputs, target) in enumerate(train_loader):
-            inputs = inputs.to(device)
-            target = target.to(device)
-            output = model(inputs)
-            loss = criterion(sigmoid_func(output), target)
-            ap_meter.add(output.data, target.data)
-    mAP = 100 * ap_meter.value()
-    print(f'epoch = {epoch}, mAP = {mAP}')
+def hook(module, intput, output):
+    global features
+    features = output
 
-    # if epoch == 1:
-    #     torch.save(model.state_dict(), "model.pth")
 
-# 原论文中的实现方式
-# 在support set上进行训练
-# for support_step, (inputs, target) in enumerate(support_loader):
-#     inputs = inputs.to(device)
-#     target = target.to(device)
-#     index = len(inputs) // 4
-#     support_inputs = inputs[:index]
-#     support_target = target[:index]
-#
-#     query_inputs = inputs[index:]
-#     query_target = target[index:]
-#
-#     # 计算clone模型在support set的输出
-#     support_output = clone(support_inputs)
-#     # 计算损失
-#     support_loss = criterion(sigmoid_func(support_output), support_target)
-#     # 计算梯度并更新权重
-#     clone.adapt(support_loss)
-#
-#     # 计算元模型在query set上的梯度并更新
-#     query_output = clone(query_inputs)
-#     query_loss = criterion(sigmoid_func(query_output), query_target)
-#
-#     model.zero_grad()
-#     clone.zero_grad()
-#     clone.save_classifier_grad()
-#     # 进行反向传播，model也会具有梯度
-#     query_loss.backward()
-#     # Todo: 封装最后分类层的参数
-#     clone.adapt(query_loss, do_calc=False)
-#
-#     # 使用Adam优化器进行更新
-#     # Todo: 封装特征提取器层的参数
-#     #  特征提取器使用meta_learning学到的参数，而分类器使用
-#     torch.optim.Adam(params=list(model.parameters())[:-2], lr=0.0001).step()
-#
-#     model.fc.load_state_dict(clone.module.fc.state_dict())
-#     # Todo: 统计精度
+model.layer4.register_forward_hook(hook)
+
+# 标签相关性矩阵
+A = torch.rand(80, 80).to('cuda:0')
+
+lambda_f = 0.5
+lambda_y = 0.5
+
+criterion = AsymmetricLossOptimized().to(device)
+
+for train_step, (inputs, target) in enumerate(train_loader):
+    inputs = inputs.to(device)
+    target = target.to(device)
+    # Todo: 除了预测向量之外，还要保存每张图片的特征向量，可以通过注册钩子函数实现
+
+    from federatedml.nn.backend.utils.OMP import OMP
+
+    output = model(inputs)
+
+    cross_entropy_loss = criterion(output, target)
+
+    predicts = torch.sigmoid(output)
+
+    # 使用正交匹配追踪算法求图像之间的相似度
+    feature_similarities, predict_similarities = OMP(features, predicts, A)
+
+    # 还有非对称损失
+    loss = cross_entropy_loss \
+           + lambda_f * feature_smooth_loss(features, feature_similarities) \
+           + lambda_y * label_smooth_loss(predicts, predict_similarities, A)
+    print(loss.item())
+    loss.backward()
+    # 优化器步进

@@ -1,30 +1,28 @@
 # 服务器与客户端的通用逻辑
 import math
 import numpy as np
-import torch
 import torch.nn
 import torchnet.meter as tnt
 import torchvision.transforms as transforms
-from torch.nn.utils.rnn import *
-
-import copy
 
 import copy
 import csv
+import json
 import os
 import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.multi_label.config import config_scheduler
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.multi_label.models import *
-
 from federatedml.nn.backend.pytorch.data import COCO
 from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
-
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+# 导入OMP算法模块
+from federatedml.nn.backend.utils.OMP import OMP
+from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
+from federatedml.nn.backend.multi_label.losses.SmoothLoss import *
 
 stats_dir = os.path.join(os.getcwd(), 'stats')
 if not os.path.exists(stats_dir):
@@ -88,21 +86,9 @@ class FedClientContext(_FedBaseContext):
         )
         self.aggregate_every_n_epoch = aggregate_every_n_epoch
         self._params: list = []
-        self._params2server: list = []
-        self._masks: list = []
 
         self._should_stop = False
         self.loss_summary = []
-
-        # Todo: 选择传输的参数设置
-        # 深层的传输间隔
-        self.deep_theta = 0
-        # 上一次深层传输的回合数量
-        self.last_transmission_iter = 0
-        # 选择比例随训练进度衰减的权重，该值越大，衰减得越厉害
-        self.lambda_k = 0
-        # 保存接收到的全局模型，用于验证保留较小权重的效果
-        self.last_global_model = None
 
     def init(self):
         self.random_padding_cipher.create_cipher()
@@ -114,31 +100,18 @@ class FedClientContext(_FedBaseContext):
 
     # 发送模型
     # 这里tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, masks, bn_data, weight):
+    def send_model(self, tensors, bn_data, weight):
         tensor_arrs = []
         for tensor in tensors:
-            # 说明是替换后的层
-            if len(tensor) == 0:
-                tensor_arrs.append([])
-                continue
             tensor_arr = tensor.data.cpu().numpy()
             tensor_arrs.append(tensor_arr)
-
-        mask_arrs = []
-        for mask in masks:
-            if len(mask) == 0:
-                mask_arrs.append([])
-                continue
-            mask_arr = mask.data.cpu().numpy()
-            mask_arrs.append(mask_arr)
-
+        # 不仅发送模型参数，还发送bn层的统计数据
         bn_arrs = []
         for bn_item in bn_data:
             bn_arr = bn_item.data.cpu().numpy()
             bn_arrs.append(bn_arr)
-
         self.aggregator.send_model(
-            (tensor_arrs, mask_arrs, bn_arrs,weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
         )
 
     # 接收模型
@@ -156,22 +129,21 @@ class FedClientContext(_FedBaseContext):
     # 发送、接收全局模型并更新本地模型
     def do_aggregation(self, bn_data, weight, device):
         # 发送全局模型
-        self.send_model(self._params2server, self._masks,bn_data, weight)
+        self.send_model(self._params, bn_data, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
-        # 直接覆盖
         LOGGER.warn("模型接收完毕")
         global_model, bn_data = recv_elements
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
-        # Todo: 记录接收到的全局模型，便于比较
-        self.last_global_model = agg_tensors
         for param, agg_tensor in zip(self._params, agg_tensors):
+            # param.grad处理的是哪种情况
             if param.grad is None:
                 continue
             param.data.copy_(agg_tensor)
+
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
@@ -182,42 +154,17 @@ class FedClientContext(_FedBaseContext):
         self.send_loss(mAP, loss_value, weight)
         return self.recv_loss()
 
-    # 计算层传输率，这对于每一层来说是相等的
-    def calculate_layer_ratio(self):
-        # Todo: 对lambda_k的选取进行修改
-        return 1 / (self.lambda_k * self.aggregation_iteration + 1)
-
     # 配置聚合参数，将优化器中的参数提取出来
-    # Todo: 在这里应用选择传输的算法
     def configure_aggregation_params(self, optimizer):
-        layer_ratio = self.calculate_layer_ratio()
-        # 获取优化器中的参数列表
-        self._params = [
-            param
-            # 不是完全倒序，对于嵌套for循环，先声明的在前面
-            for param_group in optimizer.param_groups
-            for param in param_group["params"]
-        ]
-        # Todo: 对self._params进行拷贝
-        self._params2server = copy.deepcopy(self._params)
-        # 先对层进行筛选
-        layers_num = len(self._params2server)
-        # 根据训练进度判断是否传深层
-        if self.last_transmission_iter + self.deep_theta == self.aggregation_iteration:
-            select_list = [True for i in range(layers_num)]
-            self.deep_theta += 1
-            self.last_transmission_iter = self.aggregation_iteration
-            LOGGER.error(f"回合 {self.aggregation_iteration} 传输所有层")
-        else:
-            select_list = [i <= 71 for i in range(layers_num)]
-
-            LOGGER.error(f"回合 {self.aggregation_iteration} 只传输浅层")
-        LOGGER.error(f"每层的参数传输率为{layer_ratio}")
-        select_layers(self._params2server, select_list=select_list)
-        # 返回值是每一层的布尔矩阵
-        # 已经对self._params进行了修改，保留变化最大的前p部分参数，将其余参数置为0
-        self._masks = save_largest_part_of_weights(self._params2server, self.last_global_model, layer_ratio)
-        # 至此，self._params已经配置完成，将其和self._selected_list一起发送给服务器端
+        if optimizer is not None:
+            self._params = [
+                param
+                # 不是完全倒序，对于嵌套for循环，先声明的在前面
+                for param_group in optimizer.param_groups
+                for param in param_group["params"]
+            ]
+            return
+        raise TypeError(f"params and optimizer can't be both none")
 
     def should_aggregate_on_epoch(self, epoch_index):
         return (epoch_index + 1) % self.aggregate_every_n_epoch == 0
@@ -288,169 +235,6 @@ class FedServerContext(_FedBaseContext):
         return is_converged, mean_loss
 
 
-# Todo: 学习apMeter
-class AveragePrecisionMeter(object):
-    """
-    计算每个类（标签）的平均精度
-    给定输入为:
-    1. N*K的输出张量output：值越大，置信度越高;
-    2. N*K的目标张量target：二值向量，0表示负样本，1表示正样本
-    3. 可选的N*1权重向量：每个样本的权重
-    N是样本个数，K是类别即标签个数
-    """
-
-    # Todo: 这里difficult_examples的含义是什么？
-    #  可能存在难以识别的目标（模糊、被遮挡、部分消失），往往需要更加复杂的特征进行识别
-    #  为了更加有效评估目标检测算法的性能，一般会对这些目标单独处理
-    #  标记为difficult的目标物体可能不会作为正样本、也不会作为负样本，而是作为“无效”样本，不会对评价指标产生影响
-    def __init__(self, difficult_examples=False):
-        super(AveragePrecisionMeter, self).__init__()
-        self.reset()
-        self.difficult_examples = difficult_examples
-
-    def reset(self):
-        """将计量器的成员变量重置为空"""
-        self.scores = torch.FloatTensor(torch.FloatStorage())
-        self.targets = torch.LongTensor(torch.LongStorage())
-
-    def add(self, output, target):
-        """
-        Args:
-            output (Tensor): NxK tensor，每个样本对应的每个标签的预测概率向量，和为1
-            target (Tensor): binary NxK tensor，表示每个样本的真实标签分布
-            weight (optional, Tensor): Nx1 tensor，表示每个样本的权重
-        """
-
-        # Todo: 进行一些必要的维度转换与检查
-        if not torch.is_tensor(output):
-            output = torch.from_numpy(output)
-        if not torch.is_tensor(target):
-            target = torch.from_numpy(target)
-
-        if output.dim() == 1:
-            output = output.view(-1, 1)
-        else:
-            assert output.dim() == 2, \
-                'wrong output size (should be 1D or 2D with one column \
-                per class)'
-        if target.dim() == 1:
-            target = target.view(-1, 1)
-        else:
-            assert target.dim() == 2, \
-                'wrong target size (should be 1D or 2D with one column \
-                per class)'
-        if self.scores.numel() > 0:
-            assert target.size(1) == self.targets.size(1), \
-                'dimensions for output should match previously added examples.'
-
-        # 确保存储有足够的大小-->对存储进行扩容
-        if self.scores.storage().size() < self.scores.numel() + output.numel():
-            new_size = math.ceil(self.scores.storage().size() * 1.5)
-            self.scores.storage().resize_(int(new_size + output.numel()))
-            self.targets.storage().resize_(int(new_size + output.numel()))
-
-        # 存储预测分数scores和目标值targets
-        offset = self.scores.size(0) if self.scores.dim() > 0 else 0
-        self.scores.resize_(offset + output.size(0), output.size(1))
-        self.targets.resize_(offset + target.size(0), target.size(1))
-        self.scores.narrow(0, offset, output.size(0)).copy_(output)
-        self.targets.narrow(0, offset, target.size(0)).copy_(target)
-
-    def value(self):
-        """ 返回每个类的平均精度
-        Return:
-            ap (FloatTensor): 1xK tensor，对应标签（类别）k的平均精度
-        """
-
-        if self.scores.numel() == 0:
-            return 0
-        ap = torch.zeros(self.scores.size(1))
-        rg = torch.arange(1, self.scores.size(0)).float()
-        # compute average precision for each class
-        non_zero_labels = 0
-        for k in range(self.scores.size(1)):
-            # sort scores
-            scores = self.scores[:, k]
-            targets = self.targets[:, k]
-            # compute average precision
-            ap[k] = AveragePrecisionMeter.average_precision(scores, targets, self.difficult_examples)
-            if targets.sum() != 0:
-                non_zero_labels += 1
-        # Todo: 在这里判断不为空的标签个数，直接求均值
-        return ap.sum() / non_zero_labels
-
-    @staticmethod
-    def average_precision(output, target, difficult_examples=False):
-
-        # 对输出概率进行排序
-        # Todo: 这里第0维是K吗？跑一遍GCN进行验证
-        sorted, indices = torch.sort(output, dim=0, descending=True)
-
-        # 计算prec@i
-        pos_count = 0.
-        total_count = 0.
-        precision_at_i = 0.
-        # 遍历排序后的下标即可
-        for i in indices:
-            label = target[i]
-            if difficult_examples and label == 0:
-                continue
-            # 更新正标签的个数
-            if label == 1:
-                pos_count += 1
-            # 更新已遍历总标签的个数
-            total_count += 1
-            if label == 1:
-                # 说明召回水平增加，计算precision
-                precision_at_i += pos_count / total_count
-        # 除以样本的正标签个数对精度进行平均
-        # Todo: 一般不需要该判断语句，每个样本总有正标签
-        if pos_count != 0:
-            precision_at_i /= pos_count
-        # 返回该样本的average precision
-        return precision_at_i
-
-    def overall(self):
-        if self.scores.numel() == 0:
-            return 0
-        scores = self.scores.cpu().numpy()
-        targets = self.targets.cpu().numpy()
-        targets[targets == -1] = 0
-        return self.evaluation(scores, targets)
-
-    def overall_topk(self, k):
-        targets = self.targets.cpu().numpy()
-        targets[targets == -1] = 0
-        n, c = self.scores.size()
-        scores = np.zeros((n, c)) - 1
-        index = self.scores.topk(k, 1, True, True)[1].cpu().numpy()
-        tmp = self.scores.cpu().numpy()
-        for i in range(n):
-            for ind in index[i]:
-                scores[i, ind] = 1 if tmp[i, ind] >= 0 else -1
-        return self.evaluation(scores, targets)
-
-    def evaluation(self, scores_, targets_):
-        n, n_class = scores_.shape
-        Nc, Np, Ng = np.zeros(n_class), np.zeros(n_class), np.zeros(n_class)
-        for k in range(n_class):
-            scores = scores_[:, k]
-            targets = targets_[:, k]
-            targets[targets == -1] = 0
-            Ng[k] = np.sum(targets == 1)
-            Np[k] = np.sum(scores >= 0)
-            Nc[k] = np.sum(targets * (scores >= 0))
-        Np[Np == 0] = 1
-        OP = np.sum(Nc) / np.sum(Np)
-        OR = np.sum(Nc) / np.sum(Ng)
-        OF1 = (2 * OP * OR) / (OP + OR)
-
-        CP = np.sum(Nc / Np) / n_class
-        CR = np.sum(Nc / Ng) / n_class
-        CF1 = (2 * CP * CR) / (CP + CR)
-        return OP, OR, OF1, CP, CR, CF1
-
-
 class SyncAggregator(object):
     def __init__(self, context: FedServerContext):
         self.context = context
@@ -466,27 +250,29 @@ class SyncAggregator(object):
             LOGGER.warn(f'收到{len(recv_elements)}客户端发送过来的模型')
 
             tensors = [party_tuple[0] for party_tuple in recv_elements]
-            masks = [party_tuple[1] for party_tuple in recv_elements]
-            bn_tensors = [party_tuple[2] for party_tuple in recv_elements]
-            degrees = [party_tuple[3] for party_tuple in recv_elements]
-
+            # 还有bn层的统计数据
+            bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
+            # Todo: 对BN层的统计数据进行处理
+            # 抽取出
+            degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = self.aggregate_bn_data(bn_tensors, degrees)
-
-            # 对tensors进行重新组合
-            self.replace_tensors(tensors, masks)
             # 分标签进行聚合
             self.aggregate_by_labels(tensors, degrees)
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
-            self.context.send_model((tensors[0],self.bn_data))
+
+            self.context.send_model((tensors[0], self.bn_data))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
             self.context.do_convergence_check()
             # 同步方式下，服务器端也需要记录聚合轮次
             self.context.increase_aggregation_iteration()
+
+        # Todo: 除了保存参数之外，还要保存BN层的统计数据mean和var
         if self.context.finished():
+            print(os.getcwd())
             np.save('global_model', self.model)
             np.save('bn_data', self.bn_data)
 
@@ -519,27 +305,6 @@ class SyncAggregator(object):
             var /= degrees_sum[-1]
             bn_data.append(var)
         return bn_data
-    def replace_tensors(self, tensors, masks):
-        if self.model is None:
-            return
-        # 遍历每个客户端
-        client_nums = len(tensors)
-        for i in range(client_nums):
-            layer_nums = len(tensors[i])
-            has_mask = len(masks[i]) != 0
-            # 遍历每一层参数
-            for j in range(layer_nums):
-                tensor = tensors[i][j]
-                # Todo: 注意处理tensor和mask为空的情况
-                if tensor == []:
-                    # 使用self.model[j]替代
-                    tensors[i][j] = np.copy(self.model[j])
-                else:
-                    # 该层无mask,说明不需要传输比例为1
-                    if has_mask is False:
-                        continue
-                    mask = masks[i][j]
-                    tensor[np.logical_not(mask)] = self.model[j][np.logical_not(mask)]
 
     def aggregate_by_labels(self, tensors, degrees):
         # degrees是91个元素的列表，前90个元素是最后一层各个类别的聚合权重，而最后一个元素是之前层的聚合权重
@@ -605,8 +370,9 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 1
+    # param.batch_size = 4
     # param.max_iter = 100
+    # param.device = 'cuda:0'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -619,8 +385,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    category_dir = '/data/projects/dataset'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/data/projects/dataset'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -678,6 +444,13 @@ class MultiLabelFitter(object):
 
         # 使用对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
+
+        # 添加特征平滑损失和标签平滑损失
+        self.feature_smooth_loss = FeatureSmoothLoss()
+        self.label_smooth_loss = LabelSmoothLoss()
+        self.lambda_f = 0.1
+        self.lambda_y = 1
+
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -694,8 +467,12 @@ class MultiLabelFitter(object):
         # Todo: 创建ap_meter
         self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
 
-        # Todo: OneCycleLR调度器的配置
         self.lr_scheduler = None
+
+        self.features = None
+
+        self.relation_optimizer = None
+        self.A = None
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -708,6 +485,46 @@ class MultiLabelFitter(object):
                                                                 max_lr=self.param.lr,
                                                                 epochs=self.end_epoch,
                                                                 steps_per_epoch=len(train_loader))
+
+        # Todo: 添加优化参数
+        #  获取json文件
+        image_id2labels = json.load(open(self.param.json_file, 'r'))
+        adjList = np.zeros((80, 80))
+        nums = np.zeros(80)
+        for image_info in image_id2labels:
+            labels = image_info['labels']
+            for label in labels:
+                nums[label] += 1
+            n = len(labels)
+            for i in range(n):
+                for j in range(i + 1, n):
+                    x = labels[i]
+                    y = labels[j]
+                    adjList[x][y] += 1
+                    adjList[y][x] += 1
+        nums = nums[:, np.newaxis]
+        # 遍历每一行
+        for i in range(len(adjList)):
+            if nums[i] != 0:
+                adjList[i] = adjList[i] / nums[i]
+        self.A = torch.from_numpy(adjList).to(self.param.device).requires_grad_()
+        # Todo: 从80 * 80的矩阵中选出K个数作为优化参数
+        #  为了便于实现，先不选
+        # K = 10
+        # top_values, top_indices = torch.topk(self.A.view(-1), K)
+        # n = len(self.A)
+        # optimize_indices = [((index // n).item(), (index % n).item()) for index in top_indices]
+        # for i in range(n):
+        #     for j in range(n):
+        #         # 如果不在优化序列中，则将标签相关性设置为0
+        #         if (i, j) not in optimize_indices:
+        #             self.A[i, j] = torch.Tensor(0).to(self.param.device)
+        #         else:
+        #             # 创建优化变量，添加到相关性参数列表中
+        #             self.A[i,j] = torch.Tensor()
+        # 构造相关性的优化器
+        # 将整个Tensor作为优化变量
+        self.relation_optimizer = torch.optim.SGD([self.A], lr=0.01)
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
@@ -750,8 +567,6 @@ class MultiLabelFitter(object):
     def train_one_epoch(self, epoch, train_loader, scheduler):
         mAP, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
                                epoch, self.param.device, scheduler)
-        # accuracy, loss = self.train_rnn_cnn(train_loader, self.model, self.criterion, self.optimizer,
-        #                                     epoch, self.param.device, scheduler)
 
         train_writer.writerow([epoch, mAP, loss])
         return mAP, loss
@@ -766,6 +581,7 @@ class MultiLabelFitter(object):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
 
+        # bn_data添加
         bn_data = []
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -776,7 +592,7 @@ class MultiLabelFitter(object):
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
-        agg_bn_data = self.context.do_aggregation(bn_data=bn_data,weight=weight_list, device=self.param.device)
+        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data, device=self.param.device)
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -784,6 +600,7 @@ class MultiLabelFitter(object):
                 idx += 1
                 layer.running_var.data.copy_(agg_bn_data[idx])
                 idx += 1
+
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         mAP, loss = self.train_one_epoch(epoch, train_loader, scheduler)
         if valid_loader:
@@ -792,6 +609,9 @@ class MultiLabelFitter(object):
             self.scheduler.on_epoch_end(epoch, self.optimizer)
         return mAP, loss
 
+    def features_hook(self, module, intput, output):
+        self.features = output.to(torch.float64)
+
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_samples = len(train_loader.sampler)
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
@@ -799,6 +619,9 @@ class MultiLabelFitter(object):
 
         self.ap_meter.reset()
         model.train()
+
+        # 为模型注册前向钩子
+        model.layer4.register_forward_hook(self.features_hook)
 
         # 对Loss进行更新
         OVERALL_LOSS_KEY = 'Overall Loss'
@@ -817,9 +640,35 @@ class MultiLabelFitter(object):
             self._num_label_consumed += target.sum().item()
 
             output = model(inputs)
+
             self.ap_meter.add(output.data, target.data)
 
-            loss = criterion(output, target)
+            # Todo: 给loss添加平滑正则项，包括特征平滑损失和标签平滑损失
+            predicts = torch.sigmoid(output).to(torch.float64)
+
+            features_similarities, predict_similarities = OMP(self.features, predicts, self.A)
+            label_loss = self.label_smooth_loss(predicts.detach(), predict_similarities, self.A)
+            # 需要先对label_loss进行反向传播，梯度下降更新标签相关性
+            # Todo: 如何处理多个损失组件重复反向传播的情况？
+
+            # 先将CNN参数设置为无需梯度
+            # for param in model.parameters():
+            #     param.requires_grad = False
+            self.relation_optimizer.zero_grad()
+            label_loss.backward()
+            self.relation_optimizer.step()
+            # 确保标签相关性在0到1之间
+            self.A.data = torch.clamp(self.A.data,min=0.0,max=1.0)
+
+            # 将CNN参数恢复
+            # for param in model.parameters():
+            #     param.requires_grad = True
+
+            loss = criterion(output, target) + \
+                   self.lambda_f * self.feature_smooth_loss(self.features, features_similarities) +\
+                   self.lambda_y * self.label_smooth_loss(predicts, predict_similarities, self.A.detach())
+            # 初始化标签相关性，先计算标签平滑损失，对相关性进行梯度下降
+
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
@@ -896,61 +745,3 @@ def valid_transforms():
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
-
-
-# 选择传输部分的代码
-# 客户端权重、最近全局模型的权重、选取的层比例
-# client_weights和客户端的优化器绑定
-def save_largest_part_of_weights(client_weights, global_weights, layer_ratio):
-    # 每一层选择的位置的布尔矩阵
-    masks = []
-    if global_weights is None or layer_ratio == 1:
-        # 无需mask，直接返回即可
-        return masks
-    # 依次遍历每一层
-    for i in range(len(client_weights)):
-        # 跳过删除后的层
-        if len(client_weights[i]) == 0:
-            # 添加占位符
-            masks.append(torch.Tensor())
-            continue
-        # 需要对参数的形状进行判定
-        layer_shape = client_weights[i].shape
-        # 将其展平成一维向量
-        client_weights[i] = client_weights[i].flatten()
-        # 对global_weights也进行reshape操作
-        global_weights[i] = global_weights[i].flatten()
-        weights_diff = torch.abs(client_weights[i] - global_weights[i])
-        # 获取最大的p部分的布尔矩阵
-        mask = get_mask(weights_diff, layer_ratio)
-        # 对client_weights进行原地修改，如果不传输，则将其设定为最近全局模型 -->
-        # Todo: 直接设置为0，因为会接收模型，进行聚合。也就是说，不保留较小的训练进度
-        with torch.no_grad():
-            client_weights[i].mul_(mask)
-        # 对client_weights和mask进行reshape
-        client_weights[i] = client_weights[i].reshape(layer_shape)
-        # Todo: 这一步可能不太需要，先保留
-        global_weights[i] = global_weights[i].reshape(layer_shape)
-        mask = mask.reshape(layer_shape)
-
-        masks.append(mask)
-    return masks
-
-
-# 确保输入的client_weights和mask都是一维向量
-def get_mask(client_weights, percentage):
-    mask = torch.zeros(len(client_weights)).to(client_weights.device)
-    _, topk_indices = torch.topk(client_weights, k=int(len(client_weights) * percentage))
-    # 将掩码矩阵对应的位置设置为1
-    mask.scatter_(0, topk_indices, 1)
-    return mask
-
-
-# 选择传输的函数，过滤层
-# select_list是传输每个层的布尔向量
-def select_layers(client_weights, select_list):
-    # 对client_weights进行原地修改
-    for i in range(len(client_weights)):
-        if select_list[i] is False:
-            # 如果不保留第i层，直接清空
-            client_weights[i] = torch.Tensor()

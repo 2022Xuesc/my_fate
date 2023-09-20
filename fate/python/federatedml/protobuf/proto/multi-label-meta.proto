@@ -17,6 +17,7 @@ message MultiLabelParam {
   int32 max_iter = 10;
   repeated string sched_dict = 11;
   string early_stop_eps = 12;
+  string json_file = 13;
 
 }
 

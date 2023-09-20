@@ -36,7 +36,8 @@
       "guest": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:0"
+            "device": "cuda:0",
+            "json_file": "/home/klaus125/research/fate/my_practice/knowledge/cam/anno1.json"
           },
           "reader_0": {
             "table": {
@@ -55,7 +56,8 @@
       "host": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:0"
+            "device": "cuda:0",
+            "json_file": "/home/klaus125/research/fate/my_practice/knowledge/cam/anno2.json"
           },
           "reader_0": {
             "table": {

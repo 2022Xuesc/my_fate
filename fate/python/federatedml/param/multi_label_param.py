@@ -17,6 +17,7 @@ class MultiLabelParam(BaseParam):
                  arch: str = 'alexnet',
                  lr: float = 0.01,
                  num_labels: int = 80,
+                 json_file: str = ''
                  ):
         super(MultiLabelParam, self).__init__()
         self.aggregate_every_n_epoch = aggregate_every_n_epoch
@@ -31,6 +32,7 @@ class MultiLabelParam(BaseParam):
         self.lr = lr
         self.early_stop_eps = early_stop_eps
         self.num_labels = num_labels
+        self.json_file = json_file
 
     def check(self):
         pass
@@ -52,6 +54,7 @@ class MultiLabelParam(BaseParam):
         pb.arch = self.arch
         pb.early_stop_eps = self.early_stop_eps
         pb.lr = self.lr
+        pb.json_file = self.json_file
         return pb
 
     # Todo: protobuf
@@ -68,4 +71,5 @@ class MultiLabelParam(BaseParam):
         self.early_stop_eps = pb.early_stop_eps
         self.lr = pb.lr
         self.num_labels = pb.num_labels
+        self.json_file = pb.json_file
         return pb
