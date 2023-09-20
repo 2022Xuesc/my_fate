@@ -1,5 +1,5 @@
 import torch
-
+import numpy as np
 
 # 导出为工具包
 # 找到arr中下标不在集合S中的最大值对应的下标
@@ -74,8 +74,8 @@ def OMP(features, predicts, A):
             predictX = torch.cat((predictX, predicts[index].unsqueeze(0)), dim=0)
             # Todo: 求解最小二乘问题
             # (1). 特征的最小二乘问题求解
-            feature_coefficients = torch.linalg.lstsq(torch.transpose(featureX, 0, 1), feature)[0]
-            predict_coefficients = torch.linalg.lstsq(torch.transpose(predictX, 0, 1), predict)[0]
+            feature_coefficients = np.linalg.lstsq(torch.transpose(featureX,0,1).detach().cpu().numpy(),feature.detach().cpu().numpy())[0]
+            predict_coefficients = np.linalg.lstsq(torch.transpose(predictX,0,1).detach().cpu().numpy(),predict.detach().cpu().numpy())[0]
             # 更新相似性矩阵
             # 不是对称的，因此，更新第i行
             for m in range(len(indexes)):
@@ -85,14 +85,3 @@ def OMP(features, predicts, A):
     # Todo: 这些相似性是无需梯度的
     return feature_similarities.detach(), predict_similarities.detach()
     # return feature_similarities, predict_similarities
-
-
-device = 'cuda:0'
-A = torch.Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).to(device).requires_grad_()
-op = torch.optim.SGD([A], lr=0.01)
-op.zero_grad()
-loss = torch.norm(A, p=2)
-loss.backward()
-op.step()
-
-print('Done')
