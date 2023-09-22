@@ -20,7 +20,7 @@ from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 # 导入OMP算法模块
-from federatedml.nn.backend.utils.OMP import LabelOMP
+from federatedml.nn.backend.utils.OMP import OMP
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.multi_label.losses.SmoothLoss import *
 
@@ -100,7 +100,7 @@ class FedClientContext(_FedBaseContext):
 
     # 发送模型
     # 这里tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, relation_matrix, weight):
+    def send_model(self, tensors, bn_data, weight):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
@@ -110,9 +110,8 @@ class FedClientContext(_FedBaseContext):
         for bn_item in bn_data:
             bn_arr = bn_item.data.cpu().numpy()
             bn_arrs.append(bn_arr)
-
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, relation_matrix, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
         )
 
     # 接收模型
@@ -128,14 +127,14 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, relation_matrix, weight, device):
+    def do_aggregation(self, bn_data, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, relation_matrix, weight)
+        self.send_model(self._params, bn_data, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data, relation_matrix = recv_elements
+        global_model, bn_data = recv_elements
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
@@ -148,7 +147,7 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors, relation_matrix
+        return bn_tensors
 
     def do_convergence_check(self, weight, mAP, loss_value):
         self.loss_summary.append(loss_value)
@@ -241,7 +240,6 @@ class SyncAggregator(object):
         self.context = context
         self.model = None
         self.bn_data = None
-        self.relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -254,21 +252,17 @@ class SyncAggregator(object):
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             # 还有bn层的统计数据
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
-            # 提取捕捉到的标签相关性
-            relation_matrices = [party_tuple[2] for party_tuple in recv_elements]
-            # Todo: 记录各个客户端学习到的标签相关性矩阵
-            np.save(f'relation_matrices{cur_iteration}', relation_matrices)
-
-            degrees = [party_tuple[3] for party_tuple in recv_elements]
+            # Todo: 对BN层的统计数据进行处理
+            # 抽取出
+            degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = self.aggregate_bn_data(bn_tensors, degrees)
-            self.relation_matrix = self.aggregate_relation_matrix(relation_matrices, degrees)
             # 分标签进行聚合
             self.aggregate_by_labels(tensors, degrees)
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((tensors[0], self.bn_data, self.relation_matrix))
+            self.context.send_model((tensors[0], self.bn_data))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
@@ -311,15 +305,6 @@ class SyncAggregator(object):
             var /= degrees_sum[-1]
             bn_data.append(var)
         return bn_data
-
-    def aggregate_relation_matrix(self, relation_matrices, degrees):
-        degrees = np.array(degrees)
-        degrees_sum = degrees.sum(axis=0)
-        client_nums = len(relation_matrices)
-        relation_matrix = np.zeros_like(relation_matrices[0])
-        for i in range(client_nums):
-            relation_matrix += relation_matrices[i] * degrees[i][-1] / degrees_sum[-1]
-        return relation_matrix
 
     def aggregate_by_labels(self, tensors, degrees):
         # degrees是91个元素的列表，前90个元素是最后一层各个类别的聚合权重，而最后一个元素是之前层的聚合权重
@@ -372,7 +357,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    # param.max_iter = 100
+    param.max_iter = 100
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
@@ -385,9 +370,9 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 100
-    # param.device = 'cuda:0'
+    param.batch_size = 4
+    param.max_iter = 100
+    param.device = 'cuda:0'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -460,7 +445,10 @@ class MultiLabelFitter(object):
         # 使用对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
 
-        # 添加标签平滑损失
+        # 添加特征平滑损失和标签平滑损失
+        self.feature_smooth_loss = FeatureSmoothLoss()
+        self.label_smooth_loss = LabelSmoothLoss()
+        self.lambda_f = 0.1
         self.lambda_y = 1
 
         self.start_epoch, self.end_epoch = 0, epochs
@@ -481,12 +469,10 @@ class MultiLabelFitter(object):
 
         self.lr_scheduler = None
 
+        self.features = None
+
         self.relation_optimizer = None
-        # 维护一个邻接表，存储与每个标签相关的其他标签的相关性以及优化变量
-        # 自相关性无需进行优化
-        # self.adjList = [dict()] * 80，错误实例，这样初始化出来的每个字典都是一样的
-        self.adjList = []
-        self.variables = []
+        self.A = None
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -503,9 +489,8 @@ class MultiLabelFitter(object):
         # Todo: 添加优化参数
         #  获取json文件
         image_id2labels = json.load(open(self.param.json_file, 'r'))
-        num_labels = 80
-        adjList = np.zeros((num_labels, num_labels))
-        nums = np.zeros(num_labels)
+        adjList = np.zeros((80, 80))
+        nums = np.zeros(80)
         for image_info in image_id2labels:
             labels = image_info['labels']
             for label in labels:
@@ -519,14 +504,27 @@ class MultiLabelFitter(object):
                     adjList[y][x] += 1
         nums = nums[:, np.newaxis]
         # 遍历每一行
-        for i in range(num_labels):
+        for i in range(len(adjList)):
             if nums[i] != 0:
                 adjList[i] = adjList[i] / nums[i]
-        # 遍历A，将主对角线元素设置为1
-        for i in range(num_labels):
-            adjList[i][i] = 1
-
-        self.construct_relation_by_matrix(adjList)
+        self.A = torch.from_numpy(adjList).to(self.param.device).requires_grad_()
+        # Todo: 从80 * 80的矩阵中选出K个数作为优化参数
+        #  为了便于实现，先不选
+        # K = 10
+        # top_values, top_indices = torch.topk(self.A.view(-1), K)
+        # n = len(self.A)
+        # optimize_indices = [((index // n).item(), (index % n).item()) for index in top_indices]
+        # for i in range(n):
+        #     for j in range(n):
+        #         # 如果不在优化序列中，则将标签相关性设置为0
+        #         if (i, j) not in optimize_indices:
+        #             self.A[i, j] = torch.Tensor(0).to(self.param.device)
+        #         else:
+        #             # 创建优化变量，添加到相关性参数列表中
+        #             self.A[i,j] = torch.Tensor()
+        # 构造相关性的优化器
+        # 将整个Tensor作为优化变量
+        self.relation_optimizer = torch.optim.SGD([self.A], lr=0.01)
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
@@ -579,30 +577,6 @@ class MultiLabelFitter(object):
         valid_writer.writerow([epoch, mAP, loss])
         return mAP, loss
 
-    def construct_relation_by_matrix(self, matrix):
-        num_labels = 80
-        self.adjList = [dict() for _ in range(num_labels)]
-        self.variables = []
-        # 设定阈值th
-        th = 0.5
-        # 遍历每个值，初始化adjList
-        for i in range(num_labels):
-            for j in range(num_labels):
-                # 自相关性如何处理？额外进行处理
-                if i == j or matrix[i][j] < th:
-                    continue
-                # 优化变量的索引
-                idx = len(self.variables)
-                variable = torch.tensor(matrix[i][j]).to(self.param.device)
-                variable.requires_grad_()
-                self.variables.append(variable)
-                # 直接维护对应的优化变量即可
-                self.adjList[i][j] = variable
-
-        # 构造相关性的优化器
-        # 将需要优化的变量列表传入到优化器中
-        self.relation_optimizer = torch.optim.SGD(self.variables, lr=0.1)
-
     def aggregate_model(self, epoch, weight):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
@@ -618,22 +592,7 @@ class MultiLabelFitter(object):
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
-        labels_num = 80
-        A = np.zeros((labels_num, labels_num))
-        # 初始化自相关性
-        for i in range(labels_num):
-            A[i][i] = 1.0
-        for i in range(len(self.adjList)):
-            # 这里的t是key
-            for label in self.adjList[i]:
-                A[i][label] = self.adjList[i][label].item()
-
-        agg_bn_data, relation_matrix = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
-                                                                   relation_matrix=A,
-                                                                   device=self.param.device)
-
-        self.construct_relation_by_matrix(relation_matrix)
-
+        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data, device=self.param.device)
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -641,8 +600,6 @@ class MultiLabelFitter(object):
                 idx += 1
                 layer.running_var.data.copy_(agg_bn_data[idx])
                 idx += 1
-
-        # 从relation_matrix中重构出adjList和优化器
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         mAP, loss = self.train_one_epoch(epoch, train_loader, scheduler)
@@ -652,6 +609,9 @@ class MultiLabelFitter(object):
             self.scheduler.on_epoch_end(epoch, self.optimizer)
         return mAP, loss
 
+    def features_hook(self, module, intput, output):
+        self.features = output.to(torch.float64)
+
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_samples = len(train_loader.sampler)
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
@@ -659,6 +619,9 @@ class MultiLabelFitter(object):
 
         self.ap_meter.reset()
         model.train()
+
+        # 为模型注册前向钩子
+        model.layer4.register_forward_hook(self.features_hook)
 
         # 对Loss进行更新
         OVERALL_LOSS_KEY = 'Overall Loss'
@@ -680,13 +643,11 @@ class MultiLabelFitter(object):
 
             self.ap_meter.add(output.data, target.data)
 
-            # Todo: 这里只考虑标签平滑损失
+            # Todo: 给loss添加平滑正则项，包括特征平滑损失和标签平滑损失
             predicts = torch.sigmoid(output).to(torch.float64)
 
-            predict_similarities = LabelOMP(predicts.detach(), self.adjList)
-            # 下面对损失函数进行修改
-            label_loss = LabelSmoothLoss(relation_need_grad=True)(predicts.detach(), predict_similarities,
-                                                                  self.adjList)
+            features_similarities, predict_similarities = OMP(self.features, predicts, self.A)
+            label_loss = self.label_smooth_loss(predicts.detach(), predict_similarities, self.A)
             # 需要先对label_loss进行反向传播，梯度下降更新标签相关性
             # Todo: 如何处理多个损失组件重复反向传播的情况？
 
@@ -697,16 +658,15 @@ class MultiLabelFitter(object):
             label_loss.backward()
             self.relation_optimizer.step()
             # 确保标签相关性在0到1之间
+            self.A.data = torch.clamp(self.A.data,min=0.0,max=1.0)
 
-            # 遍历每个优化变量，对其值进行约束，限定在[0,1]之内
-            for variable in self.variables:
-                variable.data = torch.clamp(variable.data, min=0.0, max=1.0)
+            # 将CNN参数恢复
+            # for param in model.parameters():
+            #     param.requires_grad = True
 
-            # 总损失 = 交叉熵损失 + 标签相关性损失
-            # 优化CNN参数时，need_grad设置为True，表示需要梯度
             loss = criterion(output, target) + \
-                   self.lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
-                                                                             self.adjList)
+                   self.lambda_f * self.feature_smooth_loss(self.features, features_similarities) +\
+                   self.lambda_y * self.label_smooth_loss(predicts, predict_similarities, self.A.detach())
             # 初始化标签相关性，先计算标签平滑损失，对相关性进行梯度下降
 
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())

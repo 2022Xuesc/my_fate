@@ -372,7 +372,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    # param.max_iter = 100
+    param.max_iter = 100
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
@@ -385,9 +385,9 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 100
-    # param.device = 'cuda:0'
+    param.batch_size = 2
+    param.max_iter = 100
+    param.device = 'cuda:0'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(

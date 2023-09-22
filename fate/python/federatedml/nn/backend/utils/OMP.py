@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 # 导出为工具包
 # 找到arr中下标不在集合S中的最大值对应的下标
 # 并且下标不能等于当前图像i
@@ -16,6 +17,90 @@ def findMaxIndex(arr, S, cur):
 
     # features是该批次中的特征
     # predicts是该批次的预测值
+
+
+# 给定该批次的样本的预测向量，从每个预测向量根据标签相关性重构出其他的标签向量
+def getCandidates(predicts, adjList, requires_grad):
+    device = predicts.device
+    batch_size = len(predicts)
+    _, label_dim = predicts.size()
+    candidates = torch.zeros((batch_size, label_dim), dtype=torch.float64).to(device)
+    # Todo: 将以下部分封装成一个函数，从其他标签的向量出发得到
+    for b in range(batch_size):
+        predict_vec = predicts[b]  # 1 * C维度
+        # 遍历每一个推断出来的标签
+        for lj in range(label_dim):
+            relation_num = 0
+            for li in range(label_dim):
+                # 判断从li是否能推断出lj
+                if lj in adjList[li]:
+                    # a表示从li到lj的相关性，不是计算损失，无需使用带有梯度的相关性值
+                    if requires_grad:
+                        a = adjList[li][lj]
+                    else:
+                        a = adjList[li][lj].item()
+                    # 需要进行归一化，归一化系数为len(adjList[li])
+                    candidates[b][lj] += predict_vec[li] * a
+                    relation_num += 1
+                elif li == lj:
+                    candidates[b][lj] += predict_vec[li]
+                    relation_num += 1
+            candidates[b][lj] /= relation_num
+    return candidates
+
+
+# predicts：该批次样本b的预测向量，维度是b*C
+# adjList：维护与每个标签相关的标签以及对应的值
+def LabelOMP(predicts, adjList):
+    device = predicts.device
+    batch_size = len(predicts)
+    _, label_dim = predicts.size()
+    # 每张图片，找和它最相似的k张图片
+    k = batch_size // 2
+
+    # 最终输出的是图像之间的特征相似度矩阵和语义相似度矩阵
+    predict_similarities = torch.zeros(batch_size, batch_size, dtype=torch.float64).to(device)
+
+    # 遍历每张图片
+    for i in range(batch_size):
+        # 需要拟合的残差
+        predict = predicts[i]
+
+        # 进行k次迭代
+        # Todo: 维护相似集合，以及相似图像的特征向量和预测向量
+        S = set()
+        indexes = []
+        candidateX = torch.empty(0, label_dim, dtype=torch.float64).to(device)
+
+        # candidates表示从一个标签预测向量中根据标签相关性推断出来的新预测向量
+        candidates = getCandidates(predicts, adjList, requires_grad=False)
+        # 现在可以计算内积了
+        candidate_inner_products = torch.matmul(candidates, predict)
+        # 对第1维计算范数
+        candidate_norms = torch.norm(candidates, dim=1)
+        predict_scores = candidate_inner_products / candidate_norms
+        for j in range(k):
+            # 找到最相似的图像i‘
+            # 从中选出相似性最高的图像，加到相似集中
+            index = findMaxIndex(predict_scores, S, i)
+            # 判断是否满足内积大于等于0的条件
+            # 如果不满足，说明找不到相似图片，直接退出即可
+            if torch.matmul(predicts[index], predict) <= 0:
+                break
+            S.add(index)
+            indexes.append(index)
+
+            candidateX = torch.cat((candidateX, candidates[index].unsqueeze(0)), dim=0)
+
+            # Todo: 这里不应该预测值拟合，而应该是预测值经相关性的拟合？
+            predict_coefficients = torch.linalg.lstsq(torch.transpose(candidateX, 0, 1), predict)[0]
+            # 更新相似性矩阵
+            # 不是对称的，因此，更新第i行
+            for m in range(len(indexes)):
+                neighbor = indexes[m]
+                # Todo: 验证引入的约束操作对与原解的修改情况
+                predict_similarities[i][neighbor] = max(0, predict_coefficients[m])  # 确保相似性大于0
+    return predict_similarities.detach()  # 对于无需通过pytorch计算图优化的变量，将其detach
 
 
 def OMP(features, predicts, A):
@@ -42,6 +127,7 @@ def OMP(features, predicts, A):
         # 需要拟合的残差
         predict = predicts[i]
         feature = features[i]
+
         # 进行k次迭代
         # Todo: 维护相似集合，以及相似图像的特征向量和预测向量
         S = set()
@@ -69,13 +155,14 @@ def OMP(features, predicts, A):
                 break
             S.add(index)
             indexes.append(index)
+            # 检查一下features[index]是否有问题
 
             featureX = torch.cat((featureX, features[index].unsqueeze(0)), dim=0)
             predictX = torch.cat((predictX, predicts[index].unsqueeze(0)), dim=0)
-            # Todo: 求解最小二乘问题
-            # (1). 特征的最小二乘问题求解
-            feature_coefficients = np.linalg.lstsq(torch.transpose(featureX,0,1).detach().cpu().numpy(),feature.detach().cpu().numpy())[0]
-            predict_coefficients = np.linalg.lstsq(torch.transpose(predictX,0,1).detach().cpu().numpy(),predict.detach().cpu().numpy())[0]
+
+            # Todo: 这里可能会报错，捕捉到异常后
+            feature_coefficients = torch.linalg.lstsq(torch.transpose(featureX, 0, 1), feature)[0]
+            predict_coefficients = torch.linalg.lstsq(torch.transpose(predictX, 0, 1), predict)[0]
             # 更新相似性矩阵
             # 不是对称的，因此，更新第i行
             for m in range(len(indexes)):
@@ -84,4 +171,3 @@ def OMP(features, predicts, A):
                 predict_similarities[i][neighbor] = max(0, predict_coefficients[m])
     # Todo: 这些相似性是无需梯度的
     return feature_similarities.detach(), predict_similarities.detach()
-    # return feature_similarities, predict_similarities
