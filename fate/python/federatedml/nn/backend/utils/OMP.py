@@ -171,3 +171,4 @@ def OMP(features, predicts, A):
                 predict_similarities[i][neighbor] = max(0, predict_coefficients[m])
     # Todo: 这些相似性是无需梯度的
     return feature_similarities.detach(), predict_similarities.detach()
+
