@@ -120,7 +120,7 @@ class LabelSmoothLoss(nn.Module):
                 continue
             cnt += 1
             total_loss += torch.norm(predicts[i] - torch.matmul(similarities[i],candidates),p=2)
-        return total_loss / cnt
+        return 0 if cnt == 0 else total_loss / cnt
 
 
 class FeatureSmoothLoss(nn.Module):
