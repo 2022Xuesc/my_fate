@@ -119,8 +119,7 @@ class LabelSmoothLoss(nn.Module):
             if torch.sum(similarities[i]) == 0:
                 continue
             cnt += 1
-            total_loss += torch.norm(predicts[i] - torch.matmul(similarities[i], candidates), p=2)
-        # 该批次样本中可能没有相似的样本，因此，判断cnt是否等于0
+            total_loss += torch.norm(predicts[i] - torch.matmul(similarities[i],candidates),p=2)
         return 0 if cnt == 0 else total_loss / cnt
 
 
