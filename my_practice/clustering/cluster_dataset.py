@@ -128,7 +128,6 @@ num_clients = 10
 
 train_dir = '/home/klaus125/research/dataset/val2014'
 clustered_dir = '/home/klaus125/research/dataset/clustered_dataset'
-#
 km = kmodes.KModes(n_clusters=num_clients)
 train_vec2names, train_vecs = get_label_vecs(train_image_id_path)
 # 转为array数组
