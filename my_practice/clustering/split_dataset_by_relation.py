@@ -1,6 +1,8 @@
+import os
 import json
+import shutil
 
-json_path = 'val_image2labels.json'
+json_path = '/data/projects/fate/my_practice/dataset/coco/train_image_id.json'
 image_id2labels = json.load(open(json_path, 'r'))
 
 # 标签i和j有强相关性
@@ -12,17 +14,26 @@ s3 = set()
 # 标签i和j之间没有强相关性
 s4 = set()
 
+# seen = set()
+
 
 def add_list_to_set(s, images):
     for image in images:
+        # 判断一下image是否已经使用过了
+        # if image in seen:
+        #     continue
         s.add(image)
+        # seen.add(image)
 
 
 num_labels = 80
 # 遍历每一个标签对
 cnt = 0
+total = num_labels * (num_labels - 1) // 2
 for i in range(num_labels):
     for j in range(i + 1, num_labels):
+        cnt += 1
+        print(f'progress: {cnt} / {total}')
         # 建立3个列表
         images_ij = []  # i和j同时出现
         images_i = []  # 仅包含i
@@ -43,16 +54,30 @@ for i in range(num_labels):
         half_point_ij = len(images_ij) // 2
         three_quarter_point = len(images_ij) * 3 // 4
         add_list_to_set(s1, images_ij[:half_point_ij])
-        add_list_to_set(s1, images_ij[half_point_ij:three_quarter_point])
-        add_list_to_set(s1, images_ij[three_quarter_point:])
+        add_list_to_set(s2, images_ij[half_point_ij:three_quarter_point])
+        add_list_to_set(s3, images_ij[three_quarter_point:])
 
         # 将i中的一半放到s3,剩下一半放到s4中
         half_point_i = len(images_i) // 2
         add_list_to_set(s3, images_i[:half_point_i])
         add_list_to_set(s4, images_i[half_point_i:])
-        # 将j中的一般放到s2，剩下一般放到s4中
+
+        # 将j中的一半放到s2，剩下一半放到s4中
         half_point_j = len(images_j) // 2
-        add_list_to_set(s3, images_j[:half_point_j])
+        add_list_to_set(s2, images_j[:half_point_j])
         add_list_to_set(s4, images_j[half_point_j:])
-# 最后根据s1,s2,s3,s4划分数据集
-print('Done')
+# 最后根据s1,s2,s3,s4划分数据集，各个集合中有相交的图片
+
+# 根据文件名拷贝到不同的集合中
+# 先处理训练集
+source_dir = '/data/projects/dataset/train2014'
+target_dir = '/data/projects/split_dataset'
+sets = [s1, s2, s3, s4]
+for i in range(4):
+    path = os.path.join(target_dir, f'client{i + 1}/train')
+    # 如果不存在，则创建
+    if not os.path.exists(path):
+        os.makedirs(path)
+    for file_name in sets[i]:
+        file_path = os.path.join(source_dir, file_name)
+        shutil.copy(file_path, path)

@@ -457,7 +457,7 @@ class MultiLabelFitter(object):
         # Todo: 原始的ResNet101分类器
         (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
 
-        # 使用对称损失
+        # 使用非对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
 
         # 添加标签平滑损失
