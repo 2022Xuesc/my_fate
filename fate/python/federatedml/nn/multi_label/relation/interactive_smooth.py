@@ -1,4 +1,6 @@
 # 服务器与客户端的通用逻辑
+import time
+
 import math
 import numpy as np
 import torch.nn
@@ -372,7 +374,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    param.max_iter = 100
+    # param.max_iter = 100
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
@@ -385,9 +387,9 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 100
-    param.device = 'cuda:0'
+    # param.batch_size = 2
+    # param.max_iter = 100
+    # param.device = 'cuda:0'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -400,8 +402,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 对数据集构建代码的修改
 
     # 使用绝对路径
-    # category_dir = '/data/projects/dataset'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/dataset'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     # 这里改成服务器路径
 
@@ -653,8 +655,11 @@ class MultiLabelFitter(object):
         return mAP, loss
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
+        # 总样本数量为total_samples
         total_samples = len(train_loader.sampler)
+        # batch_size
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
+        # 记录一个epoch需要执行多少个batches
         steps_per_epoch = math.ceil(total_samples / batch_size)
 
         self.ap_meter.reset()
@@ -665,7 +670,8 @@ class MultiLabelFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # 这里不使用inp
+
+        # 对于每一个batch，使用该批次的数据集进行训练
         for train_step, (inputs, target) in enumerate(train_loader):
             inputs = inputs.to(device)
             target = target.to(device)
@@ -680,22 +686,20 @@ class MultiLabelFitter(object):
 
             self.ap_meter.add(output.data, target.data)
 
-            # Todo: 这里只考虑标签平滑损失
+            # 这里只考虑标签平滑损失
             predicts = torch.sigmoid(output).to(torch.float64)
 
             predict_similarities = LabelOMP(predicts.detach(), self.adjList)
-            # 下面对损失函数进行修改
+
             label_loss = LabelSmoothLoss(relation_need_grad=True)(predicts.detach(), predict_similarities,
                                                                   self.adjList)
             # 需要先对label_loss进行反向传播，梯度下降更新标签相关性
-            # Todo: 如何处理多个损失组件重复反向传播的情况？
 
-            # 先将CNN参数设置为无需梯度
-            # for param in model.parameters():
-            #     param.requires_grad = False
-            self.relation_optimizer.zero_grad()
-            label_loss.backward()
-            self.relation_optimizer.step()
+            # 如果标签平滑损失不为0，才进行优化
+            if label_loss != 0:
+                self.relation_optimizer.zero_grad()
+                label_loss.backward()
+                self.relation_optimizer.step()
             # 确保标签相关性在0到1之间
 
             # 遍历每个优化变量，对其值进行约束，限定在[0,1]之内
@@ -704,9 +708,11 @@ class MultiLabelFitter(object):
 
             # 总损失 = 交叉熵损失 + 标签相关性损失
             # 优化CNN参数时，need_grad设置为True，表示需要梯度
+
             loss = criterion(output, target) + \
                    self.lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
                                                                              self.adjList)
+
             # 初始化标签相关性，先计算标签平滑损失，对相关性进行梯度下降
 
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())

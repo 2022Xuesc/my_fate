@@ -9,12 +9,184 @@ import torchvision.transforms as transforms
 from PIL import Image
 from torch.utils.data import Dataset
 
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
-from federatedml.nn.backend.multi_label.losses.SmoothLoss import *
-from federatedml.nn.backend.utils.OMP import LabelOMP
 import json
 import os
 import pickle
+
+def findMaxIndex(arr, S, cur):
+    maxVal = 0
+    maxIndex = -1
+    for i in range(len(arr)):
+        if i not in S and i != cur:
+            if arr[i] > maxVal:
+                maxVal = arr[i]
+                maxIndex = i
+    return maxIndex
+
+    # features是该批次中的特征
+    # predicts是该批次的预测值
+
+
+# 给定该批次的样本的预测向量，从每个预测向量根据标签相关性重构出其他的标签向量
+def getCandidates(predicts, adjList, requires_grad):
+    device = predicts.device
+    batch_size = len(predicts)
+    _, label_dim = predicts.size()
+    candidates = torch.zeros((batch_size, label_dim), dtype=torch.float64).to(device)
+    # Todo: 将以下部分封装成一个函数，从其他标签的向量出发得到
+    for b in range(batch_size):
+        predict_vec = predicts[b]  # 1 * C维度
+        # 遍历每一个推断出来的标签
+        for lj in range(label_dim):
+            relation_num = 0
+            for li in range(label_dim):
+                # 判断从li是否能推断出lj
+                if lj in adjList[li]:
+                    # a表示从li到lj的相关性，不是计算损失，无需使用带有梯度的相关性值
+                    if requires_grad:
+                        a = adjList[li][lj]
+                    else:
+                        a = adjList[li][lj].item()
+                    # 需要进行归一化，归一化系数为len(adjList[li])
+                    candidates[b][lj] += predict_vec[li] * a
+                    relation_num += 1
+                elif li == lj:
+                    candidates[b][lj] += predict_vec[li]
+                    relation_num += 1
+            candidates[b][lj] /= relation_num
+    return candidates
+
+
+def LabelOMP(predicts, adjList):
+    device = predicts.device
+    batch_size = len(predicts)
+    _, label_dim = predicts.size()
+    # 每张图片，找和它最相似的k张图片
+    # Todo: 对这里相似图片的张数进行修改
+    k = batch_size // 2
+
+    # 最终输出的是图像之间的语义相似度矩阵
+    predict_similarities = torch.zeros(batch_size, batch_size, dtype=torch.float64).to(device)
+
+    # 遍历每张图片
+    for i in range(batch_size):
+        # 需要拟合的残差
+        predict = predicts[i]
+
+        # 进行k次迭代
+        # Todo: 维护相似集合，以及相似图像的特征向量和预测向量
+        S = set()
+        indexes = []
+        candidateX = torch.empty(0, label_dim, dtype=torch.float64).to(device)
+
+        # candidates表示从一个标签预测向量中根据标签相关性推断出来的新预测向量
+        candidates = getCandidates(predicts, adjList, requires_grad=False)
+        # 现在可以计算内积了
+        candidate_inner_products = torch.matmul(candidates, predict)
+        # 对第1维计算范数
+        candidate_norms = torch.norm(candidates, dim=1)
+        predict_scores = candidate_inner_products / candidate_norms
+        for j in range(k):
+            # 找到最相似的图像i‘
+            # 从中选出相似性最高的图像，加到相似集中
+            index = findMaxIndex(predict_scores, S, i)
+            # 判断是否满足内积大于等于0的条件
+            # 如果不满足，说明找不到相似图片，直接退出即可
+            if torch.matmul(predicts[index], predict) <= 0:
+                break
+            S.add(index)
+            indexes.append(index)
+
+            candidateX = torch.cat((candidateX, candidates[index].unsqueeze(0)), dim=0)
+
+            # Todo: 这里不应该预测值拟合，而应该是预测值经相关性的拟合？
+            predict_coefficients = torch.linalg.lstsq(torch.transpose(candidateX, 0, 1), predict)[0]
+            # 更新相似性矩阵
+            # 不是对称的，因此，更新第i行
+            for m in range(len(indexes)):
+                neighbor = indexes[m]
+                # Todo: 验证引入的约束操作对与原解的修改情况
+                predict_similarities[i][neighbor] = max(0, predict_coefficients[m])  # 确保相似性大于0
+    return predict_similarities.detach()  # 对于无需通过pytorch计算图优化的变量，将其detach
+
+
+
+class LabelSmoothLoss(nn.Module):
+    # 进行相关参数的设置
+    def __init__(self, relation_need_grad=False):
+        super(LabelSmoothLoss, self).__init__()
+        self.relation_need_grad = relation_need_grad
+
+    # 传入
+    # 1. 预测概率y：b * 80
+    # 2. 图像语义相似度: b * b
+    # 3. 标签相关性: 80 * 80
+    def forward(self, predicts, similarities, adjList):
+        batch_size = len(predicts)
+        # 相似图像的个数是 batch_size // 2
+        # Todo: 对于每个样本，如果没有相似的图像，则不考虑这个图像的标签平滑损失
+        total_loss = 0
+        cnt = 0
+        candidates = getCandidates(predicts, adjList, self.relation_need_grad)
+        for i in range(batch_size):
+            if torch.sum(similarities[i]) == 0:
+                continue
+            cnt += 1
+            total_loss += torch.norm(predicts[i] - torch.matmul(similarities[i],candidates),p=2)
+        return 0 if cnt == 0 else total_loss / cnt
+
+class AsymmetricLossOptimized(nn.Module):
+
+    def __init__(self, gamma_neg=4, gamma_pos=1, clip=0.05, eps=1e-8, disable_torch_grad_focal_loss=False):
+        super(AsymmetricLossOptimized, self).__init__()
+
+        self.gamma_neg = gamma_neg
+        self.gamma_pos = gamma_pos
+        self.clip = clip
+        self.disable_torch_grad_focal_loss = disable_torch_grad_focal_loss
+        self.eps = eps
+
+        # prevent memory allocation and gpu uploading every iteration, and encourages inplace operations
+        self.targets = self.anti_targets = self.xs_pos = self.xs_neg = self.asymmetric_w = self.loss = None
+
+    def forward(self, x, y):
+        """"
+        Parameters
+        ----------
+        x: input logits
+        y: targets (multi-label binarized vector)
+        """
+
+        self.targets = y
+        self.anti_targets = 1 - y
+
+        # 计算预测为正标签的概率和预测为负标签的概率
+        self.xs_pos = torch.sigmoid(x)
+        self.xs_neg = 1.0 - self.xs_pos
+
+        # Asymmetric Clipping
+        if self.clip is not None and self.clip > 0:
+            # 这里使用原地操作
+            self.xs_neg.add_(self.clip).clamp_(max=1)
+
+        # 基本的交叉熵损失计算
+        self.loss = self.targets * torch.log(self.xs_pos.clamp(min=self.eps))
+        self.loss.add_(self.anti_targets * torch.log(self.xs_neg.clamp(min=self.eps)))
+
+        # Asymmetric Focusing
+        # 和未优化的版本逻辑相同
+        if self.gamma_neg > 0 or self.gamma_pos > 0:
+            if self.disable_torch_grad_focal_loss:
+                torch.set_grad_enabled(False)
+            self.xs_pos = self.xs_pos * self.targets
+            self.xs_neg = self.xs_neg * self.anti_targets
+            self.asymmetric_w = torch.pow(1 - self.xs_pos - self.xs_neg,
+                                          self.gamma_pos * self.targets + self.gamma_neg * self.anti_targets)
+            if self.disable_torch_grad_focal_loss:
+                torch.set_grad_enabled(True)
+            self.loss *= self.asymmetric_w
+
+        return -self.loss.sum()
 
 
 class AveragePrecisionMeter(object):
@@ -260,16 +432,16 @@ def construct_relation_by_matrix(matrix, device):
 resize_scale = 512
 crop_scale = 448
 
-train_path = '/data/projects/iid_dataset/client1/train'
-category_dir = '/data/projects/dataset'
-json_file = '/data/projects/clustered_dataset/client1/train/anno.json'
+# train_path = '/data/projects/clustered_dataset/client1/train'
+# category_dir = '/data/projects/dataset'
+# json_file = '/data/projects/clustered_dataset/client1/train/anno.json'
 
-# train_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
-# category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
-# # Todo: 本地的json_file呢？
-# json_file = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json'
-# resize_scale = resize_scale // 2
-# crop_scale = crop_scale // 2
+train_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
+category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+# Todo: 本地的json_file呢？
+json_file = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json'
+resize_scale = resize_scale // 2
+crop_scale = crop_scale // 2
 
 # 载入数据验证一下
 train_dataset = COCO(train_path, config_dir=category_dir, transforms=transforms.Compose([

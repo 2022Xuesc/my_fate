@@ -60,6 +60,11 @@ def LabelOMP(predicts, adjList):
 
     # 最终输出的是图像之间的特征相似度矩阵和语义相似度矩阵
     predict_similarities = torch.zeros(batch_size, batch_size, dtype=torch.float64).to(device)
+    # Todo: candidates重复计算了啊
+    # candidates表示从一个标签预测向量中根据标签相关性推断出来的新预测向量
+    candidates = getCandidates(predicts, adjList, requires_grad=False)
+    # 对第1维计算范数
+    candidate_norms = torch.norm(candidates, dim=1)
 
     # 遍历每张图片
     for i in range(batch_size):
@@ -72,12 +77,9 @@ def LabelOMP(predicts, adjList):
         indexes = []
         candidateX = torch.empty(0, label_dim, dtype=torch.float64).to(device)
 
-        # candidates表示从一个标签预测向量中根据标签相关性推断出来的新预测向量
-        candidates = getCandidates(predicts, adjList, requires_grad=False)
         # 现在可以计算内积了
         candidate_inner_products = torch.matmul(candidates, predict)
-        # 对第1维计算范数
-        candidate_norms = torch.norm(candidates, dim=1)
+
         predict_scores = candidate_inner_products / candidate_norms
         for j in range(k):
             # 找到最相似的图像i‘

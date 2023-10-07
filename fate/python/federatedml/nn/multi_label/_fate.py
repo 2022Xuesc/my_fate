@@ -682,47 +682,24 @@ class MultiLabelFitter(object):
             # 也可在聚合时候统计，这里为明了起见，直接统计
             self._num_label_consumed += target.sum().item()
 
-            before_forward_time = time.perf_counter()
-
             output = model(inputs)
-
-            after_forward_time = time.perf_counter()
-            # Todo: 前向传播耗时，单位是s
-            forward_duration = after_forward_time - before_forward_time
-            LOGGER.warn(f'前向传播耗时：{forward_duration} s')
 
             self.ap_meter.add(output.data, target.data)
 
             # 这里只考虑标签平滑损失
             predicts = torch.sigmoid(output).to(torch.float64)
 
-            before_omp_time = time.perf_counter()
             predict_similarities = LabelOMP(predicts.detach(), self.adjList)
-            end_omp_time = time.perf_counter()
-            # Todo: 执行OMP算法计算相似性的时间
-            omp_duration = end_omp_time - before_omp_time
 
-            LOGGER.warn(f'OMP算法执行耗时：{omp_duration} s')
 
-            # 下面对损失函数进行修改
-            before_label_loss_time = time.perf_counter()
             label_loss = LabelSmoothLoss(relation_need_grad=True)(predicts.detach(), predict_similarities,
                                                                   self.adjList)
-            end_label_loss_time = time.perf_counter()
-            # Todo: 计算标签相关性损失的时间
-            label_loss_duration = end_label_loss_time - before_label_loss_time
-            LOGGER.warn(f'标签相关性损失（优化标签相关性）计算耗时：{label_loss_duration} s')
             # 需要先对label_loss进行反向传播，梯度下降更新标签相关性
 
             # 如果标签平滑损失不为0，才进行优化
             if label_loss != 0:
                 self.relation_optimizer.zero_grad()
-                before_label_loss_backward = time.perf_counter()
                 label_loss.backward()
-                end_label_loss_backward = time.perf_counter()
-                # Todo: 标签损失反向传播的时间
-                label_loss_backward_duration = end_label_loss_backward - before_label_loss_backward
-                LOGGER.warn(f'标签损失反向传播耗时：{label_loss_backward_duration} s')
                 self.relation_optimizer.step()
             # 确保标签相关性在0到1之间
 
@@ -733,27 +710,16 @@ class MultiLabelFitter(object):
             # 总损失 = 交叉熵损失 + 标签相关性损失
             # 优化CNN参数时，need_grad设置为True，表示需要梯度
 
-            before_loss_time = time.perf_counter()
             loss = criterion(output, target) + \
                    self.lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
                                                                              self.adjList)
-            end_loss_time = time.perf_counter()
-            # Todo: 总损失的计算时间
-            loss_duration = end_loss_time - before_loss_time
-            LOGGER.warn(f'总损失计算耗时：{loss_duration} s')
 
             # 初始化标签相关性，先计算标签平滑损失，对相关性进行梯度下降
 
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
-            before_loss_backward = time.perf_counter()
             loss.backward()
-            end_loss_backward = time.perf_counter()
-            # Todo: 总损失反向传播的时间
-            loss_backward_duration = end_loss_backward - before_loss_backward
-            LOGGER.warn(f'总损失反向传播耗时：{loss_backward_duration} s')
-
             optimizer.step()
             self.lr_scheduler.step()
 

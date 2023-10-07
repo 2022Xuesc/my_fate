@@ -285,6 +285,7 @@ def compare_method(paths, file):
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
         save_path = os.path.join(dir_name, f'{id}.svg')
+        plt.show()
         plt.savefig(save_path, dpi=600, format='svg')
         # plt.show()
         plt.close()
