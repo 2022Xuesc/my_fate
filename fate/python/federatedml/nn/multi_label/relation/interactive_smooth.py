@@ -691,6 +691,7 @@ class MultiLabelFitter(object):
 
             predict_similarities = LabelOMP(predicts.detach(), self.adjList)
 
+
             label_loss = LabelSmoothLoss(relation_need_grad=True)(predicts.detach(), predict_similarities,
                                                                   self.adjList)
             # 需要先对label_loss进行反向传播，梯度下降更新标签相关性
