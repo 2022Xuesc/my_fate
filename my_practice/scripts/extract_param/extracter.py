@@ -4,7 +4,7 @@ import shutil
 jobs_dir = '../../../fateflow/jobs'
 logs_dir = '../../../fateflow/logs'
 
-job_id = "202309201911240660360"
+job_id = "202310120001246863840"
 
 arbiter_path = "arbiter/10000/multi_label_0"
 guest_path = "guest/9999/multi_label_0"
@@ -33,6 +33,6 @@ def extract_params(job_id):
             print(line[line.find(param):])
 
 
-# del_session_stops(job_id)
+del_session_stops(job_id)
 
 extract_params(job_id)

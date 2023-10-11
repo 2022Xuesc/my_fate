@@ -505,7 +505,7 @@ class MultiLabelFitter(object):
         # Todo: 添加优化参数
         #  获取json文件
         image_id2labels = json.load(open(self.param.json_file, 'r'))
-        num_labels = 80
+        num_labels = self.param.num_labels
         adjList = np.zeros((num_labels, num_labels))
         nums = np.zeros(num_labels)
         for image_info in image_id2labels:
@@ -582,7 +582,7 @@ class MultiLabelFitter(object):
         return mAP, loss
 
     def construct_relation_by_matrix(self, matrix):
-        num_labels = 80
+        num_labels = self.param.num_labels
         self.adjList = [dict() for _ in range(num_labels)]
         self.variables = []
         # 设定阈值th
@@ -620,7 +620,7 @@ class MultiLabelFitter(object):
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
-        labels_num = 80
+        labels_num = self.param.num_labels
         A = np.zeros((labels_num, labels_num))
         # 初始化自相关性
         for i in range(labels_num):

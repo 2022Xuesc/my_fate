@@ -94,6 +94,7 @@ class FedClientContext(_FedBaseContext):
 
     def init(self):
         self.random_padding_cipher.create_cipher()
+        # pass
 
     def encrypt(self, tensor: torch.Tensor, weight):
         return self.random_padding_cipher.encrypt(
@@ -247,6 +248,7 @@ class SyncAggregator(object):
 
     def fit(self, loss_callback):
         while not self.context.finished():
+            print("等待模型传输")
             # Todo: 这里应该是同步接收的方式
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
 
@@ -288,7 +290,7 @@ class SyncAggregator(object):
 
     def reweightByEntropy(self, relation_matrices, degrees, cur_iter):
         num_clients = len(relation_matrices)
-        num_labels = 80
+        num_labels = len(relation_matrices[0])
         # 定义相关性阈值
         relation_th = 0.5
         # 计算好熵之后，设定熵阈值，当大于该阈值时认定其不一致
@@ -427,7 +429,9 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    param.max_iter = 100
+    # param.max_iter = 100
+    # param.num_labels = 20
+
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
@@ -440,9 +444,10 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 100
-    param.device = 'cuda:0'
+    # param.batch_size = 2
+    # param.max_iter = 100
+    # param.device = 'cuda:0'
+    # param.num_labels = 20
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -456,7 +461,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
 
     # 使用绝对路径
     # category_dir = '/data/projects/dataset'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc'
 
     # 这里改成服务器路径
 
@@ -558,7 +563,7 @@ class MultiLabelFitter(object):
         # Todo: 添加优化参数
         #  获取json文件
         image_id2labels = json.load(open(self.param.json_file, 'r'))
-        num_labels = 80
+        num_labels = self.param.num_labels
         adjList = np.zeros((num_labels, num_labels))
         nums = np.zeros(num_labels)
         for image_info in image_id2labels:
@@ -636,7 +641,7 @@ class MultiLabelFitter(object):
 
     # 从相关性矩阵中重构出优化变量
     def construct_relation_by_matrix(self, matrix):
-        num_labels = 80
+        num_labels = self.param.num_labels
         self.adjList = [dict() for _ in range(num_labels)]
         self.variables = []
         # 设定阈值th
@@ -674,7 +679,7 @@ class MultiLabelFitter(object):
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
-        labels_num = 80
+        labels_num = self.param.num_labels
         A = np.zeros((labels_num, labels_num))
         # 初始化自相关性
         for i in range(labels_num):
