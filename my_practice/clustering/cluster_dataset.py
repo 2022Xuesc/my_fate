@@ -1,7 +1,6 @@
 import json
 import os
 
-import torch
 import shutil
 from kmodes import kmodes
 import multiprocessing

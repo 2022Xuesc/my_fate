@@ -44,8 +44,11 @@ def get_lstm_image2labels():
 # 从图像名称中取出image_id
 # COCO_val2014_000000000042
 
-def get_image_id(image_name):
-    return int(image_name.split('.')[0].split('_')[-1])
+def get_image_id(image_name, dataset="COCO"):
+    if dataset == "COCO":
+        return int(image_name.split('.')[0].split('_')[-1])
+    else:
+        return image_name.split('.')[0]
 
 
 def clear_dir(dir_path):
@@ -158,7 +161,7 @@ def generate_labels(dir_paths):
 
 
 # Todo: 关于COCO数据集的新表示方法
-def generate_anno(data, images_dir, phase='val'):
+def generate_anno(data, images_dir, dataset="COCO", phase='val'):
     # 读取对应的image_id数据
     image_id_path = os.path.join(data, '{}_image_id.json'.format(phase))
     image_id = json.load(open(image_id_path, 'r'))
@@ -166,11 +169,9 @@ def generate_anno(data, images_dir, phase='val'):
     anno_list = []
     for filename in files:
         # 如果filename不是图像文件名称
-        if not filename.startswith('COCO'):
+        if not filename.startswith('COCO') and (not filename.endswith('.jpg')):
             continue
-        cur_img_id = str(get_image_id(filename))
-        if cur_img_id not in image_id:
-            continue
+        cur_img_id = str(get_image_id(filename, dataset))
         anno_list.append(image_id[cur_img_id])
     # 将anno_list存储到图像路径中
     target_file_path = os.path.join(images_dir, 'anno.json')
@@ -229,20 +230,25 @@ def category_to_idx(category):
 
 
 coco_dir = '../../../dataset/coco'
+voc_dir = '../../../dataset/voc'
 
 # Todo: 服务器端的未执行代码
-# client_nums = 10
-# image_dir = "/data/projects/clustered_dataset"
-# for i in range(client_nums):
-#     client_id = i + 1
-    # generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
-    # generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
-    # generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
-    # generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
+client_nums = 10
+image_dir = "/data/projects/clustered_dataset"
+# /data/projects/voc2007/clustered_voc
+for i in range(client_nums):
+    client_id = i + 1
+generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
+generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
+generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
+generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
 
 # Todo: 客户端待执行代码
 # client_nums = 10
-# image_dir = "/home/klaus125/research/dataset/clustered_dataset/"
+# # image_dir = "/home/klaus125/research/dataset/clustered_dataset/"
+# image_dir = "/home/klaus125/research/dataset/VOC2007/JPEGImages/clustered_voc"
+# dataset = "VOC"
 # for i in range(client_nums):
 #     client_id = i + 1
-#     generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'val')
+#     generate_anno(voc_dir, os.path.join(image_dir, f'client{client_id}/train'), dataset=dataset, phase='train')
+#     generate_anno(voc_dir, os.path.join(image_dir, f'client{client_id}/val'), dataset=dataset, phase='val')
