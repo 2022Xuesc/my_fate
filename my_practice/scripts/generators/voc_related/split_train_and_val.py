@@ -5,8 +5,11 @@ import shutil
 
 # 划分训练集和验证集
 
-train_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/voc/train_image_id.json"
-val_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/voc/val_image_id.json"
+# dataset = "voc_expanded"
+dataset = "voc"
+
+train_image_id_path = f"/home/klaus125/research/fate/my_practice/dataset/{dataset}/train_image_id.json"
+val_image_id_path = f"/home/klaus125/research/fate/my_practice/dataset/{dataset}/val_image_id.json"
 
 train_file = open(train_image_id_path, 'r')
 train_images = json.load(train_file)

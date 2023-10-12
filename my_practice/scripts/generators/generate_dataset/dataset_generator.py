@@ -230,25 +230,27 @@ def category_to_idx(category):
 
 
 coco_dir = '../../../dataset/coco'
-voc_dir = '../../../dataset/voc'
+voc_dir = '../../../dataset/voc_expanded'
 
 # Todo: 服务器端的未执行代码
-client_nums = 10
-image_dir = "/data/projects/clustered_dataset"
-# /data/projects/voc2007/clustered_voc
-for i in range(client_nums):
-    client_id = i + 1
-generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
-generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
-generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
-generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
-
-# Todo: 客户端待执行代码
 # client_nums = 10
-# # image_dir = "/home/klaus125/research/dataset/clustered_dataset/"
-# image_dir = "/home/klaus125/research/dataset/VOC2007/JPEGImages/clustered_voc"
-# dataset = "VOC"
+# image_dir = "/data/projects/clustered_dataset"
+# # /data/projects/voc2007/clustered_voc
 # for i in range(client_nums):
 #     client_id = i + 1
-#     generate_anno(voc_dir, os.path.join(image_dir, f'client{client_id}/train'), dataset=dataset, phase='train')
-#     generate_anno(voc_dir, os.path.join(image_dir, f'client{client_id}/val'), dataset=dataset, phase='val')
+# generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
+# generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
+# generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
+# generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
+
+# Todo: 客户端待执行代码
+client_nums = 10
+# image_dir = "/home/klaus125/research/dataset/clustered_dataset/"
+image_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc"
+dataset = "VOC"
+for i in range(client_nums):
+    client_id = i + 1
+    generate_anno(voc_dir, os.path.join(image_dir, f'client{client_id}/train'), dataset=dataset, phase='train')
+    generate_anno(voc_dir, os.path.join(image_dir, f'client{client_id}/val'), dataset=dataset, phase='val')
+    generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
+    generate_configs(os.path.join(image_dir, f'client{client_id}/val'))

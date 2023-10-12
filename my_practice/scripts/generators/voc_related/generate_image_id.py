@@ -9,12 +9,13 @@
 import json
 import os
 
-types = ["train","val"]
+# types = ["train","val"]
+types = ["test"]
 
 for type in types:
     images = dict()
     # 遍历训练集中的每张图片，创建一个字典
-    main_dir = "/home/klaus125/research/dataset/VOC2007/ImageSets/Main"
+    main_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/VOCdevkit/VOC2007/ImageSets/Main"
     type_file = os.path.join(main_dir, f"{type}.txt")
     with open(type_file, 'r') as file:
         for line in file:
@@ -27,7 +28,7 @@ for type in types:
             image_info["label_names"] = []
             images[image_id] = image_info
     # 遍历每一个category的名称以及其id
-    target_path = "/home/klaus125/research/fate/my_practice/dataset/voc"
+    target_path = "/home/klaus125/research/fate/my_practice/dataset/voc_expanded"
     category_file = os.path.join(target_path, "category.json")
     category_path = open(category_file, 'r')
     categories = json.load(category_path)
@@ -43,6 +44,7 @@ for type in types:
                 if val in {"1", "0"}:
                     images[image_id]["labels"].append(category_id)
                     images[image_id]["label_names"].append(category)
+    type = "val" if type == "test" else type
     target_image_id_file = os.path.join(target_path, f"{type}_image_id.json")
     with open(target_image_id_file,'w') as json_file:
         json.dump(images, json_file)

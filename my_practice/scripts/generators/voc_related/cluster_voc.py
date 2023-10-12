@@ -30,6 +30,7 @@ def get_label_vecs(json_path, num_labels=20):
         vecs.append(list(key))
     return vec2names, vecs
 
+
 def copy_file_to_cluster(src_dir, clustered_dir, clusters, data, phase, vec2names, vecs):
     for i in range(data.shape[0]):
         target_dir = os.path.join(clustered_dir, f'client{clusters[i] + 1}/{phase}')
@@ -39,20 +40,24 @@ def copy_file_to_cluster(src_dir, clustered_dir, clusters, data, phase, vec2name
             shutil.copy(os.path.join(src_dir, filename), target_dir)
 
 
-train_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/voc/train_image_id.json"
-val_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/voc/val_image_id.json"
+# dataset = "voc"
+dataset = "voc_expanded"
+
+train_image_id_path = f"/home/klaus125/research/fate/my_practice/dataset/{dataset}/train_image_id.json"
+val_image_id_path = f"/home/klaus125/research/fate/my_practice/dataset/{dataset}/val_image_id.json"
 
 # 仍然选择划分10个客户端
 num_clients = 10
-train_dir = "/home/klaus125/research/dataset/VOC2007/JPEGImages/train"
-val_dir = "/home/klaus125/research/dataset/VOC2007/JPEGImages/val"
-clustered_dir = "/home/klaus125/research/dataset/VOC2007/JPEGImages/clustered_voc"
+# train_dir需要修改
+train_dir = "/home/klaus125/research/dataset/VOC2007/JPEGImages/origin"
+val_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/VOCdevkit/VOC2007/JPEGImages"
+clustered_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc"
 
 # 使用kmodes聚类方法
 km = kmodes.KModes(n_clusters=num_clients)
 # 根据train_image_id获取标签向量
 # coco数据集的标签数量是20
-train_vec2names,train_vecs = get_label_vecs(train_image_id_path,num_labels=20)
+train_vec2names, train_vecs = get_label_vecs(train_image_id_path, num_labels=20)
 train_data = np.array(train_vecs)
 print(f'训练数据的维度为：{train_data.shape}')
 print('开始训练聚类模型并预测')
