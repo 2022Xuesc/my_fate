@@ -1,58 +1,35 @@
 # 服务器与客户端的通用逻辑
 import math
-import numpy as np
-import torch
 import torch.nn
 import torchnet.meter as tnt
-import torchvision.transforms as transforms
-from torch.nn.utils.rnn import *
 
 import copy
-import csv
 import os
 import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.multi_label.config import config_scheduler
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.multi_label.models import *
-
-from federatedml.nn.backend.pytorch.data import COCO
+from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
+from federatedml.nn.backend.utils.aggregators.aggregator import *
+from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
+from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+# Todo: 日志文件记录部分重构
 
-from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
+my_writer = MyWriter(dir_name=os.getcwd())
 
-stats_dir = os.path.join(os.getcwd(), 'stats')
-if not os.path.exists(stats_dir):
-    os.makedirs(stats_dir)
+train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
+valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP', 'valid_loss'])
+avgloss_writer = my_writer.get("avgloss.csv", header=['agg_iter', 'mAP', 'avgloss'])
 
-buf_size = 1
-# 定义和实验数据记录相关的对象
-
-train_file = open(os.path.join(stats_dir, 'train.csv'), 'w', buffering=buf_size)
-train_writer = csv.writer(train_file)
-train_writer.writerow(['epoch', 'mAP', 'train_loss'])
-
-valid_file = open(os.path.join(stats_dir, 'valid.csv'), 'w', buffering=buf_size)
-valid_writer = csv.writer(valid_file)
-valid_writer.writerow(['epoch', 'mAP', 'valid_loss'])
-
-avgloss_file = open(os.path.join(stats_dir, 'avgloss.csv'), 'w', buffering=buf_size)
-avgloss_writer = csv.writer(avgloss_file)
-avgloss_writer.writerow(['agg_iter', 'mAP', 'avgloss'])
-
-train_aps_file = open(os.path.join(stats_dir, 'train_aps.csv'), 'w', buffering=buf_size)
-train_aps_writer = csv.writer(train_aps_file)
-
-val_aps_file = open(os.path.join(stats_dir, 'val_aps.csv'), 'w', buffering=buf_size)
-val_aps_writer = csv.writer(val_aps_file)
-
-agg_ap_file = open(os.path.join(stats_dir, 'agg_ap.csv'), 'w', buffering=buf_size)
-agg_ap_writer = csv.writer(agg_ap_file)
+train_aps_writer = my_writer.get("train_aps.csv")
+val_aps_writer = my_writer.get("val_aps.csv")
+agg_ap_writer = my_writer.get("agg_ap.csv")
 
 
 class _FedBaseContext(object):
@@ -62,10 +39,6 @@ class _FedBaseContext(object):
         self._aggregation_iteration = 0
 
     def _suffix(self, group: str = "model"):
-        # Todo: 注意这里的后缀
-        #  self._name --> "default"
-        #  group      --> "model"
-        #  iteration  --> `当前聚合轮次`
         return (
             self._name,
             group,
@@ -265,8 +238,6 @@ class FedServerContext(_FedBaseContext):
         return is_converged, mean_loss
 
 
-
-
 class SyncAggregator(object):
     def __init__(self, context: FedServerContext):
         self.context = context
@@ -279,22 +250,21 @@ class SyncAggregator(object):
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
 
             cur_iteration = self.context.aggregation_iteration
-            LOGGER.warn(f'收到{len(recv_elements)}客户端发送过来的模型')
 
+            LOGGER.warn(f'收到{len(recv_elements)}个客户端发送过来的模型')
+
+            # 对收到的数据进行解析：模型数据、bn层统计数据、聚合权重数据
             tensors = [party_tuple[0] for party_tuple in recv_elements]
-            # 还有bn层的统计数据
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
-            # Todo: 对BN层的统计数据进行处理
-            # 抽取出
             degrees = [party_tuple[2] for party_tuple in recv_elements]
-            self.bn_data = self.aggregate_bn_data(bn_tensors, degrees)
+            self.bn_data = aggregate_bn_data(bn_tensors, degrees)
             # 分标签进行聚合
-            self.aggregate_by_labels(tensors, degrees)
+            aggregate_by_labels(tensors, degrees)
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((tensors[0], self.bn_data))
+            self.context.send_model((self.model, self.bn_data))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
@@ -308,66 +278,7 @@ class SyncAggregator(object):
             np.save('global_model', self.model)
             np.save('bn_data', self.bn_data)
 
-    def aggregate_bn_data(self, bn_tensors, degrees):
-        degrees = np.array(degrees)
-        degrees_sum = degrees.sum(axis=0)
 
-        client_nums = len(bn_tensors)
-        layer_nums = len(bn_tensors[0]) // 2
-        bn_data = []
-        # 遍历每一层
-        for i in range(layer_nums):
-            mean_idx = i * 2
-            mean_var_dim = len(bn_tensors[0][mean_idx])
-            mean = np.zeros(mean_var_dim)
-            # 遍历每个客户端
-            for idx in range(client_nums):
-                # 该层在该客户端上的mean是bn_tensors[id][i * 2],方差是bn_tensors[id][i * 2 + 1]
-                client_mean = bn_tensors[idx][mean_idx]
-                mean += client_mean * degrees[idx][-1]
-            mean /= degrees_sum[-1]
-            bn_data.append(mean)
-            # 计算完均值之后，开始计算方差
-            var_idx = mean_idx + 1
-            var = np.zeros(mean_var_dim)
-            for idx in range(client_nums):
-                client_mean = bn_tensors[idx][mean_idx]
-                client_var = bn_tensors[idx][var_idx]
-                var += (client_var + client_mean ** 2 - mean ** 2) * degrees[idx][-1]
-            var /= degrees_sum[-1]
-            bn_data.append(var)
-        return bn_data
-
-    def aggregate_by_labels(self, tensors, degrees):
-        # degrees是91个元素的列表，前90个元素是最后一层各个类别的聚合权重，而最后一个元素是之前层的聚合权重
-        # 先聚合之前的特征层，聚合权重为degrees[i][-1]
-        # 将degree转为array
-        degrees = np.array(degrees)
-        degrees_sum = degrees.sum(axis=0)
-        # i表示第i个客户端
-        for i in range(len(tensors)):
-            for j, tensor in enumerate(tensors[i]):
-                # 如果是最后两层
-                if j == len(tensors[i]) - 2 or j == len(tensors[i]) - 1:
-                    # 对每个列向量进行聚合
-                    for k in range(len(tensor)):
-                        # 对col_vec进行聚合
-                        # 如果客户端都不含对应标签的数据，则使用传统方法进行聚合，使得聚合后的权重非0
-                        if degrees_sum[k] == 0:
-                            tensor[k] *= degrees[i][-1]
-                            tensor[k] /= degrees_sum[-1]
-                        else:
-                            tensor[k] *= degrees[i][k]
-                            tensor[k] /= degrees_sum[k]
-                        if i != 0:
-                            tensors[0][j][k] += tensor[k]
-                else:
-                    tensor *= degrees[i][-1]
-                    tensor /= degrees_sum[-1]
-                    if i != 0:
-                        tensors[0][j] += tensor
-        # 聚合后的权重即为tensors[0]
-        return tensors[0]
 
     def export_model(self, param):
         pass
@@ -389,7 +300,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    # param.max_iter = 100
+    param.max_iter = 100
 
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
@@ -403,9 +314,14 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 1
-    # param.max_iter = 100
-    # param.num_labels = 20
+    param.batch_size = 1
+    param.max_iter = 100
+    param.num_labels = 20
+
+    # category_dir = '/data/projects/dataset'
+    # category_dir = "/data/projects/voc2007"
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -415,47 +331,15 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # 与服务器进行握手
     context.init()
 
-    # 对数据集构建代码的修改
-
-    # 使用绝对路径
-    # category_dir = '/data/projects/dataset'
-    category_dir = "/data/projects/voc2007"
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
-    # 这里改成服务器路径
-
-    train_dataset = make_dataset(
-        data=train_data,
-        transforms=train_transforms(),
-        category_dir=category_dir
-    )
-    valid_dataset = make_dataset(
-        data=valid_data,
-        transforms=valid_transforms(),
-        category_dir=category_dir
-    )
     batch_size = param.batch_size
-    if batch_size < 0 or len(train_dataset) < batch_size:
-        batch_size = len(train_dataset)
-    shuffle = True
 
-    drop_last = False
-    num_workers = 32
+    dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path)
 
-    train_loader = torch.utils.data.DataLoader(
-        dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle
-    )
-    valid_loader = torch.utils.data.DataLoader(
-        dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle
-    )
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
+
     fitter = MultiLabelFitter(param, epochs, context=context)
+
     return fitter, train_loader, valid_loader
-
-
-def make_dataset(data, category_dir, transforms):
-    return COCO(data.path, config_dir=category_dir, transforms=transforms)
 
 
 class MultiLabelFitter(object):
@@ -524,14 +408,14 @@ class MultiLabelFitter(object):
         else:
             self._num_data_consumed += num_samples
 
-    def on_fit_epoch_end(self, epoch, valid_loader,ap, valid_mAP, valid_loss):
+    def on_fit_epoch_end(self, epoch, valid_loader, ap, valid_mAP, valid_loss):
         mAP = valid_mAP
         loss = valid_loss
         if self.context.should_aggregate_on_epoch(epoch):
             self.aggregate_model(epoch, self._num_data_consumed)
             # 同步模式下，需要发送loss和mAP
             mean_mAP, status = self.context.do_convergence_check(
-                self._num_data_consumed, ap,mAP, loss
+                self._num_data_consumed, ap, mAP, loss
             )
             self._all_consumed_data_aggregated = True
 
@@ -542,15 +426,11 @@ class MultiLabelFitter(object):
 
             self.context.increase_aggregation_iteration()
 
-        # if (epoch + 1) % 50 == 0:
-        #     torch.save(self.model.state_dict(), f'model_{epoch + 1}.path')
 
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
         mAP, ap, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
                                    epoch, self.param.device, scheduler)
-        # accuracy, loss = self.train_rnn_cnn(train_loader, self.model, self.criterion, self.optimizer,
-        #                                     epoch, self.param.device, scheduler)
 
         train_writer.writerow([epoch, mAP, loss])
         train_aps_writer.writerow(ap)
@@ -677,28 +557,3 @@ def _init_learner(param, device='cpu'):
     optimizer = torch.optim.AdamW(model.parameters(), lr=param.lr, weight_decay=1e-4)
     scheduler = None
     return model, scheduler, optimizer
-
-
-def train_transforms():
-    return transforms.Compose([
-        # 将图像缩放为256*256
-        transforms.Resize(512),
-        # 随机裁剪出224*224大小的图像用于训练
-        transforms.RandomResizedCrop(448),
-        # 将图像进行水平翻转
-        transforms.RandomHorizontalFlip(),
-        # 转换为张量
-        transforms.ToTensor(),
-        # 对图像进行归一化，以下两个list分别是RGB通道的均值和标准差
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-
-def valid_transforms():
-    return transforms.Compose([
-        transforms.Resize(512),
-        # 输入图像是224*224
-        transforms.CenterCrop(448),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])

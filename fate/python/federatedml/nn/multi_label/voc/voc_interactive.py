@@ -1,14 +1,11 @@
 # 服务器与客户端的通用逻辑
-import time
 
 import math
-import numpy as np
 import torch.nn
 import torchnet.meter as tnt
 import torchvision.transforms as transforms
 
 import copy
-import csv
 import json
 import os
 import typing
@@ -16,43 +13,31 @@ from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.multi_label.losses.SmoothLoss import *
 from federatedml.nn.backend.multi_label.models import *
 from federatedml.nn.backend.pytorch.data import COCO
+from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
+# 导入OMP算法模块
+from federatedml.nn.backend.utils.OMP import LabelOMP
+from federatedml.nn.backend.utils.aggregators.aggregator import *
+from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
+from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
-# 导入OMP算法模块
-from federatedml.nn.backend.utils.OMP import LabelOMP
-from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
-from federatedml.nn.backend.multi_label.losses.SmoothLoss import *
 
-stats_dir = os.path.join(os.getcwd(), 'stats')
-if not os.path.exists(stats_dir):
-    os.makedirs(stats_dir)
+my_writer = MyWriter(dir_name=os.getcwd())
 
-buf_size = 1
-# 定义和实验数据记录相关的对象
+train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
+valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP', 'valid_loss'])
+avgloss_writer = my_writer.get("avgloss.csv", header=['agg_iter', 'mAP', 'avgloss'])
 
-train_file = open(os.path.join(stats_dir, 'train.csv'), 'w', buffering=buf_size)
-train_writer = csv.writer(train_file)
-train_writer.writerow(['epoch', 'mAP', 'train_loss'])
+train_aps_writer = my_writer.get("train_aps.csv")
+val_aps_writer = my_writer.get("val_aps.csv")
+agg_ap_writer = my_writer.get("agg_ap.csv")
 
-train_aps_file = open(os.path.join(stats_dir, 'train_aps.csv'), 'w', buffering=buf_size)
-train_aps_writer = csv.writer(train_aps_file)
-
-valid_file = open(os.path.join(stats_dir, 'valid.csv'), 'w', buffering=buf_size)
-valid_writer = csv.writer(valid_file)
-valid_writer.writerow(['epoch', 'mAP', 'valid_loss'])
-
-val_aps_file = open(os.path.join(stats_dir, 'val_aps.csv'), 'w', buffering=buf_size)
-val_aps_writer = csv.writer(val_aps_file)
-
-avgloss_file = open(os.path.join(stats_dir, 'avgloss.csv'), 'w', buffering=buf_size)
-avgloss_writer = csv.writer(avgloss_file)
-avgloss_writer.writerow(['agg_iter', 'mAP', 'avgloss'])
-
-agg_ap_file = open(os.path.join(stats_dir, 'agg_ap.csv'), 'w', buffering=buf_size)
-agg_ap_writer = csv.writer(agg_ap_file)
+# Todo: 只有预测阶段有相关性损失
+train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'entropy_loss', 'relation_loss', 'overall_loss'])
 
 
 class _FedBaseContext(object):
@@ -293,10 +278,10 @@ class SyncAggregator(object):
             np.save(f'relation_matrices{cur_iteration}', relation_matrices)
 
             degrees = [party_tuple[3] for party_tuple in recv_elements]
-            self.bn_data = self.aggregate_bn_data(bn_tensors, degrees)
-            self.relation_matrix = self.aggregate_relation_matrix(relation_matrices, degrees)
+            self.bn_data = aggregate_bn_data(bn_tensors, degrees)
+            self.relation_matrix = aggregate_relation_matrix(relation_matrices, degrees)
             # 分标签进行聚合
-            self.aggregate_by_labels(tensors, degrees)
+            aggregate_by_labels(tensors, degrees)
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
@@ -313,76 +298,6 @@ class SyncAggregator(object):
         if self.context.finished():
             np.save('global_model', self.model)
             np.save('bn_data', self.bn_data)
-
-    def aggregate_bn_data(self, bn_tensors, degrees):
-        degrees = np.array(degrees)
-        degrees_sum = degrees.sum(axis=0)
-
-        client_nums = len(bn_tensors)
-        layer_nums = len(bn_tensors[0]) // 2
-        bn_data = []
-        # 遍历每一层
-        for i in range(layer_nums):
-            mean_idx = i * 2
-            mean_var_dim = len(bn_tensors[0][mean_idx])
-            mean = np.zeros(mean_var_dim)
-            # 遍历每个客户端
-            for idx in range(client_nums):
-                # 该层在该客户端上的mean是bn_tensors[id][i * 2],方差是bn_tensors[id][i * 2 + 1]
-                client_mean = bn_tensors[idx][mean_idx]
-                mean += client_mean * degrees[idx][-1]
-            mean /= degrees_sum[-1]
-            bn_data.append(mean)
-            # 计算完均值之后，开始计算方差
-            var_idx = mean_idx + 1
-            var = np.zeros(mean_var_dim)
-            for idx in range(client_nums):
-                client_mean = bn_tensors[idx][mean_idx]
-                client_var = bn_tensors[idx][var_idx]
-                var += (client_var + client_mean ** 2 - mean ** 2) * degrees[idx][-1]
-            var /= degrees_sum[-1]
-            bn_data.append(var)
-        return bn_data
-
-    def aggregate_relation_matrix(self, relation_matrices, degrees):
-        degrees = np.array(degrees)
-        degrees_sum = degrees.sum(axis=0)
-        client_nums = len(relation_matrices)
-        relation_matrix = np.zeros_like(relation_matrices[0])
-        for i in range(client_nums):
-            relation_matrix += relation_matrices[i] * degrees[i][-1] / degrees_sum[-1]
-        return relation_matrix
-
-    def aggregate_by_labels(self, tensors, degrees):
-        # degrees是91个元素的列表，前90个元素是最后一层各个类别的聚合权重，而最后一个元素是之前层的聚合权重
-        # 先聚合之前的特征层，聚合权重为degrees[i][-1]
-        # 将degree转为array
-        degrees = np.array(degrees)
-        degrees_sum = degrees.sum(axis=0)
-        # i表示第i个客户端
-        for i in range(len(tensors)):
-            for j, tensor in enumerate(tensors[i]):
-                # 如果是最后两层
-                if j == len(tensors[i]) - 2 or j == len(tensors[i]) - 1:
-                    # 对每个列向量进行聚合
-                    for k in range(len(tensor)):
-                        # 对col_vec进行聚合
-                        # 如果客户端都不含对应标签的数据，则使用传统方法进行聚合，使得聚合后的权重非0
-                        if degrees_sum[k] == 0:
-                            tensor[k] *= degrees[i][-1]
-                            tensor[k] /= degrees_sum[-1]
-                        else:
-                            tensor[k] *= degrees[i][k]
-                            tensor[k] /= degrees_sum[k]
-                        if i != 0:
-                            tensors[0][j][k] += tensor[k]
-                else:
-                    tensor *= degrees[i][-1]
-                    tensor /= degrees_sum[-1]
-                    if i != 0:
-                        tensors[0][j] += tensor
-        # 聚合后的权重即为tensors[0]
-        return tensors[0]
 
     def export_model(self, param):
         pass
@@ -423,6 +338,11 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # param.device = 'cuda:0'
     # param.num_labels = 20
 
+    # 使用绝对路径
+    # category_dir = '/data/projects/dataset'
+    category_dir = "/data/projects/voc2007"
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
         max_num_aggregation=param.max_iter,
@@ -433,45 +353,12 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
 
     # 对数据集构建代码的修改
 
-    # 使用绝对路径
-    # category_dir = '/data/projects/dataset'
-    # category_dir = "/data/projects/voc2007"
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
-
-    # 这里改成服务器路径
-
-    train_dataset = make_dataset(
-        data=train_data,
-        transforms=train_transforms(),
-        category_dir=category_dir
-    )
-    valid_dataset = make_dataset(
-        data=valid_data,
-        transforms=valid_transforms(),
-        category_dir=category_dir
-    )
     batch_size = param.batch_size
-    if batch_size < 0 or len(train_dataset) < batch_size:
-        batch_size = len(train_dataset)
-    shuffle = True
+    dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path)
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
 
-    drop_last = False
-    num_workers = 32
-
-    train_loader = torch.utils.data.DataLoader(
-        dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle
-    )
-    valid_loader = torch.utils.data.DataLoader(
-        dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle
-    )
     fitter = MultiLabelFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
-
-
-def make_dataset(data, category_dir, transforms):
-    return COCO(data.path, config_dir=category_dir, transforms=transforms)
 
 
 class MultiLabelFitter(object):
@@ -703,10 +590,12 @@ class MultiLabelFitter(object):
         model.train()
 
         # 对Loss进行更新
+        ENTROPY_LOSS_KEY = 'Entropy Loss'
+        RELATION_LOSS_KEY = 'Relation Loss'
         OVERALL_LOSS_KEY = 'Overall Loss'
-        OBJECTIVE_LOSS_KEY = 'Objective Loss'
-        losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
-                              (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
+        losses = OrderedDict([(ENTROPY_LOSS_KEY, tnt.AverageValueMeter()),
+                              (RELATION_LOSS_KEY, tnt.AverageValueMeter()),
+                              (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
 
         # 对于每一个batch，使用该批次的数据集进行训练
         for train_step, (inputs, target) in enumerate(train_loader):
@@ -746,23 +635,28 @@ class MultiLabelFitter(object):
             # 总损失 = 交叉熵损失 + 标签相关性损失
             # 优化CNN参数时，need_grad设置为True，表示需要梯度
 
-            loss = criterion(output, target) + \
-                   self.lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
-                                                                             self.adjList)
+            entropy_loss = criterion(predicts, target)
+
+            relation_loss = self.lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
+                                                                                      self.adjList)
 
             # 初始化标签相关性，先计算标签平滑损失，对相关性进行梯度下降
+            loss = entropy_loss + relation_loss
 
-            losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+            losses[OVERALL_LOSS_KEY].add(loss.item())
+            losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
+            losses[RELATION_LOSS_KEY].add(relation_loss.item())
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             self.lr_scheduler.step()
-
+        train_loss_writer.writerow(
+            [epoch, losses[ENTROPY_LOSS_KEY].mean, losses[RELATION_LOSS_KEY].mean, losses[OVERALL_LOSS_KEY].mean])
         # 记录ap数组
         mAP, ap = self.ap_meter.value()
         mAP *= 100
-        return mAP.item(), ap, losses[OBJECTIVE_LOSS_KEY].mean
+        return mAP.item(), ap, losses[OVERALL_LOSS_KEY].mean
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         # 对Loss进行更新
@@ -805,28 +699,3 @@ def _init_learner(param, device='cpu'):
     optimizer = torch.optim.AdamW(model.parameters(), lr=param.lr, weight_decay=1e-4)
     scheduler = None
     return model, scheduler, optimizer
-
-
-def train_transforms():
-    return transforms.Compose([
-        # 将图像缩放为256*256
-        transforms.Resize(512),
-        # 随机裁剪出224*224大小的图像用于训练
-        transforms.RandomResizedCrop(448),
-        # 将图像进行水平翻转
-        transforms.RandomHorizontalFlip(),
-        # 转换为张量
-        transforms.ToTensor(),
-        # 对图像进行归一化，以下两个list分别是RGB通道的均值和标准差
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-
-def valid_transforms():
-    return transforms.Compose([
-        transforms.Resize(512),
-        # 输入图像是224*224
-        transforms.CenterCrop(448),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])

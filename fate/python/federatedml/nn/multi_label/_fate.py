@@ -1,58 +1,43 @@
 # 服务器与客户端的通用逻辑
+
 import math
-import numpy as np
-import torch
 import torch.nn
 import torchnet.meter as tnt
 import torchvision.transforms as transforms
-from torch.nn.utils.rnn import *
 
 import copy
-import csv
+import json
 import os
 import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.multi_label.config import config_scheduler
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.multi_label.losses.SmoothLoss import *
 from federatedml.nn.backend.multi_label.models import *
-
 from federatedml.nn.backend.pytorch.data import COCO
+from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
+# 导入OMP算法模块
+from federatedml.nn.backend.utils.OMP import LabelOMP
+from federatedml.nn.backend.utils.aggregators.aggregator import *
+from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
+from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+my_writer = MyWriter(dir_name=os.getcwd())
 
-from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
+train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
+valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP', 'valid_loss'])
+avgloss_writer = my_writer.get("avgloss.csv", header=['agg_iter', 'mAP', 'avgloss'])
 
-stats_dir = os.path.join(os.getcwd(), 'stats')
-if not os.path.exists(stats_dir):
-    os.makedirs(stats_dir)
+train_aps_writer = my_writer.get("train_aps.csv")
+val_aps_writer = my_writer.get("val_aps.csv")
+agg_ap_writer = my_writer.get("agg_ap.csv")
 
-buf_size = 1
-# 定义和实验数据记录相关的对象
-
-train_file = open(os.path.join(stats_dir, 'train.csv'), 'w', buffering=buf_size)
-train_writer = csv.writer(train_file)
-train_writer.writerow(['epoch', 'mAP', 'train_loss'])
-
-valid_file = open(os.path.join(stats_dir, 'valid.csv'), 'w', buffering=buf_size)
-valid_writer = csv.writer(valid_file)
-valid_writer.writerow(['epoch', 'mAP', 'valid_loss'])
-
-avgloss_file = open(os.path.join(stats_dir, 'avgloss.csv'), 'w', buffering=buf_size)
-avgloss_writer = csv.writer(avgloss_file)
-avgloss_writer.writerow(['agg_iter', 'mAP', 'avgloss'])
-
-train_aps_file = open(os.path.join(stats_dir, 'train_aps.csv'), 'w', buffering=buf_size)
-train_aps_writer = csv.writer(train_aps_file)
-
-val_aps_file = open(os.path.join(stats_dir, 'val_aps.csv'), 'w', buffering=buf_size)
-val_aps_writer = csv.writer(val_aps_file)
-
-agg_ap_file = open(os.path.join(stats_dir, 'agg_ap.csv'), 'w', buffering=buf_size)
-agg_ap_writer = csv.writer(agg_ap_file)
+# Todo: 只有预测阶段有相关性损失
+train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'entropy_loss', 'relation_loss', 'overall_loss'])
 
 
 class _FedBaseContext(object):
@@ -111,17 +96,19 @@ class FedClientContext(_FedBaseContext):
 
     # 发送模型
     # 这里tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, weight):
+    def send_model(self, tensors, bn_data, relation_matrix, weight):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
             tensor_arrs.append(tensor_arr)
+        # 不仅发送模型参数，还发送bn层的统计数据
         bn_arrs = []
         for bn_item in bn_data:
             bn_arr = bn_item.data.cpu().numpy()
             bn_arrs.append(bn_arr)
+
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, relation_matrix, weight), suffix=self._suffix()
         )
 
     # 接收模型
@@ -137,14 +124,14 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, weight, device):
+    def do_aggregation(self, bn_data, relation_matrix, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, weight)
+        self.send_model(self._params, bn_data, relation_matrix, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data = recv_elements
+        global_model, bn_data, relation_matrix = recv_elements
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
@@ -157,7 +144,7 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors
+        return bn_tensors, relation_matrix
 
     def do_convergence_check(self, weight, ap, mAP, loss_value):
         self.loss_summary.append(loss_value)
@@ -234,6 +221,7 @@ class FedServerContext(_FedBaseContext):
         # 对每个标签有贡献的客户端数量
         agg_weight = torch.zeros(num_labels)
 
+        # Todo: 这里还要对每个标签的AP值进行平均
         for ap, mAP, loss, weight in loss_weight_pairs:
             # 遍历每一个标签
             for i in range(num_labels):
@@ -250,8 +238,9 @@ class FedServerContext(_FedBaseContext):
                 agg_ap[i] = -1
             else:
                 agg_ap[i] /= agg_weight[i]
-
+        # 将agg_ap写入到文件中
         agg_ap_writer.writerow(agg_ap.tolist())
+
         mean_loss = total_loss / total_weight
         mean_mAP = total_mAP / total_weight
 
@@ -265,13 +254,12 @@ class FedServerContext(_FedBaseContext):
         return is_converged, mean_loss
 
 
-
-
 class SyncAggregator(object):
     def __init__(self, context: FedServerContext):
         self.context = context
         self.model = None
         self.bn_data = None
+        self.relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -284,17 +272,21 @@ class SyncAggregator(object):
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             # 还有bn层的统计数据
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
-            # Todo: 对BN层的统计数据进行处理
-            # 抽取出
-            degrees = [party_tuple[2] for party_tuple in recv_elements]
-            self.bn_data = self.aggregate_bn_data(bn_tensors, degrees)
+            # 提取捕捉到的标签相关性
+            relation_matrices = [party_tuple[2] for party_tuple in recv_elements]
+            # Todo: 记录各个客户端学习到的标签相关性矩阵
+            np.save(f'relation_matrices{cur_iteration}', relation_matrices)
+
+            degrees = [party_tuple[3] for party_tuple in recv_elements]
+            self.bn_data = aggregate_bn_data(bn_tensors, degrees)
+            self.relation_matrix = aggregate_relation_matrix(relation_matrices, degrees)
             # 分标签进行聚合
-            self.aggregate_by_labels(tensors, degrees)
+            aggregate_by_labels(tensors, degrees)
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((tensors[0], self.bn_data))
+            self.context.send_model((tensors[0], self.bn_data, self.relation_matrix))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
@@ -304,70 +296,8 @@ class SyncAggregator(object):
 
         # Todo: 除了保存参数之外，还要保存BN层的统计数据mean和var
         if self.context.finished():
-            print(os.getcwd())
             np.save('global_model', self.model)
             np.save('bn_data', self.bn_data)
-
-    def aggregate_bn_data(self, bn_tensors, degrees):
-        degrees = np.array(degrees)
-        degrees_sum = degrees.sum(axis=0)
-
-        client_nums = len(bn_tensors)
-        layer_nums = len(bn_tensors[0]) // 2
-        bn_data = []
-        # 遍历每一层
-        for i in range(layer_nums):
-            mean_idx = i * 2
-            mean_var_dim = len(bn_tensors[0][mean_idx])
-            mean = np.zeros(mean_var_dim)
-            # 遍历每个客户端
-            for idx in range(client_nums):
-                # 该层在该客户端上的mean是bn_tensors[id][i * 2],方差是bn_tensors[id][i * 2 + 1]
-                client_mean = bn_tensors[idx][mean_idx]
-                mean += client_mean * degrees[idx][-1]
-            mean /= degrees_sum[-1]
-            bn_data.append(mean)
-            # 计算完均值之后，开始计算方差
-            var_idx = mean_idx + 1
-            var = np.zeros(mean_var_dim)
-            for idx in range(client_nums):
-                client_mean = bn_tensors[idx][mean_idx]
-                client_var = bn_tensors[idx][var_idx]
-                var += (client_var + client_mean ** 2 - mean ** 2) * degrees[idx][-1]
-            var /= degrees_sum[-1]
-            bn_data.append(var)
-        return bn_data
-
-    def aggregate_by_labels(self, tensors, degrees):
-        # degrees是91个元素的列表，前90个元素是最后一层各个类别的聚合权重，而最后一个元素是之前层的聚合权重
-        # 先聚合之前的特征层，聚合权重为degrees[i][-1]
-        # 将degree转为array
-        degrees = np.array(degrees)
-        degrees_sum = degrees.sum(axis=0)
-        # i表示第i个客户端
-        for i in range(len(tensors)):
-            for j, tensor in enumerate(tensors[i]):
-                # 如果是最后两层
-                if j == len(tensors[i]) - 2 or j == len(tensors[i]) - 1:
-                    # 对每个列向量进行聚合
-                    for k in range(len(tensor)):
-                        # 对col_vec进行聚合
-                        # 如果客户端都不含对应标签的数据，则使用传统方法进行聚合，使得聚合后的权重非0
-                        if degrees_sum[k] == 0:
-                            tensor[k] *= degrees[i][-1]
-                            tensor[k] /= degrees_sum[-1]
-                        else:
-                            tensor[k] *= degrees[i][k]
-                            tensor[k] /= degrees_sum[k]
-                        if i != 0:
-                            tensors[0][j][k] += tensor[k]
-                else:
-                    tensor *= degrees[i][-1]
-                    tensor /= degrees_sum[-1]
-                    if i != 0:
-                        tensors[0][j] += tensor
-        # 聚合后的权重即为tensors[0]
-        return tensors[0]
 
     def export_model(self, param):
         pass
@@ -403,9 +333,15 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 1
+    # param.batch_size = 2
     # param.max_iter = 100
+    # param.device = 'cuda:0'
     # param.num_labels = 20
+
+    # 使用绝对路径
+    # category_dir = '/data/projects/dataset'
+    category_dir = "/data/projects/voc2007"
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -417,45 +353,12 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
 
     # 对数据集构建代码的修改
 
-    # 使用绝对路径
-    # category_dir = '/data/projects/dataset'
-    category_dir = "/data/projects/voc2007"
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
-    # 这里改成服务器路径
-
-    train_dataset = make_dataset(
-        data=train_data,
-        transforms=train_transforms(),
-        category_dir=category_dir
-    )
-    valid_dataset = make_dataset(
-        data=valid_data,
-        transforms=valid_transforms(),
-        category_dir=category_dir
-    )
     batch_size = param.batch_size
-    if batch_size < 0 or len(train_dataset) < batch_size:
-        batch_size = len(train_dataset)
-    shuffle = True
+    dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path)
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
 
-    drop_last = False
-    num_workers = 32
-
-    train_loader = torch.utils.data.DataLoader(
-        dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle
-    )
-    valid_loader = torch.utils.data.DataLoader(
-        dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
-        drop_last=drop_last, shuffle=shuffle
-    )
     fitter = MultiLabelFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
-
-
-def make_dataset(data, category_dir, transforms):
-    return COCO(data.path, config_dir=category_dir, transforms=transforms)
 
 
 class MultiLabelFitter(object):
@@ -476,8 +379,12 @@ class MultiLabelFitter(object):
         # Todo: 原始的ResNet101分类器
         (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
 
-        # 使用对称损失
+        # 使用非对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
+
+        # 添加标签平滑损失
+        self.lambda_y = 1
+
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -496,6 +403,13 @@ class MultiLabelFitter(object):
 
         self.lr_scheduler = None
 
+        self.relation_optimizer = None
+        # 维护一个邻接表，存储与每个标签相关的其他标签的相关性以及优化变量
+        # 自相关性无需进行优化
+        # self.adjList = [dict()] * 80，错误实例，这样初始化出来的每个字典都是一样的
+        self.adjList = []
+        self.variables = []
+
     def get_label_mapping(self):
         return self.label_mapping
 
@@ -507,6 +421,34 @@ class MultiLabelFitter(object):
                                                                 max_lr=self.param.lr,
                                                                 epochs=self.end_epoch,
                                                                 steps_per_epoch=len(train_loader))
+
+        # Todo: 添加优化参数
+        #  获取json文件
+        image_id2labels = json.load(open(self.param.json_file, 'r'))
+        num_labels = self.param.num_labels
+        adjList = np.zeros((num_labels, num_labels))
+        nums = np.zeros(num_labels)
+        for image_info in image_id2labels:
+            labels = image_info['labels']
+            for label in labels:
+                nums[label] += 1
+            n = len(labels)
+            for i in range(n):
+                for j in range(i + 1, n):
+                    x = labels[i]
+                    y = labels[j]
+                    adjList[x][y] += 1
+                    adjList[y][x] += 1
+        nums = nums[:, np.newaxis]
+        # 遍历每一行
+        for i in range(num_labels):
+            if nums[i] != 0:
+                adjList[i] = adjList[i] / nums[i]
+        # 遍历A，将主对角线元素设置为1
+        for i in range(num_labels):
+            adjList[i][i] = 1
+
+        self.construct_relation_by_matrix(adjList)
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
@@ -524,14 +466,14 @@ class MultiLabelFitter(object):
         else:
             self._num_data_consumed += num_samples
 
-    def on_fit_epoch_end(self, epoch, valid_loader,ap, valid_mAP, valid_loss):
+    def on_fit_epoch_end(self, epoch, valid_loader, ap, valid_mAP, valid_loss):
         mAP = valid_mAP
         loss = valid_loss
         if self.context.should_aggregate_on_epoch(epoch):
             self.aggregate_model(epoch, self._num_data_consumed)
             # 同步模式下，需要发送loss和mAP
             mean_mAP, status = self.context.do_convergence_check(
-                self._num_data_consumed, ap,mAP, loss
+                self._num_data_consumed, ap, mAP, loss
             )
             self._all_consumed_data_aggregated = True
 
@@ -549,8 +491,6 @@ class MultiLabelFitter(object):
     def train_one_epoch(self, epoch, train_loader, scheduler):
         mAP, ap, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
                                    epoch, self.param.device, scheduler)
-        # accuracy, loss = self.train_rnn_cnn(train_loader, self.model, self.criterion, self.optimizer,
-        #                                     epoch, self.param.device, scheduler)
 
         train_writer.writerow([epoch, mAP, loss])
         train_aps_writer.writerow(ap)
@@ -564,6 +504,30 @@ class MultiLabelFitter(object):
         val_aps_writer.writerow(ap)
         # 并且返回验证集的ap
         return ap, mAP, loss
+
+    def construct_relation_by_matrix(self, matrix):
+        num_labels = self.param.num_labels
+        self.adjList = [dict() for _ in range(num_labels)]
+        self.variables = []
+        # 设定阈值th
+        th = 0.2
+        # 遍历每个值，初始化adjList
+        for i in range(num_labels):
+            for j in range(num_labels):
+                # 自相关性如何处理？额外进行处理
+                if i == j or matrix[i][j] < th:
+                    continue
+                # 优化变量的索引
+                idx = len(self.variables)
+                variable = torch.tensor(matrix[i][j]).to(self.param.device)
+                variable.requires_grad_()
+                self.variables.append(variable)
+                # 直接维护对应的优化变量即可
+                self.adjList[i][j] = variable
+
+        # 构造相关性的优化器
+        # 将需要优化的变量列表传入到优化器中
+        self.relation_optimizer = torch.optim.SGD(self.variables, lr=0.1)
 
     def aggregate_model(self, epoch, weight):
         # 配置参数，将优化器optimizer中的参数写入到list中
@@ -580,7 +544,22 @@ class MultiLabelFitter(object):
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
-        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data, device=self.param.device)
+        labels_num = self.param.num_labels
+        A = np.zeros((labels_num, labels_num))
+        # 初始化自相关性
+        for i in range(labels_num):
+            A[i][i] = 1.0
+        for i in range(len(self.adjList)):
+            # 这里的t是key
+            for label in self.adjList[i]:
+                A[i][label] = self.adjList[i][label].item()
+
+        agg_bn_data, relation_matrix = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+                                                                   relation_matrix=A,
+                                                                   device=self.param.device)
+
+        self.construct_relation_by_matrix(relation_matrix)
+
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -588,6 +567,8 @@ class MultiLabelFitter(object):
                 idx += 1
                 layer.running_var.data.copy_(agg_bn_data[idx])
                 idx += 1
+
+        # 从relation_matrix中重构出adjList和优化器
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         ap, mAP, loss = self.train_one_epoch(epoch, train_loader, scheduler)
@@ -598,19 +579,25 @@ class MultiLabelFitter(object):
         return ap, mAP, loss
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
+        # 总样本数量为total_samples
         total_samples = len(train_loader.sampler)
+        # batch_size
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
+        # 记录一个epoch需要执行多少个batches
         steps_per_epoch = math.ceil(total_samples / batch_size)
 
         self.ap_meter.reset()
         model.train()
 
         # 对Loss进行更新
+        ENTROPY_LOSS_KEY = 'Entropy Loss'
+        RELATION_LOSS_KEY = 'Relation Loss'
         OVERALL_LOSS_KEY = 'Overall Loss'
-        OBJECTIVE_LOSS_KEY = 'Objective Loss'
-        losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
-                              (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # 这里不使用inp
+        losses = OrderedDict([(ENTROPY_LOSS_KEY, tnt.AverageValueMeter()),
+                              (RELATION_LOSS_KEY, tnt.AverageValueMeter()),
+                              (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
+
+        # 对于每一个batch，使用该批次的数据集进行训练
         for train_step, (inputs, target) in enumerate(train_loader):
             inputs = inputs.to(device)
             target = target.to(device)
@@ -622,19 +609,54 @@ class MultiLabelFitter(object):
             self._num_label_consumed += target.sum().item()
 
             output = model(inputs)
+
             self.ap_meter.add(output.data, target.data)
 
-            loss = criterion(output, target)
-            losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+            # 这里只考虑标签平滑损失
+            predicts = torch.sigmoid(output).to(torch.float64)
+
+            predict_similarities = LabelOMP(predicts.detach(), self.adjList)
+
+            label_loss = LabelSmoothLoss(relation_need_grad=True)(predicts.detach(), predict_similarities,
+                                                                  self.adjList)
+            # 需要先对label_loss进行反向传播，梯度下降更新标签相关性
+
+            # 如果标签平滑损失不为0，才进行优化
+            if label_loss != 0:
+                self.relation_optimizer.zero_grad()
+                label_loss.backward()
+                self.relation_optimizer.step()
+            # 确保标签相关性在0到1之间
+
+            # 遍历每个优化变量，对其值进行约束，限定在[0,1]之内
+            for variable in self.variables:
+                variable.data = torch.clamp(variable.data, min=0.0, max=1.0)
+
+            # 总损失 = 交叉熵损失 + 标签相关性损失
+            # 优化CNN参数时，need_grad设置为True，表示需要梯度
+
+            entropy_loss = criterion(predicts, target)
+
+            relation_loss = self.lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
+                                                                                      self.adjList)
+
+            # 初始化标签相关性，先计算标签平滑损失，对相关性进行梯度下降
+            loss = entropy_loss + relation_loss
+
+            losses[OVERALL_LOSS_KEY].add(loss.item())
+            losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
+            losses[RELATION_LOSS_KEY].add(relation_loss.item())
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             self.lr_scheduler.step()
-
+        train_loss_writer.writerow(
+            [epoch, losses[ENTROPY_LOSS_KEY].mean, losses[RELATION_LOSS_KEY].mean, losses[OVERALL_LOSS_KEY].mean])
+        # 记录ap数组
         mAP, ap = self.ap_meter.value()
         mAP *= 100
-        return mAP.item(), ap, losses[OBJECTIVE_LOSS_KEY].mean
+        return mAP.item(), ap, losses[OVERALL_LOSS_KEY].mean
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         # 对Loss进行更新
@@ -677,28 +699,3 @@ def _init_learner(param, device='cpu'):
     optimizer = torch.optim.AdamW(model.parameters(), lr=param.lr, weight_decay=1e-4)
     scheduler = None
     return model, scheduler, optimizer
-
-
-def train_transforms():
-    return transforms.Compose([
-        # 将图像缩放为256*256
-        transforms.Resize(512),
-        # 随机裁剪出224*224大小的图像用于训练
-        transforms.RandomResizedCrop(448),
-        # 将图像进行水平翻转
-        transforms.RandomHorizontalFlip(),
-        # 转换为张量
-        transforms.ToTensor(),
-        # 对图像进行归一化，以下两个list分别是RGB通道的均值和标准差
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-
-def valid_transforms():
-    return transforms.Compose([
-        transforms.Resize(512),
-        # 输入图像是224*224
-        transforms.CenterCrop(448),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
