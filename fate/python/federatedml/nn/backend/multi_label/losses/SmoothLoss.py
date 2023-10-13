@@ -108,6 +108,7 @@ class LabelSmoothLoss(nn.Module):
     # 2. 图像语义相似度: b * b
     # 3. 标签相关性: 80 * 80
     def forward(self, predicts, similarities, adjList):
+        device = predicts.device
         batch_size = len(predicts)
         # Todo: 对于每个样本，如果没有相似的图像，则不考虑这个图像的标签平滑损失
         total_loss = 0
@@ -118,7 +119,7 @@ class LabelSmoothLoss(nn.Module):
                 continue
             cnt += 1
             total_loss += torch.norm(predicts[i] - torch.matmul(similarities[i], candidates), p=2)
-        return 0 if cnt == 0 else total_loss / cnt
+        return torch.tensor(0).to(device) if cnt == 0 else total_loss / cnt
 
 
 class FeatureSmoothLoss(nn.Module):
@@ -135,3 +136,4 @@ class FeatureSmoothLoss(nn.Module):
         total_loss = torch.norm(features - torch.matmul(similarities, features), p=2)
         # Todo: 这里用总损失还是平均损失
         return total_loss / batch_size
+
