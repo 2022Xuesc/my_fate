@@ -95,7 +95,7 @@ class AsymmetricLossOptimized(nn.Module):
         self.anti_targets = 1 - y
 
         # 计算预测为正标签的概率和预测为负标签的概率
-        self.xs_pos = torch.sigmoid(x)
+        self.xs_pos = x
         self.xs_neg = 1.0 - self.xs_pos
 
         # Asymmetric Clipping
