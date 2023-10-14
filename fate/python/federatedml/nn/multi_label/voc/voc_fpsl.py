@@ -300,7 +300,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    param.max_iter = 100
+    # param.max_iter = 100
 
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
@@ -314,14 +314,14 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 1
-    param.max_iter = 100
-    param.num_labels = 20
+    # param.batch_size = 1
+    # param.max_iter = 100
+    # param.num_labels = 20
 
     # category_dir = '/data/projects/dataset'
-    # category_dir = "/data/projects/voc2007"
+    category_dir = "/data/projects/voc2007"
     # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -504,7 +504,7 @@ class MultiLabelFitter(object):
             output = model(inputs)
             self.ap_meter.add(output.data, target.data)
 
-            loss = criterion(output, target)
+            loss = criterion(torch.nn.Sigmoid()(output), target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
@@ -528,7 +528,6 @@ class MultiLabelFitter(object):
 
         total_steps = math.ceil(total_samples / batch_size)
 
-        sigmoid_func = torch.nn.Sigmoid()
 
         model.eval()
         # Todo: 在开始训练之前，重置ap_meter
@@ -538,7 +537,7 @@ class MultiLabelFitter(object):
                 inputs = inputs.to(device)
                 target = target.to(device)
                 output = model(inputs)
-                loss = criterion(sigmoid_func(output), target)
+                loss = criterion(torch.nn.Sigmoid()(output), target)
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
                 # 将输出和对应的target加入到ap_meter中

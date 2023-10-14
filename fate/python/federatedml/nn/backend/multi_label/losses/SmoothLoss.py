@@ -119,6 +119,7 @@ class LabelSmoothLoss(nn.Module):
                 continue
             cnt += 1
             total_loss += torch.norm(predicts[i] - torch.matmul(similarities[i], candidates), p=2)
+        # Todo: 这里究竟是什么？
         return torch.tensor(0).to(device) if cnt == 0 else total_loss / cnt
 
 

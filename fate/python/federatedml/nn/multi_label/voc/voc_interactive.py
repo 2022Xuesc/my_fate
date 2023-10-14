@@ -670,7 +670,6 @@ class MultiLabelFitter(object):
 
         total_steps = math.ceil(total_samples / batch_size)
 
-        sigmoid_func = torch.nn.Sigmoid()
 
         model.eval()
         # Todo: 在开始训练之前，重置ap_meter
@@ -680,7 +679,7 @@ class MultiLabelFitter(object):
                 inputs = inputs.to(device)
                 target = target.to(device)
                 output = model(inputs)
-                loss = criterion(sigmoid_func(output), target)
+                loss = criterion(torch.nn.Sigmoid()(output), target)
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
                 # 将输出和对应的target加入到ap_meter中

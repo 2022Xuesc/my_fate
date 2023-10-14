@@ -4,6 +4,7 @@ import torch.nn as nn
 __all__ = ['AsymmetricLoss', 'AsymmetricLossOptimized']
 
 
+# Todo: 对损失进行修改,从外部传入x的sigmoid值,而不是在里边进行计算
 class AsymmetricLoss(nn.Module):
     def __init__(self, gamma_neg=4, gamma_pos=1, clip=0.05, eps=1e-8, disable_torch_grad_focal_loss=True):
         super(AsymmetricLoss, self).__init__()
@@ -27,7 +28,7 @@ class AsymmetricLoss(nn.Module):
         """
 
         # 计算概率
-        x_sigmoid = torch.sigmoid(x)
+        x_sigmoid = x
         # 预测为正类的概率
         xs_pos = x_sigmoid
         # 预测为负类的概率

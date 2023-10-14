@@ -13,6 +13,7 @@ import json
 import os
 import pickle
 
+
 def findMaxIndex(arr, S, cur):
     maxVal = 0
     maxIndex = -1
@@ -110,7 +111,6 @@ def LabelOMP(predicts, adjList):
     return predict_similarities.detach()  # 对于无需通过pytorch计算图优化的变量，将其detach
 
 
-
 class LabelSmoothLoss(nn.Module):
     # 进行相关参数的设置
     def __init__(self, relation_need_grad=False):
@@ -132,8 +132,9 @@ class LabelSmoothLoss(nn.Module):
             if torch.sum(similarities[i]) == 0:
                 continue
             cnt += 1
-            total_loss += torch.norm(predicts[i] - torch.matmul(similarities[i],candidates),p=2)
+            total_loss += torch.norm(predicts[i] - torch.matmul(similarities[i], candidates), p=2)
         return 0 if cnt == 0 else total_loss / cnt
+
 
 class AsymmetricLossOptimized(nn.Module):
 
@@ -408,11 +409,10 @@ def create_resnet101_model(pretrained, device, num_classes=80):
 
 
 def construct_relation_by_matrix(matrix, device):
-    num_labels = 80
     adjList = [dict() for _ in range(num_labels)]
     variables = []
     # 保留连接强度的阈值
-    th = 0.5
+    th = 0.2
     for i in range(num_labels):
         for j in range(num_labels):
             # 自相关性如何处理？额外进行处理
@@ -436,10 +436,15 @@ crop_scale = 448
 # category_dir = '/data/projects/dataset'
 # json_file = '/data/projects/clustered_dataset/client1/train/anno.json'
 
-train_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
-category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
-# Todo: 本地的json_file呢？
-json_file = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json'
+# train_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
+# category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+# # Todo: 本地的json_file呢？
+# json_file = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json'
+
+train_path = '/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc/client1/train'
+category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+json_file = '/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc/client1/train/anno.json'
+
 resize_scale = resize_scale // 2
 crop_scale = crop_scale // 2
 
@@ -457,8 +462,8 @@ train_dataset = COCO(train_path, config_dir=category_dir, transforms=transforms.
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ]))
 
-# Todo: 相关训练参数的设置，和client1的配置相一致
-batch_size = 16
+# 相关训练参数的设置，和client1的配置相一致
+batch_size = 8
 device = 'cuda:0'
 learning_rate = 0.0001
 
@@ -466,15 +471,15 @@ learning_rate = 0.0001
 num_workers = 32
 drop_last = False
 shuffle = True
-epochs = 40
+num_labels = 20
 
 train_loader = torch.utils.data.DataLoader(
     dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
     drop_last=drop_last, shuffle=shuffle
 )
 
-model = create_resnet101_model(pretrained=True, device=device)
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+model = create_resnet101_model(pretrained=True, device=device,num_classes=num_labels)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
 
 # 交叉熵损失，具体来说，是非对称损失
 criterion = AsymmetricLossOptimized().to(device)
@@ -484,14 +489,17 @@ lambda_y = 1
 label_smooth_loss = LabelSmoothLoss()
 ap_meter = AveragePrecisionMeter()
 
-lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer,
-                                                   max_lr=learning_rate,
-                                                   epochs=epochs,
-                                                   steps_per_epoch=len(train_loader))
+
+# Todo: 更改，40或者20
+epochs = 1
+# lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer,
+#                                                    max_lr=learning_rate,
+#                                                    epochs=epochs,
+#                                                    steps_per_epoch=len(train_loader),
+#                                                    verbose=False)
 
 # 构建优化参数
 image_id2labels = json.load(open(json_file, 'r'))
-num_labels = 80
 adjMatrix = np.zeros((num_labels, num_labels))
 nums = np.zeros(num_labels)
 for image_info in image_id2labels:
@@ -518,7 +526,7 @@ for i in range(num_labels):
 variables, adjList, relation_optimizer = construct_relation_by_matrix(matrix=adjMatrix, device=device)
 
 # 开始执行优化过程
-for epoch in range(0,epochs):
+for epoch in range(0, epochs):
     total_samples = len(train_loader.sampler)
     steps_per_epoch = math.ceil(total_samples / batch_size)
     ap_meter.reset()
@@ -530,62 +538,38 @@ for epoch in range(0,epochs):
         inputs = inputs.to(device)
         target = target.to(device)
 
-
-        before_forward_time = time.perf_counter()
-
         output = model(inputs)
-
-        after_forward_time = time.perf_counter()
-        forward_duration = after_forward_time - before_forward_time
-        print(f'前向传播耗时：{forward_duration} s')
 
         ap_meter.add(output.data, target.data)
 
         predicts = torch.sigmoid(output).to(torch.float64)
 
-        before_omp_time = time.perf_counter()
         predict_similarities = LabelOMP(predicts.detach(), adjList)
-        end_omp_time = time.perf_counter()
-        # Todo: 执行OMP算法计算相似性的时间
-        omp_duration = end_omp_time - before_omp_time
 
-        print(f'OMP算法执行耗时：{omp_duration} s')
-
-        before_label_loss_time = time.perf_counter()
         label_loss = LabelSmoothLoss(relation_need_grad=True)(predicts.detach(), predict_similarities,
                                                               adjList)
-        end_label_loss_time = time.perf_counter()
-        # Todo: 计算标签相关性损失的时间
-        label_loss_duration = end_label_loss_time - before_label_loss_time
-        print(f'标签相关性损失（优化标签相关性）计算耗时：{label_loss_duration} s')
 
         if label_loss != 0:
             relation_optimizer.zero_grad()
-            before_label_loss_backward = time.perf_counter()
             label_loss.backward()
-            end_label_loss_backward = time.perf_counter()
-            # Todo: 标签损失反向传播的时间
-            label_loss_backward_duration = end_label_loss_backward - before_label_loss_backward
-            print(f'标签损失反向传播耗时：{label_loss_backward_duration} s')
             relation_optimizer.step()
         for variable in variables:
             variable.data = torch.clamp(variable.data, min=0.0, max=1.0)
-        before_loss_time = time.perf_counter()
+
         loss = criterion(output, target) + \
                lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
-                                                                         adjList)
-        end_loss_time = time.perf_counter()
-        # Todo: 总损失的计算时间
-        loss_duration = end_loss_time - before_loss_time
-        print(f'总损失计算耗时：{loss_duration} s')
+                                                                    adjList)
 
         optimizer.zero_grad()
-        before_loss_backward = time.perf_counter()
         loss.backward()
-        end_loss_backward = time.perf_counter()
-        # Todo: 总损失反向传播的时间
-        loss_backward_duration = end_loss_backward - before_loss_backward
-        print(f'总损失反向传播耗时：{loss_backward_duration} s')
-
+        print("==============================================")
+        pre_op_lr = optimizer.param_groups[0]['lr']
+        print(f'AdamW 调整前学习率为: {pre_op_lr}')
         optimizer.step()
-        lr_scheduler.step()
+        after_op_lr = optimizer.param_groups[0]['lr']
+        print(f"AdamW 调整后学习率为: {after_op_lr}")
+        # Todo: 输出一下学习率的变化
+        # lr_scheduler.step()
+        # after_scheduler_lr = optimizer.param_groups[0]['lr']
+        # print(f'lr scheduler 调整后学习率为： {after_scheduler_lr}')
+
