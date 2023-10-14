@@ -387,10 +387,10 @@ class MultiLabelFitter(object):
     def fit(self, train_loader, valid_loader):
 
         # 初始化OneCycleLR学习率调度器
-        # self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
-        #                                                         max_lr=self.param.lr,
-        #                                                         epochs=self.end_epoch,
-        #                                                         steps_per_epoch=len(train_loader))
+        self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
+                                                                max_lr=self.param.lr,
+                                                                epochs=self.end_epoch,
+                                                                steps_per_epoch=len(train_loader))
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
@@ -510,7 +510,7 @@ class MultiLabelFitter(object):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            # self.lr_scheduler.step()
+            self.lr_scheduler.step()
 
         mAP, ap = self.ap_meter.value()
         mAP *= 100
