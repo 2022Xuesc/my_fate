@@ -137,3 +137,4 @@ class FeatureSmoothLoss(nn.Module):
         total_loss = torch.norm(features - torch.matmul(similarities, features), p=2)
         # Todo: 这里用总损失还是平均损失
         return total_loss / batch_size
+
