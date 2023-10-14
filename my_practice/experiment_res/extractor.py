@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202309020759060689870"
-job_id = "202309020759060689870"
+dir_id = "202310141058527568340"
+job_id = "202310141058527568340"
 module_name = 'multi_label_0'
-target_dir = 'sync_fpsl_bn_only_split'
+target_dir = 'voc/voc_fpsl'
 client_num = 10
 
 
@@ -24,8 +24,7 @@ client_num = 10
 def mv_files(dir_path, target_path):
     files = os.listdir(dir_path)
     files_dir = os.path.join(dir_path, f'{files[0]}/stats')
-    filenames = ['avgloss.csv', 'train.csv', 'valid.csv']
-    for filename in filenames:
+    for filename in os.listdir(files_dir):
         file_path = os.path.join(files_dir, filename)
         shutil.copy(file_path, target_path)
 
