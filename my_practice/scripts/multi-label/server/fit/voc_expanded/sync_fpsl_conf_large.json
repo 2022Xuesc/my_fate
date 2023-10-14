@@ -31,7 +31,7 @@
   "component_parameters": {
     "common": {
       "multi_label_0": {
-        "max_iter": 20,
+        "max_iter": 50,
         "batch_size": 2,
         "aggregate_every_n_epoch": 4,
         "lr": 0.0001,
