@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202310141058527568340"
-job_id = "202310141058527568340"
+dir_id = "202310141100215339370"
+job_id = "202310141100215339370"
 module_name = 'multi_label_0'
-target_dir = 'voc/voc_fpsl'
+target_dir = 'voc/voc_interactive_40_onecycle'
 client_num = 10
 
 
@@ -44,6 +44,7 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
 
 

@@ -45,7 +45,7 @@
       "guest": {
         "0": {
           "multi_label_0": {
-            "device": "cuda:3",
+            "device": "cuda:1",
             "batch_size": 8,
             "json_file": "/data/projects/voc2007/clustered_voc_expanded/client1/train/anno.json"
           },
@@ -84,7 +84,7 @@
         },
         "1": {
           "multi_label_0": {
-            "device": "cuda:0",
+            "device": "cuda:3",
             "json_file": "/data/projects/voc2007/clustered_voc_expanded/client3/train/anno.json"
           },
           "reader_0": {
