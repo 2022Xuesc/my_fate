@@ -441,9 +441,9 @@ crop_scale = 448
 # # Todo: 本地的json_file呢？
 # json_file = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json'
 
-train_path = '/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc/client1/train'
+train_path = '/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc/client9/train'
 category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
-json_file = '/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc/client1/train/anno.json'
+json_file = '/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc/client9/train/anno.json'
 
 resize_scale = resize_scale // 2
 crop_scale = crop_scale // 2
@@ -478,7 +478,7 @@ train_loader = torch.utils.data.DataLoader(
     drop_last=drop_last, shuffle=shuffle
 )
 
-model = create_resnet101_model(pretrained=True, device=device,num_classes=num_labels)
+model = create_resnet101_model(pretrained=True, device=device, num_classes=num_labels)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
 
 # 交叉熵损失，具体来说，是非对称损失
@@ -489,14 +489,17 @@ lambda_y = 1
 label_smooth_loss = LabelSmoothLoss()
 ap_meter = AveragePrecisionMeter()
 
-
 # Todo: 更改，40或者20
-epochs = 1
-# lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer,
+epochs = 200
+
+# one_cycle_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer,
 #                                                    max_lr=learning_rate,
 #                                                    epochs=epochs,
 #                                                    steps_per_epoch=len(train_loader),
 #                                                    verbose=False)
+
+# 使用reduceLROnPlateau学习率调度器
+plateau_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.95, patience=2)
 
 # 构建优化参数
 image_id2labels = json.load(open(json_file, 'r'))
@@ -525,13 +528,18 @@ for i in range(num_labels):
 # 从矩阵中构建出优化参数组
 variables, adjList, relation_optimizer = construct_relation_by_matrix(matrix=adjMatrix, device=device)
 
+# base = 0.0001
+# for i in range(100):
+#     print(base)
+#     base *= 0.9
+
 # 开始执行优化过程
 for epoch in range(0, epochs):
     total_samples = len(train_loader.sampler)
     steps_per_epoch = math.ceil(total_samples / batch_size)
     ap_meter.reset()
     model.train()
-
+    epoch_loss = 0
     # 直接输出信息到控制台上
     for train_step, (inputs, target) in enumerate(train_loader):
         print(f'正在训练第 {train_step} / {steps_per_epoch} 个 batch')
@@ -559,17 +567,19 @@ for epoch in range(0, epochs):
         loss = criterion(output, target) + \
                lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
                                                                     adjList)
-
+        epoch_loss += loss.item()
         optimizer.zero_grad()
         loss.backward()
         print("==============================================")
         pre_op_lr = optimizer.param_groups[0]['lr']
-        print(f'AdamW 调整前学习率为: {pre_op_lr}')
+        # print(f'AdamW 调整前学习率为: {pre_op_lr}')
         optimizer.step()
         after_op_lr = optimizer.param_groups[0]['lr']
-        print(f"AdamW 调整后学习率为: {after_op_lr}")
+        # print(f"AdamW 调整后学习率为: {after_op_lr}")
         # Todo: 输出一下学习率的变化
-        # lr_scheduler.step()
-        # after_scheduler_lr = optimizer.param_groups[0]['lr']
-        # print(f'lr scheduler 调整后学习率为： {after_scheduler_lr}')
-
+        # one_cycle_scheduler.step()
+    epoch_loss /= steps_per_epoch
+    print(f"epoch = f{epoch}时候，损失为：{epoch_loss}")
+    plateau_scheduler.step(epoch_loss)
+    after_scheduler_lr = optimizer.param_groups[0]['lr']
+    print(f'当前epoch学习率为： {after_scheduler_lr}')

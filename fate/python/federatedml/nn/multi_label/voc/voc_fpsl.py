@@ -278,8 +278,6 @@ class SyncAggregator(object):
             np.save('global_model', self.model)
             np.save('bn_data', self.bn_data)
 
-
-
     def export_model(self, param):
         pass
 
@@ -387,15 +385,21 @@ class MultiLabelFitter(object):
     def fit(self, train_loader, valid_loader):
 
         # 初始化OneCycleLR学习率调度器
-        self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
-                                                                max_lr=self.param.lr,
-                                                                epochs=self.end_epoch,
-                                                                steps_per_epoch=len(train_loader))
+        # self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
+        #                                                         max_lr=self.param.lr,
+        #                                                         epochs=self.end_epoch,
+        #                                                         steps_per_epoch=len(train_loader))
+        # 两个回合没有改进时就降低学习率
+        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.9,
+                                                                       patience=2)
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
             ap, mAP, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
-            LOGGER.warn(f'epoch={epoch}/{self.end_epoch},mAP={mAP},loss={loss}')
+            # 注意传入的是验证损失
+            self.lr_scheduler.step(loss)
+            current_lr = self.optimizer.param_groups[0]['lr']
+            LOGGER.warn(f'epoch = {epoch}/{self.end_epoch}, mAP = {mAP}, loss = {loss}, lr = {current_lr}')
             self.on_fit_epoch_end(epoch, valid_loader, ap, mAP, loss)
             if self.context.should_stop():
                 break
@@ -425,7 +429,6 @@ class MultiLabelFitter(object):
             self._num_per_labels = [0] * self.param.num_labels
 
             self.context.increase_aggregation_iteration()
-
 
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
@@ -510,8 +513,6 @@ class MultiLabelFitter(object):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            self.lr_scheduler.step()
-
         mAP, ap = self.ap_meter.value()
         mAP *= 100
         return mAP.item(), ap, losses[OBJECTIVE_LOSS_KEY].mean
@@ -527,7 +528,6 @@ class MultiLabelFitter(object):
         batch_size = valid_loader.batch_size
 
         total_steps = math.ceil(total_samples / batch_size)
-
 
         model.eval()
         # Todo: 在开始训练之前，重置ap_meter

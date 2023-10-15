@@ -319,7 +319,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    # param.max_iter = 100
+    param.max_iter = 100
 
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
@@ -333,15 +333,15 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 100
-    # param.device = 'cuda:0'
-    # param.num_labels = 20
+    param.batch_size = 2
+    param.max_iter = 100
+    param.device = 'cuda:0'
+    param.num_labels = 20
 
     # 使用绝对路径
     # category_dir = '/data/projects/dataset'
-    category_dir = "/data/projects/voc2007"
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    # category_dir = "/data/projects/voc2007"
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -417,11 +417,12 @@ class MultiLabelFitter(object):
     def fit(self, train_loader, valid_loader):
 
         # 初始化OneCycleLR学习率调度器
-        self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
-                                                                max_lr=self.param.lr,
-                                                                epochs=self.end_epoch,
-                                                                steps_per_epoch=len(train_loader))
-
+        # self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
+        #                                                         max_lr=self.param.lr,
+        #                                                         epochs=self.end_epoch,
+        #                                                         steps_per_epoch=len(train_loader))
+        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.9,
+                                                                       patience=2)
         # Todo: 添加优化参数
         #  获取json文件
         image_id2labels = json.load(open(self.param.json_file, 'r'))
@@ -453,7 +454,9 @@ class MultiLabelFitter(object):
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
             ap, mAP, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
-            LOGGER.warn(f'epoch={epoch}/{self.end_epoch},mAP={mAP},loss={loss}')
+            self.lr_scheduler.step(loss)
+            current_lr = self.optimizer.param_groups[0]['lr']
+            LOGGER.warn(f'epoch = {epoch}/{self.end_epoch}, mAP = {mAP}, loss = {loss}, lr = {current_lr}')
             self.on_fit_epoch_end(epoch, valid_loader, ap, mAP, loss)
             if self.context.should_stop():
                 break
@@ -650,7 +653,6 @@ class MultiLabelFitter(object):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            self.lr_scheduler.step()
         train_loss_writer.writerow(
             [epoch, losses[ENTROPY_LOSS_KEY].mean, losses[RELATION_LOSS_KEY].mean, losses[OVERALL_LOSS_KEY].mean])
         # 记录ap数组

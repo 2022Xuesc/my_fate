@@ -72,47 +72,6 @@ def do_draw(path, file):
     plt.close()
 
 
-def do_draw_p_r(path, file):
-    file_path = os.path.join(path, file)
-    data = pd.read_csv(file_path)
-    phase = file.split('.')[0]
-
-    epochs = data['epoch']
-    precisions = data['precision']
-    recalls = data['recall']
-    losses = data[f'{phase}_loss']
-
-    fig = plt.figure(figsize=(8, 6))
-
-    # 放在右边
-    ax1 = fig.add_subplot(111)
-    ax1.set_ylim(0, 1)
-    ax1.plot(epochs, precisions, 'b', label='precision')
-    ax1.plot(epochs, recalls, 'g', label='recall')
-    ax1.set_xlabel('epoch')
-    ax1.set_ylabel('rate')
-    ax1.legend(loc='upper left')
-
-    ax2 = ax1.twinx()
-
-    ax2.plot(epochs, losses, 'r', label='loss')
-    ax2.legend(loc='upper right')
-    ax2.set_ylabel('loss')
-
-    # 设置题目
-    plt.title('The learning curve on ' + path)
-    # 显示图片
-    plt.savefig(f'{path}_{file.split(".")[0]}.svg', dpi=600, format='svg')
-    # plt.show()
-    plt.close()
-
-
-# 比较的方法包括：
-# 1. 基线resnet
-# 2. fixed_ratio
-# 3. lamp
-# 4. dep_graph
-# 全局传输比例大约是[1,0.9,0.8,...,0.1]
 def compare_layer_ratio_method(paths, file):
     is_arbiter = False
     for path in paths:
@@ -192,92 +151,25 @@ def compare_layer_ratio_method(paths, file):
         plt.close()
 
 
-def compare_method(paths, file):
-    is_arbiter = False
-    for path in paths:
-        if path.startswith('arbiter'):
-            file = 'avgloss.csv'
-            is_arbiter = True
-            x_axis = 'agg_iter'
-        else:
-            file = 'valid.csv'
-            x_axis = 'epoch'
-        # mAPs = []
-        # for path in paths:
-        #     for dir i dirs:
-        #         file_path = os.path.join(path, f'{dir}/valid.csv')
-        #         mAPs.append(pd.read_csv(file_path))
-        file_path1 = os.path.join('sync_fpsl_st', os.path.join(path, file))
-        data1 = pd.read_csv(file_path1)
-
-        file_path2 = os.path.join('sync_fpsl_bn_only_split', os.path.join(path, file))
-        data2 = pd.read_csv(file_path2)
-
-        baseline_path = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
-        data3 = pd.read_csv(baseline_path)
-
-        st_mAP = data1['mAP']
-        fpsl_split_mAP = data2['mAP']
-        fpsl_baseline_mAP = data3['mAP']
-
-        ratio_path = os.path.join("sync_fpsl_fixed_ratio_drop", os.path.join(path, file))
-        ratio_data = pd.read_csv(ratio_path)
-        ratio_mAP = ratio_data['mAP']
-
-        plt.plot(data3[x_axis], fpsl_baseline_mAP, 'g')
-        plt.plot(ratio_data[x_axis], ratio_mAP, 'orange')
-        plt.plot(data1[x_axis], st_mAP, 'b')
-        plt.plot(data2[x_axis], fpsl_split_mAP, 'r')
-        # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
-        plt.ylim(40, 85)
-        plt.xlabel(x_axis)
-        plt.ylabel('valid mAP')
-
-        # 加竖线
-        # cliffs = [12, 20, 24, 32, 36]
-        # cliff_heights = st_dep_mAP.values[cliffs]
-        # plt.vlines(cliffs, 0, cliff_heights,label='label test', linestyles="dashed", colors='black')
-        # for j in range(len(cliffs)):
-        #     plt.text(cliffs[j] + 1, 42, cliffs[j], ha='center',color="black")
-
-        plt.legend(['FPSL-Full', 'FPSL-Ratio', 'FPSL-Split', 'FPSL-ST'])
-
-        # 设置题目
-        plt.title('The relation between mAP and total epochs of ' + path)
-        # 显示图片
-        # plt.savefig(f'compare/{path}.svg', dpi=600, format='svg')
-        if is_arbiter:
-            id = 'arbiter'
-        else:
-            id = path.split('/')[-1]
-        dir_name = 'compare_st'
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-        save_path = os.path.join(dir_name, f'{id}.svg')
-        plt.show()
-        plt.savefig(save_path, dpi=600, format='svg')
-        # plt.show()
-        plt.close()
-
 
 def draw_multiple_loss(path, file):
     file_path = os.path.join(path, file)
     data = pd.read_csv(file_path)
 
     epochs = data['epoch']
-    reg_loss = data['reg_loss']
-    obj_loss = data['obj_loss']
+    entropy_loss = data['entropy_loss']
+    relation_loss = data['relation_loss']
     overall_loss = data['overall_loss']
 
     # 放在右边
 
-    plt.plot(epochs, obj_loss, 'b')
-    plt.plot(epochs, reg_loss, 'g')
+    plt.plot(epochs, entropy_loss, 'b')
+    plt.plot(epochs, relation_loss, 'g')
     plt.plot(epochs, overall_loss, 'r')
     plt.xlabel('epoch')
     plt.ylabel('loss value')
 
-    plt.legend(['obj_loss', 'reg_loss', 'overall_loss'])
+    plt.legend(['entropy_loss', 'relation_loss', 'overall_loss'])
 
     # 设置题目
     plt.title('The loss curve on ' + path)
@@ -356,15 +248,13 @@ def draw_train_and_valid(paths):
 #
 
 # Todo: 各个客户端自身的结果分析
-paths = ["sync_fpsl_st", 'sync_fpsl_st_dep']
+paths = ["voc/voc_fpsl"]
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
 
     for i in range(1, 10):
         clients_path.append(os.path.join(path, f'host/{i}'))
 
-    # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
-    # draw_losses(clients_path, 'loss.csv')
 
     # Todo: 各个客户端的结果分析
     arbiter_path = os.path.join(path, 'arbiter/999')
@@ -379,6 +269,6 @@ for path in paths:
 #     clients_path.append(f'host/{i}')
 # # 将服务器端也加进去
 # clients_path.append('arbiter/999')
-
+#
 # compare_method(clients_path, 'valid.csv')
 # compare_layer_ratio_method(clients_path, 'valid.csv')
