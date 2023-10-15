@@ -2,7 +2,7 @@ import torch
 
 
 # 正确利用相关性计算衍生预测向量
-def getCorrectedCandidates(predicts, adjList, requires_grad):
+def getCorrectedCandidates(predicts, adjList, neg_adjList, label_prob_vec, requires_grad):
     device = predicts.device
     batch_size = len(predicts)
     _, label_dim = predicts.size()
@@ -15,29 +15,44 @@ def getCorrectedCandidates(predicts, adjList, requires_grad):
         for lj in range(label_dim):
             relation_num = 0
             for li in range(label_dim):
-                # 如果li的预测置信度小于0.5，则不能使用该相关性
+                # 如果li的预测置信度小于0.5，则不能使用该相关性，则应该使用另一种相关性
+                # Todo: 两种相关性之间计算一下
                 if predict_vec[li] < 0.5:
-                    continue
-                # 如果相等，则直接使用1
-                relation_num += 1
-                if li == lj:  # 是同一个标签，则1转移
-                    candidates[b][lj] += predict_vec[li]
-                else:  # 不是同一个标签，使用相关性值转移
+                    # 如果相等，则直接跳过，因为必然为0
+                    if li == lj:
+                        continue
+                    # Todo: 如果不包含lj这个标签，
+                    relation_num += 1
                     if requires_grad:
-                        a = adjList[li][lj]
+                        a = neg_adjList[li][lj]
                     else:
-                        a = adjList[li][lj].item()
-                    # 这里还要对a进行分类讨论
-                    # 如果a大于0.5，则促进作用，否则，起抑制作用
-                    # 促进作用时，可以直接相乘
-                    if a >= 0.5:
-                        candidates[b][lj] += predict_vec[li] * a
+                        a = neg_adjList[li][lj].item()
+                    # 如果是促进作用
+                    if a >= label_prob_vec[lj]:
+                        candidates[b][lj] += (1 - predict_vec[li]) * a
                     else:
-                        # 如果li值固定，则a越小，lj的概率越小
-                        # 如果a值固定，则li概率越大，lj的概率越小
-                        # 符合直觉
-                        candidates[b][lj] += 1 - predict_vec[li] * (1 - a)
+                        candidates[b][lj] += 1 - (1 - predict_vec[li]) * (1 - a)
+                else:
+                    relation_num += 1
+                    if li == lj:  # 是同一个标签，则1转移
+                        candidates[b][lj] += predict_vec[li]
+                    else:  # 不是同一个标签，使用相关性值转移
+                        if requires_grad:
+                            a = adjList[li][lj]
+                        else:
+                            a = adjList[li][lj].item()
+                        # 这里还要对a进行分类讨论
+                        # 如果a大于0.5，则促进作用，否则，起抑制作用
+                        # 促进作用时，可以直接相乘
+                        if a >= label_prob_vec[lj]:
+                            candidates[b][lj] += predict_vec[li] * a
+                        else:
+                            # 如果li值固定，则a越小，lj的概率越小
+                            # 如果a值固定，则li概率越大，lj的概率越小
+                            # 符合直觉
+                            candidates[b][lj] += 1 - predict_vec[li] * (1 - a)
             # 按照转移的标签数量进行平均，促进与抑制综合判定
+            # Todo: 这里relation_num可能是0导致无法转移，因此，引入另外一种矩阵
             candidates[b][lj] /= relation_num
     return candidates
 

@@ -80,7 +80,7 @@ class LabelSmoothLoss(nn.Module):
     # 1. 预测概率y：b * 80
     # 2. 图像语义相似度: b * b
     # 3. 标签相关性: 80 * 80
-    def forward(self, predicts, similarities, adjList):
+    def forward(self, predicts, similarities, adjList, neg_adjList=None, label_prob_vec=None):
         device = predicts.device
         batch_size = len(predicts)
         # Todo: 对于每个样本，如果没有相似的图像，则不考虑这个图像的标签平滑损失
@@ -89,7 +89,7 @@ class LabelSmoothLoss(nn.Module):
         if not self.corrected:
             candidates = getCandidates(predicts, adjList, self.relation_need_grad)
         else:
-            candidates = getCorrectedCandidates(predicts, adjList, self.relation_need_grad)
+            candidates = getCorrectedCandidates(predicts, adjList, neg_adjList, label_prob_vec, self.relation_need_grad)
         for i in range(batch_size):
             if torch.sum(similarities[i]) == 0:
                 continue
