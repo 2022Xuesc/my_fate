@@ -82,57 +82,32 @@ def compare_layer_ratio_method(paths, file):
         else:
             file = 'valid.csv'
             x_axis = 'epoch'
-        # mAPs = []
-        # for path in paths:
-        #     for dir i dirs:
-        #         file_path = os.path.join(path, f'{dir}/valid.csv')
-        #         mAPs.append(pd.read_csv(file_path))
-        baseline_path = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
-        baseline_data = pd.read_csv(baseline_path)
+        onecycle_40_path = os.path.join('voc/voc_fpsl_40_onecycle', os.path.join(path, file))
+        onecycle_40_data = pd.read_csv(onecycle_40_path)
 
-        fixed_drop_path = os.path.join('sync_fpsl_fixed_ratio_drop', os.path.join(path, file))
-        fixed_drop_data = pd.read_csv(fixed_drop_path)
+        # onecycle_200_path = os.path.join('voc/voc_fpsl_200_onecycle', os.path.join(path, file))
+        # onecycle_200_data = pd.read_csv(onecycle_200_path)
 
-        fixed_save_path = os.path.join('sync_fpsl_fixed_ratio_save', os.path.join(path, file))
-        fixed_save_data = pd.read_csv(fixed_save_path)
+        interactive_40_path = os.path.join('voc/voc_interactive_40_onecycle', os.path.join(path, file))
+        interactive_40_data = pd.read_csv(interactive_40_path)
 
-        lamp_path = os.path.join('sync_fpsl_lamp', os.path.join(path, file))
-        lamp_data = pd.read_csv(lamp_path)
+        epochs = onecycle_40_data[x_axis]
 
-        dep_path = os.path.join('sync_fpsl_dep_global', os.path.join(path, file))
-        dep_data = pd.read_csv(dep_path)
+        onecycle_40_mAP = onecycle_40_data['mAP']
+        interactive_40_mAP = interactive_40_data['mAP']
 
-        dep_drop_person_path = os.path.join('sync_fpsl_dep_drop_person_0.1', os.path.join(path, file))
-        dep_drop_data = pd.read_csv(dep_drop_person_path)
-
-        epochs = baseline_data[x_axis]
-
-        baseline_mAP = baseline_data['mAP']
-        fixed_drop_mAP = fixed_drop_data['mAP']
-        fixed_save_mAP = fixed_save_data['mAP']
-        lamp_mAP = lamp_data['mAP']
-        dep_mAP = dep_data['mAP']
-        dep_drop_mAP = dep_drop_data['mAP']
-
-        plt.plot(epochs, baseline_mAP, 'g')
-        plt.plot(epochs, fixed_drop_mAP, 'b')
+        plt.plot(epochs, onecycle_40_mAP, 'g')
+        plt.plot(epochs, interactive_40_mAP, 'b')
         # plt.plot(epochs, fixed_save_mAP, 'brown')
-        plt.plot(epochs, lamp_mAP, 'r')
-        plt.plot(epochs, dep_mAP, 'orange')
-        plt.plot(epochs, dep_drop_mAP, 'purple')
+        # plt.plot(epochs, lamp_mAP, 'r')
+        # plt.plot(epochs, dep_mAP, 'orange')
+        # plt.plot(epochs, dep_drop_mAP, 'purple')
         # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
         # plt.ylim(60, 80)
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
-        # 加竖线
-        # cliffs = [12, 20, 24, 32, 36]
-        # cliff_heights = fpsl_st_mAP[cliffs]
-        # plt.vlines(cliffs, 0, cliff_heights,label='label test', linestyles="dashed", colors='green')
-        # for i in range(len(cliffs)):
-        #     plt.text(cliffs[i] + 1, 2, cliffs[i], ha='center',color="red")
-
-        plt.legend(['FPSL-FULL', 'FPSL-Drop', 'FPSL-LAMP', 'FPSL-DEP_GLOBAL', 'FPSL-DEP_DROP'])
+        plt.legend(['FPSL_OneCycle_40', 'Relation_OneCycle_40'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -142,14 +117,13 @@ def compare_layer_ratio_method(paths, file):
             id = 'arbiter'
         else:
             id = path.split('/')[-1]
-        dir_name = 'compare_layer_ratio'
+        dir_name = 'compare_voc'
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
         save_path = os.path.join(dir_name, f'{id}.svg')
         plt.savefig(save_path, dpi=600, format='svg')
         # plt.show()
         plt.close()
-
 
 
 def draw_multiple_loss(path, file):
@@ -248,27 +222,36 @@ def draw_train_and_valid(paths):
 #
 
 # Todo: 各个客户端自身的结果分析
-paths = ["voc/voc_fpsl"]
-for path in paths:
-    clients_path = [os.path.join(path, 'guest/10')]
+# paths = ["voc/voc_fpsl_200_onecycle","voc/voc_interactive_40_onecycle"]
+# for path in paths:
+#     clients_path = [os.path.join(path, 'guest/10')]
+#
+#     for i in range(1, 10):
+#         clients_path.append(os.path.join(path, f'host/{i}'))
+#
+#
+#     # Todo: 各个客户端的结果分析
+#     arbiter_path = os.path.join(path, 'arbiter/999')
+#     draw_train_and_valid(clients_path)
+#     draw(arbiter_path, loss_file='avgloss.csv')
 
-    for i in range(1, 10):
-        clients_path.append(os.path.join(path, f'host/{i}'))
 
-
-    # Todo: 各个客户端的结果分析
-    arbiter_path = os.path.join(path, 'arbiter/999')
-    draw_train_and_valid(clients_path)
-    draw(arbiter_path, loss_file='avgloss.csv')
+# paths = ["voc/voc_interactive_40_onecycle"]
+# # Todo: 画一下损失成分
+# for path in paths:
+#     clients_path = [os.path.join(path, 'guest/10')]
+#
+#     for i in range(1, 10):
+#         clients_path.append(os.path.join(path, f'host/{i}'))
+#     draw_losses(clients_path,'train_loss.csv')
 
 
 # Todo: 比较方法
-# clients_path = ['guest/10']
-#
-# for i in range(1, 10):
-#     clients_path.append(f'host/{i}')
-# # 将服务器端也加进去
-# clients_path.append('arbiter/999')
-#
-# compare_method(clients_path, 'valid.csv')
-# compare_layer_ratio_method(clients_path, 'valid.csv')
+clients_path = ['guest/10']
+
+for i in range(1, 10):
+    clients_path.append(f'host/{i}')
+# 将服务器端也加进去
+clients_path.append('arbiter/999')
+
+compare_layer_ratio_method(clients_path, 'valid.csv')
