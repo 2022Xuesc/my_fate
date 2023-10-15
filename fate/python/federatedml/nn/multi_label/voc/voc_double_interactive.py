@@ -1,6 +1,7 @@
 # 服务器与客户端的通用逻辑
 
 import math
+import numpy as np
 import torch.nn
 import torchnet.meter as tnt
 import torchvision.transforms as transforms
@@ -26,9 +27,6 @@ from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
-# Todo: 使用两个相关性矩阵，不仅考虑某个标签出现时目标标签出现的概率，还考虑某个标签不出现时目标标签出现的概率
-#  使得每个标签根据预测值都有两种转移方式
-
 my_writer = MyWriter(dir_name=os.getcwd())
 
 train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
@@ -40,7 +38,8 @@ val_aps_writer = my_writer.get("val_aps.csv")
 agg_ap_writer = my_writer.get("agg_ap.csv")
 
 # Todo: 只有预测阶段有相关性损失
-train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'entropy_loss', 'relation_loss', 'overall_loss'])
+train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'entropy_loss', 'relation_loss', 'overall_loss',
+                                                            'relation_loss_for_adj'])
 
 
 class _FedBaseContext(object):
@@ -99,7 +98,7 @@ class FedClientContext(_FedBaseContext):
 
     # 发送模型
     # 这里tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, relation_matrix, weight):
+    def send_model(self, tensors, bn_data, relation_matrix, neg_relation_matrix, weight):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
@@ -111,7 +110,7 @@ class FedClientContext(_FedBaseContext):
             bn_arrs.append(bn_arr)
 
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, relation_matrix, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, relation_matrix, neg_relation_matrix, weight), suffix=self._suffix()
         )
 
     # 接收模型
@@ -127,14 +126,14 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, relation_matrix, weight, device):
+    def do_aggregation(self, bn_data, relation_matrix, neg_relation_matrix, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, relation_matrix, weight)
+        self.send_model(self._params, bn_data, relation_matrix, neg_relation_matrix, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data, relation_matrix = recv_elements
+        global_model, bn_data, relation_matrix, neg_relation_matrix = recv_elements
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
@@ -147,7 +146,7 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors, relation_matrix
+        return bn_tensors, relation_matrix, neg_relation_matrix
 
     def do_convergence_check(self, weight, ap, mAP, loss_value):
         self.loss_summary.append(loss_value)
@@ -263,6 +262,7 @@ class SyncAggregator(object):
         self.model = None
         self.bn_data = None
         self.relation_matrix = None
+        self.neg_relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -277,19 +277,21 @@ class SyncAggregator(object):
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
             # 提取捕捉到的标签相关性
             relation_matrices = [party_tuple[2] for party_tuple in recv_elements]
+            neg_relation_matrices = [party_tuple[3] for party_tuple in recv_elements]
             # Todo: 记录各个客户端学习到的标签相关性矩阵
-            np.save(f'relation_matrices{cur_iteration}', relation_matrices)
-
-            degrees = [party_tuple[3] for party_tuple in recv_elements]
+            np.save(f'relation_matrices_{cur_iteration}', relation_matrices)
+            np.save(f'neg_relation_matrices_{cur_iteration}', neg_relation_matrices)
+            degrees = [party_tuple[4] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
             self.relation_matrix = aggregate_relation_matrix(relation_matrices, degrees)
+            self.neg_relation_matrix = aggregate_relation_matrix(neg_relation_matrices, degrees)
             # 分标签进行聚合
             aggregate_by_labels(tensors, degrees)
 
             self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((tensors[0], self.bn_data, self.relation_matrix))
+            self.context.send_model((tensors[0], self.bn_data, self.relation_matrix, self.neg_relation_matrix))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
@@ -322,7 +324,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    param.max_iter = 100
+    # param.max_iter = 100
 
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
@@ -336,15 +338,15 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 100
-    param.device = 'cuda:0'
-    param.num_labels = 20
+    # param.batch_size = 2
+    # param.max_iter = 100
+    # param.device = 'cuda:0'
+    # param.num_labels = 20
 
     # 使用绝对路径
     # category_dir = '/data/projects/dataset'
-    # category_dir = "/data/projects/voc2007"
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    category_dir = "/data/projects/voc2007"
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -405,13 +407,16 @@ class MultiLabelFitter(object):
         self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
 
         self.lr_scheduler = None
+        self.relation_lr_scheduler = None
 
         self.relation_optimizer = None
         # 维护一个邻接表，存储与每个标签相关的其他标签的相关性以及优化变量
         # 自相关性无需进行优化
         # self.adjList = [dict()] * 80，错误实例，这样初始化出来的每个字典都是一样的
         self.adjList = []
+        self.neg_adjList = []
         self.variables = []
+        self.label_prob_vec = None
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -426,10 +431,13 @@ class MultiLabelFitter(object):
         #                                                         steps_per_epoch=len(train_loader))
         self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.9,
                                                                        patience=2)
+
         # Todo: 添加优化参数
         #  获取json文件
         image_id2labels = json.load(open(self.param.json_file, 'r'))
+
         num_labels = self.param.num_labels
+
         adjList = np.zeros((num_labels, num_labels))
         nums = np.zeros(num_labels)
         for image_info in image_id2labels:
@@ -443,6 +451,8 @@ class MultiLabelFitter(object):
                     y = labels[j]
                     adjList[x][y] += 1
                     adjList[y][x] += 1
+        # 直接计算不就行了？
+        self.label_prob_vec = nums / len(image_id2labels)
         nums = nums[:, np.newaxis]
         # 遍历每一行
         for i in range(num_labels):
@@ -452,16 +462,39 @@ class MultiLabelFitter(object):
         for i in range(num_labels):
             adjList[i][i] = 1
 
+        # 计算neg_adjList
+        neg_adjList = np.zeros((num_labels, num_labels))
+        # 记录i未出现的次数
+        not_occurred_nums = np.zeros(num_labels)
+        for image_info in image_id2labels:
+            labels = image_info['labels']
+            for i in range(num_labels):
+                # 如果该图像中不包含标签label
+                if i not in labels:
+                    not_occurred_nums[i] += 1
+                    for j in labels:
+                        neg_adjList[i][j] += 1
+        not_occurred_nums = not_occurred_nums[:, np.newaxis]
+        # 验证adjList2的每一行是否和为1
+        # 注意，adjList2本来就不为1
+        for i in range(num_labels):
+            if not_occurred_nums[i] != 0:
+                neg_adjList[i] = neg_adjList[i] / not_occurred_nums[i]
 
+        self.construct_relation_by_matrix(adjList, neg_adjList)
 
-        self.construct_relation_by_matrix(adjList)
+        self.relation_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.relation_optimizer, mode='min',
+                                                                                factor=0.9, patience=2)
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
             ap, mAP, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
             self.lr_scheduler.step(loss)
-            current_lr = self.optimizer.param_groups[0]['lr']
-            LOGGER.warn(f'epoch = {epoch}/{self.end_epoch}, mAP = {mAP}, loss = {loss}, lr = {current_lr}')
+            current_cnn_lr = self.optimizer.param_groups[0]['lr']
+            current_relation_lr = self.relation_optimizer.param_groups[0]['lr']
+
+            LOGGER.warn(f'epoch = {epoch}/{self.end_epoch}, mAP = {mAP}, loss = {loss}, cnn_lr = {current_cnn_lr},'
+                        f' current_relation_lr = {current_relation_lr}')
             self.on_fit_epoch_end(epoch, valid_loader, ap, mAP, loss)
             if self.context.should_stop():
                 break
@@ -513,25 +546,31 @@ class MultiLabelFitter(object):
         # 并且返回验证集的ap
         return ap, mAP, loss
 
-    def construct_relation_by_matrix(self, matrix):
+    # 传入两个矩阵，一个正相关矩阵，另一个负相关矩阵
+    def construct_relation_by_matrix(self, matrix, neg_matrix):
         num_labels = self.param.num_labels
         self.adjList = [dict() for _ in range(num_labels)]
+        self.neg_adjList = [dict() for _ in range(num_labels)]
         self.variables = []
         # 设定阈值th
-        th = 0.2
+        # Todo: 那这里就不用设置阈值了，因为考虑负相关的情况
+        # th = 0
         # 遍历每个值，初始化adjList
         for i in range(num_labels):
             for j in range(num_labels):
-                # 自相关性如何处理？额外进行处理
-                if i == j or matrix[i][j] < th:
+                # 不处理自相关性
+                if i == j:
                     continue
-                # 优化变量的索引
-                idx = len(self.variables)
                 variable = torch.tensor(matrix[i][j]).to(self.param.device)
                 variable.requires_grad_()
+                neg_variable = torch.tensor(neg_matrix[i][j]).to(self.param.device)
+                neg_variable.requires_grad_()
+                # 两种优化变量都要添加
                 self.variables.append(variable)
+                self.variables.append(neg_variable)
                 # 直接维护对应的优化变量即可
                 self.adjList[i][j] = variable
+                self.neg_adjList[i][j] = neg_variable
 
         # 构造相关性的优化器
         # 将需要优化的变量列表传入到优化器中
@@ -562,11 +601,18 @@ class MultiLabelFitter(object):
             for label in self.adjList[i]:
                 A[i][label] = self.adjList[i][label].item()
 
-        agg_bn_data, relation_matrix = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
-                                                                   relation_matrix=A,
-                                                                   device=self.param.device)
+        neg_A = np.zeros((labels_num, labels_num))
+        for i in range(len(self.neg_adjList)):
+            for label in self.neg_adjList[i]:
+                neg_A[i][label] = self.neg_adjList[i][label].item()
 
-        self.construct_relation_by_matrix(relation_matrix)
+        agg_bn_data, relation_matrix, neg_relation_matrix = self.context.do_aggregation(weight=weight_list,
+                                                                                        bn_data=bn_data,
+                                                                                        relation_matrix=A,
+                                                                                        neg_relation_matrix=neg_A,
+                                                                                        device=self.param.device)
+
+        self.construct_relation_by_matrix(relation_matrix, neg_relation_matrix)
 
         idx = 0
         for layer in self.model.modules():
@@ -604,7 +650,7 @@ class MultiLabelFitter(object):
         losses = OrderedDict([(ENTROPY_LOSS_KEY, tnt.AverageValueMeter()),
                               (RELATION_LOSS_KEY, tnt.AverageValueMeter()),
                               (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
-
+        train_relation_loss = tnt.AverageValueMeter()
         # 对于每一个batch，使用该批次的数据集进行训练
         for train_step, (inputs, target) in enumerate(train_loader):
             inputs = inputs.to(device)
@@ -623,12 +669,22 @@ class MultiLabelFitter(object):
             # 这里只考虑标签平滑损失
             predicts = torch.sigmoid(output).to(torch.float64)
 
-            predict_similarities = LabelOMP(predicts.detach(), self.adjList)
+            predict_similarities = LabelOMP(predicts.detach(),
+                                            self.adjList,
+                                            self.neg_adjList,
+                                            self.label_prob_vec,
+                                            corrected=True)
 
-            label_loss = LabelSmoothLoss(relation_need_grad=True)(predicts.detach(), predict_similarities,
-                                                                  self.adjList)
+            label_loss = LabelSmoothLoss(relation_need_grad=True, corrected=True)(predicts.detach(),
+                                                                                  predict_similarities,
+                                                                                  self.adjList,
+                                                                                  self.neg_adjList,
+                                                                                  self.label_prob_vec)
+
+            # 加入标签的损失，以用于进行学习率调度
+            train_relation_loss.add(label_loss.item())
+
             # 需要先对label_loss进行反向传播，梯度下降更新标签相关性
-
             # 如果标签平滑损失不为0，才进行优化
             if label_loss != 0:
                 self.relation_optimizer.zero_grad()
@@ -645,8 +701,12 @@ class MultiLabelFitter(object):
 
             entropy_loss = criterion(predicts, target)
 
-            relation_loss = self.lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
-                                                                                      self.adjList)
+            relation_loss = self.lambda_y * \
+                            LabelSmoothLoss(relation_need_grad=False, corrected=True)(predicts,
+                                                                                      predict_similarities,
+                                                                                      self.adjList,
+                                                                                      self.neg_adjList,
+                                                                                      self.label_prob_vec)
 
             # 初始化标签相关性，先计算标签平滑损失，对相关性进行梯度下降
             loss = entropy_loss + relation_loss
@@ -658,11 +718,18 @@ class MultiLabelFitter(object):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+        relation_loss_for_adj = train_relation_loss.mean
+        # Todo: 这里把相关性优化的损失也记录下来
         train_loss_writer.writerow(
-            [epoch, losses[ENTROPY_LOSS_KEY].mean, losses[RELATION_LOSS_KEY].mean, losses[OVERALL_LOSS_KEY].mean])
+            [epoch, losses[ENTROPY_LOSS_KEY].mean, losses[RELATION_LOSS_KEY].mean, losses[OVERALL_LOSS_KEY].mean,
+             relation_loss_for_adj])
         # 记录ap数组
         mAP, ap = self.ap_meter.value()
         mAP *= 100
+
+        # 计算训练损失
+        self.relation_lr_scheduler.step(relation_loss_for_adj)
+
         return mAP.item(), ap, losses[OVERALL_LOSS_KEY].mean
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
@@ -676,7 +743,6 @@ class MultiLabelFitter(object):
         batch_size = valid_loader.batch_size
 
         total_steps = math.ceil(total_samples / batch_size)
-
 
         model.eval()
         # Todo: 在开始训练之前，重置ap_meter
