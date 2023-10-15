@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from federatedml.nn.backend.utils.relations.candidater import *
 
+
 # 导出为工具包
 # 找到arr中下标不在集合S中的最大值对应的下标
 # 并且下标不能等于当前图像i
@@ -21,7 +22,7 @@ def findMaxIndex(arr, S, cur):
 
 # predicts：该批次样本b的预测向量，维度是b*C
 # adjList：维护与每个标签相关的标签以及对应的值
-def LabelOMP(predicts, adjList, corrected=False):
+def LabelOMP(predicts, adjList, neg_adjList=None, label_prob_vec=None, corrected=False):
     device = predicts.device
     batch_size = len(predicts)
     _, label_dim = predicts.size()
@@ -35,7 +36,7 @@ def LabelOMP(predicts, adjList, corrected=False):
     if not corrected:
         candidates = getCandidates(predicts, adjList, requires_grad=False)
     else:
-        candidates = getCorrectedCandidates(predicts, adjList, requires_grad=False)
+        candidates = getCorrectedCandidates(predicts, adjList, neg_adjList, label_prob_vec, requires_grad=False)
     # 对第1维计算范数
     candidate_norms = torch.norm(candidates, dim=1)
 
