@@ -320,7 +320,7 @@ class SyncAggregator(object):
 
 def build_aggregator(param: MultiLabelParam, init_iteration=0):
     # Todo: [WARN]
-    param.max_iter = 100
+    # param.max_iter = 100
 
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
@@ -334,15 +334,15 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 100
-    param.device = 'cuda:0'
-    param.num_labels = 20
+    # param.batch_size = 2
+    # param.max_iter = 100
+    # param.device = 'cuda:0'
+    # param.num_labels = 20
 
     # 使用绝对路径
     # category_dir = '/data/projects/dataset'
-    # category_dir = "/data/projects/voc2007"
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    category_dir = "/data/projects/voc2007"
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
