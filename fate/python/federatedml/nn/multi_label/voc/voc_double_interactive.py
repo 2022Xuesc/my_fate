@@ -26,6 +26,9 @@ from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
+# Todo: 使用两个相关性矩阵，不仅考虑某个标签出现时目标标签出现的概率，还考虑某个标签不出现时目标标签出现的概率
+#  使得每个标签根据预测值都有两种转移方式
+
 my_writer = MyWriter(dir_name=os.getcwd())
 
 train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
@@ -37,8 +40,7 @@ val_aps_writer = my_writer.get("val_aps.csv")
 agg_ap_writer = my_writer.get("agg_ap.csv")
 
 # Todo: 只有预测阶段有相关性损失
-train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'entropy_loss', 'relation_loss', 'overall_loss',
-                                                            'relation_loss_for_adj'])
+train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'entropy_loss', 'relation_loss', 'overall_loss'])
 
 
 class _FedBaseContext(object):
@@ -403,7 +405,6 @@ class MultiLabelFitter(object):
         self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
 
         self.lr_scheduler = None
-        self.relation_lr_scheduler = None
 
         self.relation_optimizer = None
         # 维护一个邻接表，存储与每个标签相关的其他标签的相关性以及优化变量
@@ -425,7 +426,6 @@ class MultiLabelFitter(object):
         #                                                         steps_per_epoch=len(train_loader))
         self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.9,
                                                                        patience=2)
-
         # Todo: 添加优化参数
         #  获取json文件
         image_id2labels = json.load(open(self.param.json_file, 'r'))
@@ -452,19 +452,16 @@ class MultiLabelFitter(object):
         for i in range(num_labels):
             adjList[i][i] = 1
 
+
+
         self.construct_relation_by_matrix(adjList)
-        self.relation_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.relation_optimizer, mode='min',
-                                                                                factor=0.9, patience=2)
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
             ap, mAP, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
             self.lr_scheduler.step(loss)
-            current_cnn_lr = self.optimizer.param_groups[0]['lr']
-            current_relation_lr = self.relation_optimizer.param_groups[0]['lr']
-
-            LOGGER.warn(f'epoch = {epoch}/{self.end_epoch}, mAP = {mAP}, loss = {loss}, cnn_lr = {current_cnn_lr},'
-                        f' current_relation_lr = {current_relation_lr}')
+            current_lr = self.optimizer.param_groups[0]['lr']
+            LOGGER.warn(f'epoch = {epoch}/{self.end_epoch}, mAP = {mAP}, loss = {loss}, lr = {current_lr}')
             self.on_fit_epoch_end(epoch, valid_loader, ap, mAP, loss)
             if self.context.should_stop():
                 break
@@ -521,8 +518,7 @@ class MultiLabelFitter(object):
         self.adjList = [dict() for _ in range(num_labels)]
         self.variables = []
         # 设定阈值th
-        # Todo: 那这里就不用设置阈值了，因为考虑负相关的情况
-        th = 0
+        th = 0.2
         # 遍历每个值，初始化adjList
         for i in range(num_labels):
             for j in range(num_labels):
@@ -539,7 +535,6 @@ class MultiLabelFitter(object):
 
         # 构造相关性的优化器
         # 将需要优化的变量列表传入到优化器中
-        # self.relation_optimizer = torch.optim.SGD(self.variables, lr=0.1)
         self.relation_optimizer = torch.optim.SGD(self.variables, lr=0.1)
 
     def aggregate_model(self, epoch, weight):
@@ -609,7 +604,7 @@ class MultiLabelFitter(object):
         losses = OrderedDict([(ENTROPY_LOSS_KEY, tnt.AverageValueMeter()),
                               (RELATION_LOSS_KEY, tnt.AverageValueMeter()),
                               (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
-        train_relation_loss = tnt.AverageValueMeter()
+
         # 对于每一个batch，使用该批次的数据集进行训练
         for train_step, (inputs, target) in enumerate(train_loader):
             inputs = inputs.to(device)
@@ -628,16 +623,12 @@ class MultiLabelFitter(object):
             # 这里只考虑标签平滑损失
             predicts = torch.sigmoid(output).to(torch.float64)
 
-            predict_similarities = LabelOMP(predicts.detach(), self.adjList, corrected=True)
+            predict_similarities = LabelOMP(predicts.detach(), self.adjList)
 
-            label_loss = LabelSmoothLoss(relation_need_grad=True, corrected=True)(predicts.detach(),
-                                                                                  predict_similarities,
-                                                                                  self.adjList)
-
-            # 加入标签的损失，以用于进行学习率调度
-            train_relation_loss.add(label_loss.item())
-
+            label_loss = LabelSmoothLoss(relation_need_grad=True)(predicts.detach(), predict_similarities,
+                                                                  self.adjList)
             # 需要先对label_loss进行反向传播，梯度下降更新标签相关性
+
             # 如果标签平滑损失不为0，才进行优化
             if label_loss != 0:
                 self.relation_optimizer.zero_grad()
@@ -654,9 +645,7 @@ class MultiLabelFitter(object):
 
             entropy_loss = criterion(predicts, target)
 
-            relation_loss = self.lambda_y * \
-                            LabelSmoothLoss(relation_need_grad=False, corrected=True)(predicts,
-                                                                                      predict_similarities,
+            relation_loss = self.lambda_y * LabelSmoothLoss(relation_need_grad=False)(predicts, predict_similarities,
                                                                                       self.adjList)
 
             # 初始化标签相关性，先计算标签平滑损失，对相关性进行梯度下降
@@ -669,18 +658,11 @@ class MultiLabelFitter(object):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        relation_loss_for_adj = train_relation_loss.mean
-        # Todo: 这里把相关性优化的损失也记录下来
         train_loss_writer.writerow(
-            [epoch, losses[ENTROPY_LOSS_KEY].mean, losses[RELATION_LOSS_KEY].mean, losses[OVERALL_LOSS_KEY].mean,
-             relation_loss_for_adj])
+            [epoch, losses[ENTROPY_LOSS_KEY].mean, losses[RELATION_LOSS_KEY].mean, losses[OVERALL_LOSS_KEY].mean])
         # 记录ap数组
         mAP, ap = self.ap_meter.value()
         mAP *= 100
-
-        # 计算训练损失
-        self.relation_lr_scheduler.step(relation_loss_for_adj)
-
         return mAP.item(), ap, losses[OVERALL_LOSS_KEY].mean
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
@@ -694,6 +676,7 @@ class MultiLabelFitter(object):
         batch_size = valid_loader.batch_size
 
         total_steps = math.ceil(total_samples / batch_size)
+
 
         model.eval()
         # Todo: 在开始训练之前，重置ap_meter

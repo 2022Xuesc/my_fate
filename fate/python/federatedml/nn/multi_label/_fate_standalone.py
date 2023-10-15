@@ -480,6 +480,7 @@ train_loader = torch.utils.data.DataLoader(
 
 model = create_resnet101_model(pretrained=True, device=device, num_classes=num_labels)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+# optimizer = torch.optim.SGD(model.parameters(),lr=0.01)
 
 # 交叉熵损失，具体来说，是非对称损失
 criterion = AsymmetricLossOptimized().to(device)

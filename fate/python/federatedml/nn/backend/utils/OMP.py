@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-
+from federatedml.nn.backend.utils.relations.candidater import *
 
 # 导出为工具包
 # 找到arr中下标不在集合S中的最大值对应的下标
@@ -19,39 +19,9 @@ def findMaxIndex(arr, S, cur):
     # predicts是该批次的预测值
 
 
-# 给定该批次的样本的预测向量，从每个预测向量根据标签相关性重构出其他的标签向量
-def getCandidates(predicts, adjList, requires_grad):
-    device = predicts.device
-    batch_size = len(predicts)
-    _, label_dim = predicts.size()
-    candidates = torch.zeros((batch_size, label_dim), dtype=torch.float64).to(device)
-    # Todo: 将以下部分封装成一个函数，从其他标签的向量出发得到
-    for b in range(batch_size):
-        predict_vec = predicts[b]  # 1 * C维度
-        # 遍历每一个推断出来的标签
-        for lj in range(label_dim):
-            relation_num = 0
-            for li in range(label_dim):
-                # 判断从li是否能推断出lj
-                if lj in adjList[li]:
-                    # a表示从li到lj的相关性，不是计算损失，无需使用带有梯度的相关性值
-                    if requires_grad:
-                        a = adjList[li][lj]
-                    else:
-                        a = adjList[li][lj].item()
-                    # 需要进行归一化，归一化系数为len(adjList[li])
-                    candidates[b][lj] += predict_vec[li] * a
-                    relation_num += 1
-                elif li == lj:
-                    candidates[b][lj] += predict_vec[li]
-                    relation_num += 1
-            candidates[b][lj] /= relation_num
-    return candidates
-
-
 # predicts：该批次样本b的预测向量，维度是b*C
 # adjList：维护与每个标签相关的标签以及对应的值
-def LabelOMP(predicts, adjList):
+def LabelOMP(predicts, adjList, corrected=False):
     device = predicts.device
     batch_size = len(predicts)
     _, label_dim = predicts.size()
@@ -62,7 +32,10 @@ def LabelOMP(predicts, adjList):
     predict_similarities = torch.zeros(batch_size, batch_size, dtype=torch.float64).to(device)
     # Todo: candidates重复计算了啊
     # candidates表示从一个标签预测向量中根据标签相关性推断出来的新预测向量
-    candidates = getCandidates(predicts, adjList, requires_grad=False)
+    if not corrected:
+        candidates = getCandidates(predicts, adjList, requires_grad=False)
+    else:
+        candidates = getCorrectedCandidates(predicts, adjList, requires_grad=False)
     # 对第1维计算范数
     candidate_norms = torch.norm(candidates, dim=1)
 
@@ -173,4 +146,3 @@ def OMP(features, predicts, A):
                 predict_similarities[i][neighbor] = max(0, predict_coefficients[m])
     # Todo: 这些相似性是无需梯度的
     return feature_similarities.detach(), predict_similarities.detach()
-
