@@ -36,7 +36,7 @@ def fix_aps(base_path, col0_name, mAP_file_name, aps_file_name):
     print("Done")
 
 
-experiment_path = 'voc/voc_fpsl'
+experiment_path = 'voc/voc_fpsl_200_onecycle'
 
 clients_path = [os.path.join(experiment_path, 'guest/10')]
 for i in range(1, 10):
