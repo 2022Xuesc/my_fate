@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202310141100215339370"
-job_id = "202310141100215339370"
+dir_id = "202310150238458578470"
+job_id = "202310150238458578470"
 module_name = 'multi_label_0'
-target_dir = 'voc/voc_interactive_40_onecycle'
+target_dir = 'voc/voc_interactive_200_plateau'
 client_num = 10
 
 
