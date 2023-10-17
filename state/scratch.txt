@@ -58,27 +58,28 @@ FPSL
         OneCycle: 202310141058527568340  Todo: Done
     iter = 50
         OneCycle: 202310141445536543540  Todo: Done
-        Plateau:  202310150238458578470  Todo: Ongoing
-        Plateau + wd(1e-3):
+        Plateau:  202310150238458578470  Todo: Done
+        Plateau + wd(1e-3):  202310160148116520430
 
 Interactive:
     iter = 10: 202310141100215339370 Todo: 分析一下相关性变化
     iter = 50:
 Fixed_Interactive:
-    iter = 10: 202310151329296348000
-    iter = 50:
+    iter = 10: 202310151329296348000 Todo: Done，感觉跑得不够
+    iter = 50: 202310161514455808460
 Handle interactive Todo: (代码改正)
 
 编写结果脚本
 prime: 202310120353361894560
 interactive: 202310130900418558910
 
-Todo: 过拟合的可能原因
+Todo: 过拟合的实验分析
 1. weight_decay设置过小
-    1e-4
-    1e-3
+    1e-3: 202310160148116520430
 2. 模型容量过大
-3. 非预训练模型
+    resnet50+(256-224)：
+3. 非预训练模型:
+
 
 
 

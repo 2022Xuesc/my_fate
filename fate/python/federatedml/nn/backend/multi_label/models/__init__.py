@@ -13,6 +13,10 @@ TORCHVISION_MODEL_NAMES = sorted(
     if name.islower() and not name.startswith("__")
     and callable(torch_models.__dict__[name]))
 
+resnet_models = dict()
+resnet_models[50] = torch_models.resnet50
+resnet_models[101] = torch_models.resnet101
+
 
 def create_model(pretrained, dataset, arch, device, num_classes=1000):
     model = None
@@ -30,14 +34,13 @@ def create_model(pretrained, dataset, arch, device, num_classes=1000):
     return model.to(device)
 
 
-def create_resnet101_model(pretrained, device, num_classes=80):
+def create_resnet101_model(pretrained, device,num_classes=80,layer_num=101):
     # Todo: 先下载1000类的全连接层
-    model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
+    model = resnet_models[layer_num](pretrained=pretrained, num_classes=1000)
     # 将最后的全连接层替换掉
     model.fc = torch.nn.Sequential(torch.nn.Linear(2048, num_classes))
     torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
     return model.to(device)
-
 
 def create_lstm_model(embed_size, hidden_size, num_layers, label_num, device):
     model = CnnRnn(embed_size, hidden_size, label_num, num_layers, device)
