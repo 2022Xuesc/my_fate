@@ -59,7 +59,7 @@ FPSL
     iter = 50
         OneCycle: 202310141445536543540  Todo: Done
         Plateau:  202310150238458578470  Todo: Done
-        Plateau + wd(1e-3):  202310160148116520430
+        Plateau + wd(1e-3):  202310160148116520430 Todo: Done
         resnet50+scale224:   202310170710395507420
 
 Interactive:
@@ -67,7 +67,7 @@ Interactive:
     iter = 50:
 Fixed_Interactive:
     iter = 10: 202310151329296348000 Todo: Done，感觉跑得不够
-    iter = 50: 202310161514455808460
+    iter = 50: 202310161514455808460 Todo: Done，精度一般
 Handle interactive Todo: (代码改正)
 
 编写结果脚本

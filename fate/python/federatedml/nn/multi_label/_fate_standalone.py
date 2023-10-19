@@ -268,18 +268,18 @@ class AveragePrecisionMeter(object):
         ap = torch.zeros(self.scores.size(1))
         rg = torch.arange(1, self.scores.size(0)).float()
         # compute average precision for each class
-        non_zero_labels = 0
+        # non_zero_labels = 0
         for k in range(self.scores.size(1)):
             # sort scores
             scores = self.scores[:, k]
             targets = self.targets[:, k]
             # compute average precision
             ap[k] = AveragePrecisionMeter.average_precision(scores, targets, self.difficult_examples)
-            if targets.sum() != 0:
-                non_zero_labels += 1
+            # if targets.sum() != 0:
+            #     non_zero_labels += 1
         # Todo: 在这里判断不为空的标签个数，直接求均值
-        return ap.sum() / non_zero_labels
-
+        # return ap.sum() / non_zero_labels
+        return ap
     @staticmethod
     def average_precision(output, target, difficult_examples=False):
 
@@ -294,6 +294,7 @@ class AveragePrecisionMeter(object):
         # 遍历排序后的下标即可
         for i in indices:
             label = target[i]
+            # Todo: 如果是设置跳过较难预测的样本并且标签为0，则跳过
             if difficult_examples and label == 0:
                 continue
             # 更新正标签的个数
@@ -306,8 +307,8 @@ class AveragePrecisionMeter(object):
                 precision_at_i += pos_count / total_count
         # 除以样本的正标签个数对精度进行平均
         # Todo: 一般不需要该判断语句，每个样本总有正标签
-        if pos_count != 0:
-            precision_at_i /= pos_count
+        # if pos_count != 0:
+        precision_at_i /= pos_count
         # 返回该样本的average precision
         return precision_at_i
 

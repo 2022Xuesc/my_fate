@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202310150238458578470"
-job_id = "202310150238458578470"
+dir_id = "202310160148116520430"
+job_id = "202310160148116520430"
 module_name = 'multi_label_0'
-target_dir = 'voc/voc_interactive_200_plateau'
+target_dir = 'voc/voc_fpsl_plateau_weight_decay'
 client_num = 10
 
 
@@ -44,13 +44,3 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
-
-
-
-
-
-
-
-
-
-
