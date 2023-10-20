@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202310160148116520430"
-job_id = "202310160148116520430"
+dir_id = "202310150238458578470"
+job_id = "202310150238458578470"
 module_name = 'multi_label_0'
-target_dir = 'voc/voc_fpsl_plateau_weight_decay'
+target_dir = 'voc/voc_fpsl_plateau_200'
 client_num = 10
 
 

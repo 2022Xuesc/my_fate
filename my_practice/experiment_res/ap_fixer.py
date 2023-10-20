@@ -36,13 +36,14 @@ def fix_aps(base_path, col0_name, mAP_file_name, aps_file_name):
     print("Done")
 
 
-experiment_path = 'voc/voc_fpsl_200_onecycle'
+# experiment_path = 'voc/voc_fpsl_200_onecycle'
+paths = ["voc/voc_fixed_interactive","voc/voc_fpsl_plateau_200","voc/voc_fpsl_plateau_weight_decay"]
+for experiment_path in paths:
+    clients_path = [os.path.join(experiment_path, 'guest/10')]
+    for i in range(1, 10):
+        clients_path.append(os.path.join(experiment_path, f'host/{i}'))
+    for client_path in clients_path:
+        fix_aps(client_path, "epoch", "valid.csv", "val_aps.csv")
 
-clients_path = [os.path.join(experiment_path, 'guest/10')]
-for i in range(1, 10):
-    clients_path.append(os.path.join(experiment_path, f'host/{i}'))
-for client_path in clients_path:
-    fix_aps(client_path, "epoch", "valid.csv", "val_aps.csv")
-
-arbiter_path = os.path.join(experiment_path, 'arbiter/999')
-fix_aps(arbiter_path, "agg_iter", "avgloss.csv", "agg_ap.csv")
+    arbiter_path = os.path.join(experiment_path, 'arbiter/999')
+    fix_aps(arbiter_path, "agg_iter", "avgloss.csv", "agg_ap.csv")

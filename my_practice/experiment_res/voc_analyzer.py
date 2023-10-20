@@ -82,32 +82,30 @@ def compare_layer_ratio_method(paths, file):
         else:
             file = 'valid.csv'
             x_axis = 'epoch'
-        onecycle_40_path = os.path.join('voc/voc_fpsl_40_onecycle', os.path.join(path, file))
-        onecycle_40_data = pd.read_csv(onecycle_40_path)
+        fpsl_200_path = os.path.join('voc/voc_fpsl_plateau_200', os.path.join(path, file))
+        fpsl_200_data = pd.read_csv(fpsl_200_path)
 
-        # onecycle_200_path = os.path.join('voc/voc_fpsl_200_onecycle', os.path.join(path, file))
-        # onecycle_200_data = pd.read_csv(onecycle_200_path)
+        fpsl_200_weight_decay_path = os.path.join('voc/voc_fpsl_plateau_weight_decay', os.path.join(path, file))
+        fpsl_200_weight_decay_data = pd.read_csv(fpsl_200_weight_decay_path)
 
-        interactive_40_path = os.path.join('voc/voc_interactive_40_onecycle', os.path.join(path, file))
-        interactive_40_data = pd.read_csv(interactive_40_path)
+        fixed_interactive_200_path = os.path.join('voc/voc_fixed_interactive', os.path.join(path, file))
+        fixed_interactive_200_data = pd.read_csv(fixed_interactive_200_path)
 
-        epochs = onecycle_40_data[x_axis]
+        epochs = fpsl_200_data[x_axis]
 
-        onecycle_40_mAP = onecycle_40_data['mAP']
-        interactive_40_mAP = interactive_40_data['mAP']
+        fpsl_200_mAP = fpsl_200_data['mAP']
+        fpsl_200_weight_decay_mAP = fpsl_200_weight_decay_data['mAP']
+        fixed_interactive_200_mAP = fixed_interactive_200_data['mAP']
 
-        plt.plot(epochs, onecycle_40_mAP, 'g')
-        plt.plot(epochs, interactive_40_mAP, 'b')
-        # plt.plot(epochs, fixed_save_mAP, 'brown')
-        # plt.plot(epochs, lamp_mAP, 'r')
-        # plt.plot(epochs, dep_mAP, 'orange')
-        # plt.plot(epochs, dep_drop_mAP, 'purple')
+        plt.plot(epochs, fpsl_200_mAP, 'g')
+        plt.plot(epochs, fpsl_200_weight_decay_mAP, 'b')
+        plt.plot(epochs[0: len(fixed_interactive_200_mAP)], fixed_interactive_200_mAP, 'r')
         # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
         # plt.ylim(60, 80)
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
-        plt.legend(['FPSL_OneCycle_40', 'Relation_OneCycle_40'])
+        plt.legend(['FPSL', 'FPSL Weight Decay', 'Interactive', 'Fixed Interactive'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -222,21 +220,22 @@ def draw_train_and_valid(paths):
 #
 
 # Todo: 各个客户端自身的结果分析
-# paths = ["voc/voc_fpsl_200_onecycle","voc/voc_interactive_40_onecycle"]
-# for path in paths:
-#     clients_path = [os.path.join(path, 'guest/10')]
-#
-#     for i in range(1, 10):
-#         clients_path.append(os.path.join(path, f'host/{i}'))
-#
-#
-#     # Todo: 各个客户端的结果分析
-#     arbiter_path = os.path.join(path, 'arbiter/999')
-#     draw_train_and_valid(clients_path)
-#     draw(arbiter_path, loss_file='avgloss.csv')
+
+paths = ["voc/voc_fixed_interactive","voc/voc_fpsl_plateau_200","voc/voc_fpsl_plateau_weight_decay"]
+for path in paths:
+    clients_path = [os.path.join(path, 'guest/10')]
+
+    for i in range(1, 10):
+        clients_path.append(os.path.join(path, f'host/{i}'))
 
 
-# paths = ["voc/voc_interactive_40_onecycle"]
+    # Todo: 各个客户端的结果分析
+    arbiter_path = os.path.join(path, 'arbiter/999')
+    draw_train_and_valid(clients_path)
+    draw(arbiter_path, loss_file='avgloss.csv')
+
+
+# paths = ["voc/voc_fixed_interactive","voc/voc_fixed_interactive_short"]
 # # Todo: 画一下损失成分
 # for path in paths:
 #     clients_path = [os.path.join(path, 'guest/10')]
@@ -247,11 +246,11 @@ def draw_train_and_valid(paths):
 
 
 # Todo: 比较方法
-clients_path = ['guest/10']
-
-for i in range(1, 10):
-    clients_path.append(f'host/{i}')
-# 将服务器端也加进去
-clients_path.append('arbiter/999')
-
-compare_layer_ratio_method(clients_path, 'valid.csv')
+# clients_path = ['guest/10']
+#
+# for i in range(1, 10):
+#     clients_path.append(f'host/{i}')
+# # 将服务器端也加进去
+# clients_path.append('arbiter/999')
+#
+# compare_layer_ratio_method(clients_path, 'valid.csv')
