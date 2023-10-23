@@ -323,10 +323,11 @@ def gen_A(num_classes, t, adj_file):
     _nums = _nums[:, np.newaxis]
     # 转换成概率的形式，注意这里同时除以_nums之后不对称了,第i行的除以标签i的出现次数
     _adj = _adj / _nums
-    # 为了训练的鲁棒性，小于阈值t则设置为0，否则设置为1，可以经过实验探究
+    # 为了训练的鲁棒性，小于阈值t则设置为0，否则设置为1
     _adj[_adj < t] = 0
     _adj[_adj >= t] = 1
     # 这里对第0维求和，保持第1维的形状，得到1*80的矩阵；第i列的除以对应的和，可认为是归一化的一个过程
+    # Todo: 但是这个公式为什么这样设计
     _adj = _adj * 0.25 / (_adj.sum(0, keepdims=True) + 1e-6)
     _adj = _adj + np.identity(num_classes, np.int)
     return _adj

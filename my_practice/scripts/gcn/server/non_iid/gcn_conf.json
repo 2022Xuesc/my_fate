@@ -31,51 +31,24 @@
   "component_parameters": {
     "common": {
       "gcn_0": {
-        "max_iter": 100,
-        "batch_size": 16,
-        "aggregate_every_n_epoch": 5,
-        "lr": 0.01,
+        "max_iter": 10,
+        "batch_size": 4,
+        "aggregate_every_n_epoch": 4,
+        "lr": 0.0001,
         "num_labels": 80,
         "pretrained": true,
-        "dataset": "coco",
+        "dataset": "ms-coco",
         "arch": "resnet",
         "adj_file": "/data/projects/fate/my_practice/dataset/coco/coco_adj.pkl",
-        "t": 0.4,
-        "sched_dict": {
-          "lr_schedulers": {
-            "pruning_lr": {
-              "class": "ExponentialLR",
-              "gamma": 0.99
-            }
-          },
-          "regularizers": {
-            "l2_regularizer": {
-              "class": "L2Regularizer",
-              "lamda": 0.000025
-            }
-          },
-          "policies": {
-            "lr_scheduler": {
-              "instance_name": "pruning_lr",
-              "starting_epoch": 100,
-              "ending_epoch": 400,
-              "frequency": 5
-            },
-            "regularizer": {
-              "instance_name": "l2_regularizer",
-              "starting_epoch": 0,
-              "ending_epoch": 500,
-              "frequency": 1
-            }
-          }
-        }
+        "t": 0.4
       }
     },
     "role": {
       "guest": {
         "0": {
           "gcn_0": {
-            "device": "cuda:0"
+            "device": "cuda:0",
+            "batch_size" : 16
           },
           "reader_0": {
             "table": {

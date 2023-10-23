@@ -57,7 +57,7 @@ class GCNResnet(nn.Module):
             model.layer4,
         )
         self.num_classes = num_classes
-        self.pooling = nn.MaxPool2d(14, 14)
+        self.pooling = nn.MaxPool2d(14, 14)  # Todo: 这里使用MaxPool2d好还是AdaptivePool好？之后进行验证
         # 定义图卷积层
         self.gc1 = GraphConvolution(in_channel, 1024)
         self.gc2 = GraphConvolution(1024, 2048)
@@ -88,7 +88,7 @@ class GCNResnet(nn.Module):
         x = torch.matmul(feature, x)
         return x
 
-    # 获取需要优化的参数
+    # 为不同部分设置不同的学习率
     def get_config_optim(self, lr, lrp):
         return [
             {'params': self.features.parameters(), 'lr': lr * lrp},
@@ -96,12 +96,18 @@ class GCNResnet(nn.Module):
             {'params': self.gc2.parameters(), 'lr': lr},
         ]
 
+    def get_feature_params(self):
+        return self.features.parameters()
+
+    def get_gcn_params(self):
+        return [
+            {'params': self.gc1.parameters()},
+            {'params': self.gc2.parameters()}
+        ]
+
 
 def gcn_resnet101(pretrained, dataset, t, adj_file=None, device='cpu', num_classes=80, in_channel=300):
     model = torch_models.resnet101(pretrained=pretrained)
 
     model = GCNResnet(model=model, num_classes=num_classes, in_channel=in_channel, t=t, adj_file=adj_file)
-    # 设置必要的信息
-    set_model_input_shape_attr(model, dataset)
-    model.dataset = dataset
     return model.to(device)

@@ -317,7 +317,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, resize_scale=256, crop_scale=224)
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
 
     fitter = MultiLabelFitter(param, epochs, context=context)
 

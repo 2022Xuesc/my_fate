@@ -299,10 +299,10 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
     # param.batch_size = 1
     # param.max_iter = 100
-    # param.num_labels = 20
+    # param.num_labels = 80
 
-    # category_dir = '/data/projects/dataset'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/dataset'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -317,7 +317,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, resize_scale=256, crop_scale=224)
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
 
     fitter = MultiLabelFitter(param, epochs, context=context)
 
@@ -448,12 +448,13 @@ class MultiLabelFitter(object):
                 idx += 1
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
-        mAP, loss = self.train_one_epoch(epoch, train_loader, scheduler)
+        self.train_one_epoch(epoch, train_loader, scheduler)
+        valid_metrics = None
         if valid_loader:
-            mAP, loss = self.validate_one_epoch(epoch, valid_loader, scheduler)
+            valid_metrics = self.validate_one_epoch(epoch, valid_loader, scheduler)
         if self.scheduler:
             self.scheduler.on_epoch_end(epoch, self.optimizer)
-        return mAP, loss
+        return valid_metrics
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_samples = len(train_loader.sampler)
@@ -468,6 +469,7 @@ class MultiLabelFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
+        sigmoid_func = torch.nn.Sigmoid()
         # 这里不使用inp
         for train_step, (inputs, target) in enumerate(train_loader):
             inputs = inputs.to(device)
@@ -482,7 +484,7 @@ class MultiLabelFitter(object):
             output = model(inputs)
             self.ap_meter.add(output.data, target.data)
 
-            loss = criterion(torch.nn.Sigmoid()(output), target)
+            loss = criterion(sigmoid_func(output), target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
@@ -490,13 +492,14 @@ class MultiLabelFitter(object):
             optimizer.step()
             self.lr_scheduler.step()
 
-        mAP, _ = 100 * self.ap_meter.value()
+        mAP, _ = self.ap_meter.value()
+        mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         # 这里还统计其他数据
 
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
-        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, map.item(), loss]
+        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item(), loss]
         train_writer.writerow([epoch] + metrics)
         return metrics
 
@@ -529,11 +532,12 @@ class MultiLabelFitter(object):
                 # Todo: 对相关格式的验证
                 self.ap_meter.add(output.data, target.data)
 
-        mAP, _ = 100 * self.ap_meter.value()
-        loss = losses[OVERALL_LOSS_KEY].mean
+        mAP, _ = self.ap_meter.value()
+        mAP *= 100
+        loss = losses[OBJECTIVE_LOSS_KEY].mean
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
-        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, map.item(), loss]
+        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item(), loss]
         valid_writer.writerow([epoch] + metrics)
         return metrics
 
