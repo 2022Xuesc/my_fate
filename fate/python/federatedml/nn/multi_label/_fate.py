@@ -1,35 +1,41 @@
 # 服务器与客户端的通用逻辑
 import math
+import numpy as np
+import torch
 import torch.nn
 import torchnet.meter as tnt
+import torchvision.transforms as transforms
 
 import copy
+import csv
 import os
 import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.multi_label.config import config_scheduler
 from federatedml.nn.backend.multi_label.models import *
-from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
-from federatedml.nn.backend.utils.aggregators.aggregator import *
+
+from federatedml.nn.backend.pytorch.data import COCO
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
-from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
-# Todo: 日志文件记录部分重构
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
+from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
+from federatedml.nn.backend.utils.aggregators.aggregator import *
 
 my_writer = MyWriter(dir_name=os.getcwd())
 
-train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
-valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP', 'valid_loss'])
-avgloss_writer = my_writer.get("avgloss.csv", header=['agg_iter', 'mAP', 'avgloss'])
-
-train_aps_writer = my_writer.get("train_aps.csv")
-val_aps_writer = my_writer.get("val_aps.csv")
-agg_ap_writer = my_writer.get("agg_ap.csv")
+client_header = ['epoch', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map',
+                 'loss']
+server_header = ['agg_iter', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3',
+                 'map', 'loss']
+train_writer = my_writer.get("train.csv", header=client_header)
+valid_writer = my_writer.get("valid.csv", header=client_header)
+avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 
 
 class _FedBaseContext(object):
@@ -39,6 +45,10 @@ class _FedBaseContext(object):
         self._aggregation_iteration = 0
 
     def _suffix(self, group: str = "model"):
+        # Todo: 注意这里的后缀
+        #  self._name --> "default"
+        #  group      --> "model"
+        #  iteration  --> `当前聚合轮次`
         return (
             self._name,
             group,
@@ -101,13 +111,8 @@ class FedClientContext(_FedBaseContext):
     def recv_model(self):
         return self.aggregator.get_aggregated_model(suffix=self._suffix())
 
-    def send_loss(self, ap, mAP, loss, weight):
-        self.aggregator.send_model((ap, mAP, loss, weight), suffix=self._suffix(group="loss"))
-
-    def recv_loss(self):
-        return self.aggregator.get_aggregated_model(
-            suffix=self._suffix(group="convergence")
-        )
+    def send_metrics(self, metrics, weight):
+        self.aggregator.send_model((metrics, weight), suffix=self._suffix(group="metrics"))
 
     # 发送、接收全局模型并更新本地模型
     def do_aggregation(self, bn_data, weight, device):
@@ -122,7 +127,6 @@ class FedClientContext(_FedBaseContext):
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
         for param, agg_tensor in zip(self._params, agg_tensors):
-            # param.grad处理的是哪种情况
             if param.grad is None:
                 continue
             param.data.copy_(agg_tensor)
@@ -132,10 +136,9 @@ class FedClientContext(_FedBaseContext):
             bn_tensors.append(torch.from_numpy(arr).to(device))
         return bn_tensors
 
-    def do_convergence_check(self, weight, ap, mAP, loss_value):
-        self.loss_summary.append(loss_value)
-        self.send_loss(ap, mAP, loss_value, weight)
-        return self.recv_loss()
+    def do_convergence_check(self, weight, metrics):
+        self.send_metrics(metrics, weight)
+        return False
 
     # 配置聚合参数，将优化器中的参数提取出来
     def configure_aggregation_params(self, optimizer):
@@ -192,48 +195,29 @@ class FedServerContext(_FedBaseContext):
             (mAP, status), suffix=self._suffix(group="convergence")
         )
 
-    def recv_losses(self):
-        return self.aggregator.get_models(suffix=self._suffix(group="loss"))
+    def recv_metrics(self):
+        return self.aggregator.get_models(suffix=self._suffix(group="metrics"))
 
     def do_convergence_check(self):
-        loss_weight_pairs = self.recv_losses()
-        total_loss = 0.0
+        loss_metrics_pairs = self.recv_metrics()
+        total_metrics = None
         total_weight = 0.0
-        total_mAP = 0.
 
-        num_labels = len(loss_weight_pairs[0][0])
-        # 对每个标签有贡献的平均精度值
-        agg_ap = torch.zeros(num_labels)
-        # 对每个标签有贡献的客户端数量
-        agg_weight = torch.zeros(num_labels)
-
-        for ap, mAP, loss, weight in loss_weight_pairs:
-            # 遍历每一个标签
-            for i in range(num_labels):
-                if ap[i] != -1:
-                    agg_ap[i] += ap[i] * weight
-                    agg_weight[i] += weight
-            total_loss += loss * weight
-            total_mAP += mAP * weight
-            total_weight += weight
-        # 对agg_ap进行平均
-        for i in range(num_labels):
-            # 判断agg_weight是否等于0，如果是，则将其设置成-1，表示没有对应的样本
-            if agg_weight[i] == 0:
-                agg_ap[i] = -1
+        for metrics, weight in loss_metrics_pairs:
+            cur_metrics = [metric * weight for metric in metrics]
+            if total_metrics is None:
+                total_metrics = cur_metrics
             else:
-                agg_ap[i] /= agg_weight[i]
+                total_metrics = [x + y for x, y in zip(total_metrics, cur_metrics)]  # Todo: 这样是附加，而不是对应位置相加
+            total_weight += weight
 
-        agg_ap_writer.writerow(agg_ap.tolist())
-        mean_loss = total_loss / total_weight
-        mean_mAP = total_mAP / total_weight
+        mean_metrics = [metric / total_weight for metric in total_metrics]
 
-        avgloss_writer.writerow([self.aggregation_iteration, mean_mAP, mean_loss])
+        avgloss_writer.writerow([self.aggregation_iteration] + mean_metrics)
 
+        mean_loss = mean_metrics[-1]
         is_converged = abs(mean_loss - self._loss) < self._eps
-        self._loss = mean_loss
-        self.send_convergence_status(mean_mAP, is_converged)
-
+        self._loss = mean_metrics[-1]
         LOGGER.info(f"convergence check: loss={mean_loss}, is_converged={is_converged}")
         return is_converged, mean_loss
 
@@ -250,12 +234,13 @@ class SyncAggregator(object):
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
 
             cur_iteration = self.context.aggregation_iteration
-
             LOGGER.warn(f'收到{len(recv_elements)}个客户端发送过来的模型')
 
-            # 对收到的数据进行解析：模型数据、bn层统计数据、聚合权重数据
             tensors = [party_tuple[0] for party_tuple in recv_elements]
+            # 还有bn层的统计数据
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
+            # Todo: 对BN层的统计数据进行处理
+            # 抽取出
             degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
             # 分标签进行聚合
@@ -312,14 +297,12 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 1
-    # param.max_iter = 100
-    # param.num_labels = 20
+    param.batch_size = 1
+    param.max_iter = 100
+    param.num_labels = 80
 
     # category_dir = '/data/projects/dataset'
-    category_dir = "/data/projects/voc2007"
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -352,7 +335,6 @@ class MultiLabelFitter(object):
         self.scheduler = ...
         self.param = copy.deepcopy(param)
         self._all_consumed_data_aggregated = True
-        self.best_precision = 0
         self.context = context
         self.label_mapping = label_mapping
 
@@ -386,22 +368,15 @@ class MultiLabelFitter(object):
     def fit(self, train_loader, valid_loader):
 
         # 初始化OneCycleLR学习率调度器
-        # self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
-        #                                                         max_lr=self.param.lr,
-        #                                                         epochs=self.end_epoch,
-        #                                                         steps_per_epoch=len(train_loader))
-        # 两个回合没有改进时就降低学习率
-        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.9,
-                                                                       patience=2)
+        self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
+                                                                max_lr=self.param.lr,
+                                                                epochs=self.end_epoch,
+                                                                steps_per_epoch=len(train_loader))
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
-            ap, mAP, loss = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
-            # 注意传入的是验证损失
-            self.lr_scheduler.step(loss)
-            current_lr = self.optimizer.param_groups[0]['lr']
-            LOGGER.warn(f'epoch = {epoch}/{self.end_epoch}, mAP = {mAP}, loss = {loss}, lr = {current_lr}')
-            self.on_fit_epoch_end(epoch, valid_loader, ap, mAP, loss)
+            valid_metrics = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
+            self.on_fit_epoch_end(epoch, valid_loader, valid_metrics)
             if self.context.should_stop():
                 break
 
@@ -413,15 +388,16 @@ class MultiLabelFitter(object):
         else:
             self._num_data_consumed += num_samples
 
-    def on_fit_epoch_end(self, epoch, valid_loader, ap, valid_mAP, valid_loss):
-        mAP = valid_mAP
-        loss = valid_loss
+    def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
+        metrics = valid_metrics
         if self.context.should_aggregate_on_epoch(epoch):
-            self.aggregate_model(epoch, self._num_data_consumed)
+            self.aggregate_model(epoch)
             # 同步模式下，需要发送loss和mAP
-            mean_mAP, status = self.context.do_convergence_check(
-                self._num_data_consumed, ap, mAP, loss
+            status = self.context.do_convergence_check(
+                self._num_data_consumed, metrics
             )
+            if status:
+                self.context.set_converged()
             self._all_consumed_data_aggregated = True
 
             # 将相关指标重置为0
@@ -431,25 +407,23 @@ class MultiLabelFitter(object):
 
             self.context.increase_aggregation_iteration()
 
+        # if (epoch + 1) % 50 == 0:
+        #     torch.save(self.model.state_dict(), f'model_{epoch + 1}.path')
+
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
-        mAP, ap, loss = self.train(train_loader, self.model, self.criterion, self.optimizer,
-                                   epoch, self.param.device, scheduler)
-
-        train_writer.writerow([epoch, mAP, loss])
-        train_aps_writer.writerow(ap)
-        # 也记录一下ap值
-        return ap, mAP, loss
+        self.ap_meter.reset()
+        metrics = self.train(train_loader, self.model, self.criterion, self.optimizer,
+                             epoch, self.param.device, scheduler)
+        return metrics
 
     def validate_one_epoch(self, epoch, valid_loader, scheduler):
-        mAP, ap, loss = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device,
-                                      scheduler)
-        valid_writer.writerow([epoch, mAP, loss])
-        val_aps_writer.writerow(ap)
-        # 并且返回验证集的ap
-        return ap, mAP, loss
+        self.ap_meter.reset()
+        metrics = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device,
+                                  scheduler)
+        return metrics
 
-    def aggregate_model(self, epoch, weight):
+    def aggregate_model(self, epoch=None, weight=None):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
 
@@ -474,12 +448,13 @@ class MultiLabelFitter(object):
                 idx += 1
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
-        ap, mAP, loss = self.train_one_epoch(epoch, train_loader, scheduler)
+        self.train_one_epoch(epoch, train_loader, scheduler)
+        valid_metrics = None
         if valid_loader:
-            ap, mAP, loss = self.validate_one_epoch(epoch, valid_loader, scheduler)
+            valid_metrics = self.validate_one_epoch(epoch, valid_loader, scheduler)
         if self.scheduler:
             self.scheduler.on_epoch_end(epoch, self.optimizer)
-        return ap, mAP, loss
+        return valid_metrics
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_samples = len(train_loader.sampler)
@@ -494,6 +469,7 @@ class MultiLabelFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
+        sigmoid_func = torch.nn.Sigmoid()
         # 这里不使用inp
         for train_step, (inputs, target) in enumerate(train_loader):
             inputs = inputs.to(device)
@@ -508,15 +484,24 @@ class MultiLabelFitter(object):
             output = model(inputs)
             self.ap_meter.add(output.data, target.data)
 
-            loss = criterion(torch.nn.Sigmoid()(output), target)
+            loss = criterion(sigmoid_func(output), target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        mAP, ap = self.ap_meter.value()
+            self.lr_scheduler.step()
+
+        mAP, _ = self.ap_meter.value()
         mAP *= 100
-        return mAP.item(), ap, losses[OBJECTIVE_LOSS_KEY].mean
+        loss = losses[OBJECTIVE_LOSS_KEY].mean
+        # 这里还统计其他数据
+
+        OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
+        OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
+        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item(), loss]
+        train_writer.writerow([epoch] + metrics)
+        return metrics
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         # 对Loss进行更新
@@ -530,6 +515,8 @@ class MultiLabelFitter(object):
 
         total_steps = math.ceil(total_samples / batch_size)
 
+        sigmoid_func = torch.nn.Sigmoid()
+
         model.eval()
         # Todo: 在开始训练之前，重置ap_meter
         self.ap_meter.reset()
@@ -538,22 +525,27 @@ class MultiLabelFitter(object):
                 inputs = inputs.to(device)
                 target = target.to(device)
                 output = model(inputs)
-                loss = criterion(torch.nn.Sigmoid()(output), target)
+                loss = criterion(sigmoid_func(output), target)
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
                 # 将输出和对应的target加入到ap_meter中
                 # Todo: 对相关格式的验证
                 self.ap_meter.add(output.data, target.data)
 
-        mAP, ap = self.ap_meter.value()
+        mAP, _ = self.ap_meter.value()
         mAP *= 100
-        return mAP.item(), ap, losses[OBJECTIVE_LOSS_KEY].mean
+        loss = losses[OBJECTIVE_LOSS_KEY].mean
+        OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
+        OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
+        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item(), loss]
+        valid_writer.writerow([epoch] + metrics)
+        return metrics
 
 
 def _init_learner(param, device='cpu'):
     # Todo: 将通用部分提取出来
-    model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels, layer_num=50)
+    model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels)
     # 使用Adam优化器
-    optimizer = torch.optim.AdamW(model.parameters(), lr=param.lr, weight_decay=1e-3)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=param.lr, weight_decay=1e-4)
     scheduler = None
     return model, scheduler, optimizer

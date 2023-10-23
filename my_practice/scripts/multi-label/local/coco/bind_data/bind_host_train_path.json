@@ -1,7 +1,7 @@
 {
     "engine": "PATH",
     "namespace": "local-coco",
-    "name": "guest-train",
+    "name": "host-train",
     "address": {
         "path": "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train"
     }

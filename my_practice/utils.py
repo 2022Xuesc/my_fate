@@ -131,35 +131,38 @@ weight = [1246.2886617819984,
 #
 #     # 输出当前epoch和学习率
 #     print(f"Epoch [{epoch + 1}/{num_epochs}], Learning rate: {scheduler.get_last_lr()}")
-from torch.optim.lr_scheduler import *
-import torchvision.models as models
-from torch.optim import *
-
-model = models.resnet50(pretrained=False)
-# 设立设定了初始的学习率
-optimizer = Adam(model.parameters(), weight_decay=1e-4)
-
-# 定义指数衰减学习率调度程序
-# exp_scheduler = ExponentialLR(optimizer,gamma=0.9)
+# from torch.optim.lr_scheduler import *
+# import torchvision.models as models
+# from torch.optim import *
 #
-# optimizer = torch.optim.SGD(model.parameters(), lr=initial_lr)
-# one_cycle_lr会根据总步数自动确定初始学习率，以及从初始学习率增加到最大学习率再到降低到最终学习率的调度方式
-one_cycle_scheduler = OneCycleLR(optimizer, max_lr=0.001, steps_per_epoch=10, epochs=10)
-num_epochs = 50
-# 训练过程中循环迭代
-for epoch in range(10):
-    # 执行训练和更新参数的操作
+# model = models.resnet50(pretrained=False)
+# # 设立设定了初始的学习率
+# optimizer = Adam(model.parameters(), weight_decay=1e-4)
+#
+# # 定义指数衰减学习率调度程序
+# # exp_scheduler = ExponentialLR(optimizer,gamma=0.9)
+# #
+# # optimizer = torch.optim.SGD(model.parameters(), lr=initial_lr)
+# # one_cycle_lr会根据总步数自动确定初始学习率，以及从初始学习率增加到最大学习率再到降低到最终学习率的调度方式
+# one_cycle_scheduler = OneCycleLR(optimizer, max_lr=0.001, steps_per_epoch=10, epochs=10)
+# num_epochs = 50
+# # 训练过程中循环迭代
+# for epoch in range(10):
+#     # 执行训练和更新参数的操作
+#
+#     # 在每个epoch开始时以指数方式更新学习率
+#     # exp_scheduler.step(epoch=epoch)
+#
+#     ...
+#     # Todo: 注意，实际的遍历步数不能超过预先定义好的总步数=epoch*steps_per_epoch
+#     for batch in range(4):
+#         ...
+#
+#         print(f"Epoch {epoch + 1}, Batch {batch + 1}, Learning rate: {one_cycle_scheduler.get_last_lr()}")
+#         # 每个batch更新一次学习率
+#         one_cycle_scheduler.step()
+#         # 输出当前epoch和学习率
+#         # print(f"Epoch {epoch + 1}, Batch {batch + 1}, Learning rate: {one_cycle_scheduler.get_last_lr()}")
 
-    # 在每个epoch开始时以指数方式更新学习率
-    # exp_scheduler.step(epoch=epoch)
 
-    ...
-    # Todo: 注意，实际的遍历步数不能超过预先定义好的总步数=epoch*steps_per_epoch
-    for batch in range(4):
-        ...
 
-        print(f"Epoch {epoch + 1}, Batch {batch + 1}, Learning rate: {one_cycle_scheduler.get_last_lr()}")
-        # 每个batch更新一次学习率
-        one_cycle_scheduler.step()
-        # 输出当前epoch和学习率
-        # print(f"Epoch {epoch + 1}, Batch {batch + 1}, Learning rate: {one_cycle_scheduler.get_last_lr()}")
