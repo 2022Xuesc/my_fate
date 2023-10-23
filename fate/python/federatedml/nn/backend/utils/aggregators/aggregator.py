@@ -67,6 +67,18 @@ def aggregate_by_labels(tensors, degrees):
     return tensors[0]
 
 
+def aggregate_whole_model(tensors, degrees):
+    degrees = np.array(degrees)
+    degrees_sum = degrees.sum(axis=0)
+    for i in range(len(tensors)):
+        for j, tensor in enumerate(tensors[i]):
+            tensor *= degrees[i][-1]
+            tensor /= degrees_sum[-1]
+            if i != 0:
+                tensors[0][j] += tensor
+    return tensors[0]
+
+
 def aggregate_relation_matrix(relation_matrices, degrees):
     degrees = np.array(degrees)
     degrees_sum = degrees.sum(axis=0)

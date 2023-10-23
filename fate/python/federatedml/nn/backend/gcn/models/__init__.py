@@ -43,7 +43,7 @@ class GraphConvolution(nn.Module):
 
 
 class GCNResnet(nn.Module):
-    def __init__(self, model, num_classes, in_channel=300, t=0, adj_file=None):
+    def __init__(self, model, num_classes, in_channel=300, t=0, adjList=None):
         super(GCNResnet, self).__init__()
         # 定义特征提取部分的网络
         self.features = nn.Sequential(
@@ -63,14 +63,19 @@ class GCNResnet(nn.Module):
         self.gc2 = GraphConvolution(1024, 2048)
         self.relu = nn.LeakyReLU(0.2)
         # Todo: 生成邻接的相关信息？
-        _adj = gen_A(num_classes, t, adj_file)
-        self.A = Parameter(torch.from_numpy(_adj).float())
+        self.A = self.generateA(adjList)
         # image normalization
         self.image_normalization_mean = [0.485, 0.456, 0.406]
         self.image_normalization_std = [0.229, 0.224, 0.225]
 
+    def generateA(self, adjList):
+        return Parameter(torch.from_numpy(adjList).float())
+
+    def updateA(self, adjList):
+        self.A = self.generateA(adjList)
+
     # 前向传播逻辑：features --> pooling -->
-    def forward(self, feature, inp):
+    def forward(self, feature, inp, _adj=None):
         feature = self.features(feature)
         feature = self.pooling(feature)
         # Todo: 第一维应该是batch，这里将二维特征展平
@@ -89,7 +94,7 @@ class GCNResnet(nn.Module):
         return x
 
     # 为不同部分设置不同的学习率
-    def get_config_optim(self, lr, lrp):
+    def get_config_optim(self, lr=0.1, lrp=0.1):
         return [
             {'params': self.features.parameters(), 'lr': lr * lrp},
             {'params': self.gc1.parameters(), 'lr': lr},
@@ -106,8 +111,8 @@ class GCNResnet(nn.Module):
         ]
 
 
-def gcn_resnet101(pretrained, dataset, t, adj_file=None, device='cpu', num_classes=80, in_channel=300):
+def gcn_resnet101(pretrained, dataset, t, adjList=None, device='cpu', num_classes=80, in_channel=300):
     model = torch_models.resnet101(pretrained=pretrained)
 
-    model = GCNResnet(model=model, num_classes=num_classes, in_channel=in_channel, t=t, adj_file=adj_file)
+    model = GCNResnet(model=model, num_classes=num_classes, in_channel=in_channel, t=t, adjList=adjList)
     return model.to(device)
