@@ -72,7 +72,7 @@ class GCNResnet(nn.Module):
         return Parameter(torch.from_numpy(adjList).float())
 
     def updateA(self, adjList):
-        self.A = self.generateA(adjList)
+        self.A.data.copy_(torch.from_numpy(adjList).float())
 
     # 前向传播逻辑：features --> pooling -->
     def forward(self, feature, inp, _adj=None):

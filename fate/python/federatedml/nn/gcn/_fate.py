@@ -257,6 +257,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # param.batch_size = 1
     # param.max_iter = 100
     # param.num_labels = 80
+    # param.device = 'cuda:0'
 
     category_dir = '/data/projects/fate/my_practice/dataset/coco/'
     # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
