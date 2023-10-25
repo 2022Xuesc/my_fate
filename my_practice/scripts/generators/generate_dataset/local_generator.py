@@ -11,7 +11,7 @@ guest_val_dir = os.path.join(target_dir, 'guest/val')
 host_val_dir = os.path.join(target_dir, 'host/val')
 
 # dirs = [guest_train_dir, guest_val_dir, host_train_dir, host_val_dir]
-dirs = ['/home/klaus125/research/fate/my_practice/knowledge/cam/my_imgs']
+dirs = ['/home/klaus125/research/dataset/val2014']
 # 共40000张图片，每个客户端训练2000张，测试200张
 
 

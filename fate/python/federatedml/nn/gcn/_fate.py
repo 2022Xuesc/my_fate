@@ -356,7 +356,7 @@ class GCNFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: [WARN]
-        # self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
+        # self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
 
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
@@ -555,7 +555,7 @@ class GCNFitter(object):
 
             # Todo: 移除掉较大的梯度
             #  太容易受影响了吧
-            torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=0.1)
+            # torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=0.5)
             optimizer.step()
 
             # LOGGER.warn(
@@ -568,9 +568,9 @@ class GCNFitter(object):
             # self.gcn_lr_scheduler.step()
 
         # Todo: 这里对学习率进行调整
-        if (epoch + 1) % 2 == 0:
+        if (epoch + 1) % 4 == 0:
             for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.5
+                param_group['lr'] *= 0.9
 
         mAP, _ = self.ap_meter.value()
         mAP *= 100
@@ -633,7 +633,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
 
     # optimizer = torch.optim.AdamW(model.get_config_optim(), lr=param.lr, weight_decay=1e-4)
 
-    lr, lrp = param.lr, 0.1
+    lr, lrp = param.lr, 1
     optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
                                 lr=lr,
                                 momentum=0.9,

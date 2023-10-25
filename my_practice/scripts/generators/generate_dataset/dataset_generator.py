@@ -172,6 +172,8 @@ def generate_anno(data, images_dir, dataset="COCO", phase='val'):
         if not filename.startswith('COCO') and (not filename.endswith('.jpg')):
             continue
         cur_img_id = str(get_image_id(filename, dataset))
+        if cur_img_id not in image_id:
+            continue
         anno_list.append(image_id[cur_img_id])
     # 将anno_list存储到图像路径中
     target_file_path = os.path.join(images_dir, 'anno.json')
