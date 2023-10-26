@@ -8,8 +8,8 @@ def draw_loss(path, file):
     data = pd.read_csv(file_path)
 
     iters = data['agg_iter']
-    mAPs = data['mAP']
-    avg_losses = data['avgloss']
+    mAPs = data['map']
+    avg_losses = data['loss']
 
     fig = plt.figure(figsize=(8, 6))
 
@@ -207,40 +207,23 @@ def compare_method(paths, file):
         #     for dir i dirs:
         #         file_path = os.path.join(path, f'{dir}/valid.csv')
         #         mAPs.append(pd.read_csv(file_path))
-        file_path1 = os.path.join('sync_fpsl_st', os.path.join(path, file))
+        file_path1 = os.path.join('gcn/base_fpsl', os.path.join(path, file))
         data1 = pd.read_csv(file_path1)
 
-        file_path2 = os.path.join('sync_fpsl_bn_only_split', os.path.join(path, file))
+        file_path2 = os.path.join('gcn/c_gcn', os.path.join(path, file))
         data2 = pd.read_csv(file_path2)
 
-        baseline_path = os.path.join('sync_fpsl_resnet', os.path.join(path, file))
-        data3 = pd.read_csv(baseline_path)
+        fpsl_mAP = data1['map']
+        c_gcn_mAP = data2['map']
 
-        st_mAP = data1['mAP']
-        fpsl_split_mAP = data2['mAP']
-        fpsl_baseline_mAP = data3['mAP']
 
-        ratio_path = os.path.join("sync_fpsl_fixed_ratio_drop", os.path.join(path, file))
-        ratio_data = pd.read_csv(ratio_path)
-        ratio_mAP = ratio_data['mAP']
-
-        plt.plot(data3[x_axis], fpsl_baseline_mAP, 'g')
-        plt.plot(ratio_data[x_axis], ratio_mAP, 'orange')
-        plt.plot(data1[x_axis], st_mAP, 'b')
-        plt.plot(data2[x_axis], fpsl_split_mAP, 'r')
-        # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
-        plt.ylim(40, 85)
+        plt.plot(data1[x_axis], fpsl_mAP, 'g')
+        plt.plot(data2[x_axis], c_gcn_mAP, 'b')
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
-        # 加竖线
-        # cliffs = [12, 20, 24, 32, 36]
-        # cliff_heights = st_dep_mAP.values[cliffs]
-        # plt.vlines(cliffs, 0, cliff_heights,label='label test', linestyles="dashed", colors='black')
-        # for j in range(len(cliffs)):
-        #     plt.text(cliffs[j] + 1, 42, cliffs[j], ha='center',color="black")
 
-        plt.legend(['FPSL-Full', 'FPSL-Ratio', 'FPSL-Split', 'FPSL-ST'])
+        plt.legend(['FPSL', 'C-GCN'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -250,11 +233,11 @@ def compare_method(paths, file):
             id = 'arbiter'
         else:
             id = path.split('/')[-1]
-        dir_name = 'compare_st'
+        dir_name = 'compare_gcn'
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
         save_path = os.path.join(dir_name, f'{id}.svg')
-        plt.show()
+        # plt.show()
         plt.savefig(save_path, dpi=600, format='svg')
         # plt.show()
         plt.close()
@@ -321,9 +304,9 @@ def draw_train_and_valid(paths):
         train_data = pd.read_csv(train_path)
         valid_data = pd.read_csv(valid_path)
         epochs = valid_data['epoch']
-        train_mAP = handle_tensor_mAP(train_data['mAP'])
-        valid_mAP = handle_tensor_mAP(valid_data['mAP'])
-        losses = valid_data[f'valid_loss']
+        train_mAP = handle_tensor_mAP(train_data['map'])
+        valid_mAP = handle_tensor_mAP(valid_data['map'])
+        losses = valid_data[f'loss']
 
         fig = plt.figure(figsize=(8, 6))
 
@@ -356,29 +339,29 @@ def draw_train_and_valid(paths):
 #
 
 # Todo: 各个客户端自身的结果分析
-paths = ["sync_fpsl_st", 'sync_fpsl_st_dep']
-for path in paths:
-    clients_path = [os.path.join(path, 'guest/10')]
-
-    for i in range(1, 10):
-        clients_path.append(os.path.join(path, f'host/{i}'))
-
-    # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
-    # draw_losses(clients_path, 'loss.csv')
-
-    # Todo: 各个客户端的结果分析
-    arbiter_path = os.path.join(path, 'arbiter/999')
-    draw_train_and_valid(clients_path)
-    draw(arbiter_path, loss_file='avgloss.csv')
+# paths = ["gcn/base_fpsl", 'gcn/c_gcn']
+# for path in paths:
+#     clients_path = [os.path.join(path, 'guest/10')]
+#
+#     for i in range(1, 10):
+#         clients_path.append(os.path.join(path, f'host/{i}'))
+#
+#     # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
+#     # draw_losses(clients_path, 'loss.csv')
+#
+#     # Todo: 各个客户端的结果分析
+#     arbiter_path = os.path.join(path, 'arbiter/999')
+#     draw_train_and_valid(clients_path)
+#     draw(arbiter_path, loss_file='avgloss.csv')
 
 
 # Todo: 比较方法
-# clients_path = ['guest/10']
-#
-# for i in range(1, 10):
-#     clients_path.append(f'host/{i}')
-# # 将服务器端也加进去
-# clients_path.append('arbiter/999')
+clients_path = ['guest/10']
 
-# compare_method(clients_path, 'valid.csv')
+for i in range(1, 10):
+    clients_path.append(f'host/{i}')
+# 将服务器端也加进去
+clients_path.append('arbiter/999')
+
+compare_method(clients_path, 'valid.csv')
 # compare_layer_ratio_method(clients_path, 'valid.csv')

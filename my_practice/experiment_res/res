@@ -1,28 +1,14 @@
 ————————————————————————————————————
-sync_fpsl_resnet
-Minimum: 35.3
-Maximum: 75.9
-Mean: 54.0
-Variance: 10.8
+gcn/base_fpsl
+Minimum: 37.9
+Maximum: 76.3
+Mean: 54.6
+Variance: 10.5
 ————————————————————————————————————
 ————————————————————————————————————
-sync_fpsl_fixed_ratio_drop
-Minimum: 37.3
-Maximum: 77.5
-Mean: 54.7
-Variance: 11.0
-————————————————————————————————————
-————————————————————————————————————
-sync_fpsl_bn_only_split
-Minimum: 37.7
-Maximum: 75.6
-Mean: 53.3
+gcn/c_gcn
+Minimum: 40.7
+Maximum: 80.4
+Mean: 58.4
 Variance: 10.9
-————————————————————————————————————
-————————————————————————————————————
-sync_fpsl_st
-Minimum: 35.9
-Maximum: 75.8
-Mean: 53.6
-Variance: 11.2
 ————————————————————————————————————
