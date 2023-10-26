@@ -624,9 +624,9 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
     #  不同部分使用不同的学习率
 
-    in_channel = 2048
-    model = p_gcn_resnet101(param.pretrained, adjList=adjList,
-                            device=param.device, num_classes=param.num_labels, in_channel=in_channel)
+    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
+    model = p_gcn_resnet101(param.pretrained, param.dataset, t=param.t, adjList=adjList,
+                          device=param.device, num_classes=param.num_labels, in_channel=in_channel)
     gcn_optimizer = None
     # optimizer = torch.optim.AdamW(model.get_feature_params(), lr=param.lr, weight_decay=1e-4)
     # gcn_optimizer = torch.optim.AdamW(model.get_gcn_params(), lr=0.01, weight_decay=1e-4)
