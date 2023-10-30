@@ -202,6 +202,8 @@ class PGCNResnet(nn.Module):
             {'params': self.features.parameters(), 'lr': lr * lrp},
             {'params': self.gc1.parameters(), 'lr': lr},
             {'params': self.gc2.parameters(), 'lr': lr},
+            # 注意全连接层的参数也要进行优化
+            {'params': self.fc.parameters(), 'lr': lr}
         ]
 
     def get_feature_params(self):

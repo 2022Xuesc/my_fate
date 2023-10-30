@@ -254,13 +254,13 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 1
-    # param.max_iter = 100
-    # param.num_labels = 80
-    # param.device = 'cuda:0'
+    param.batch_size = 1
+    param.max_iter = 100
+    param.num_labels = 80
+    param.device = 'cuda:0'
 
-    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -305,9 +305,9 @@ class GCNFedAggregator(object):
             # Todo: 这里需要再改改
             #  没有分类层了，因此，无法使用FPSL了
 
-            self.model = aggregate_whole_model(tensors, degrees)
+            # self.model = aggregate_whole_model(tensors, degrees)
 
-            # self.model = aggregate_by_labels(tensors, degrees)
+            self.model = aggregate_by_labels(tensors, degrees)
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
@@ -359,7 +359,7 @@ class GCNFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: [WARN]
-        # self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
+        self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
 
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
