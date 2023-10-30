@@ -184,13 +184,13 @@ class PGCNResnet(nn.Module):
         # feature的形状是batch_size * feature_dim
         # 将其与self.fc的权重进行哈达玛积
         # 得到batch_size * feature_dim * num_classes的输入
-        gcn_input = (feature.unsqueeze(2).expand(-1, -1, self.num_classes).transpose(1, 2) * self.fc.weight)
+        gcn_input = (feature.unsqueeze(2).expand(-1, -1, self.num_classes).transpose(1, 2) * self.fc.weight)  # 执行完transpose后形状为(1,80,2048)，每一行是1个图像特征
 
         # Todo: 是图神经网络的输入
 
         adj = gen_adj(self.A).detach()
         x = self.gc1(gcn_input, adj)
-        x = self.relu(x)
+        x = self.relu(x)  # 需要经过leakyReLU
         x = self.gc2(x, adj)
         # 此时x是一个batch_size * num_classes * 1的向量
         y2 = x.view((x.size(0), -1))

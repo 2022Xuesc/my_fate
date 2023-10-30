@@ -254,13 +254,13 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 1
-    param.max_iter = 100
-    param.num_labels = 80
-    param.device = 'cuda:0'
+    # param.batch_size = 1
+    # param.max_iter = 100
+    # param.num_labels = 80
+    # param.device = 'cuda:0'
 
-    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -356,7 +356,7 @@ class GCNFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: [WARN]
-        self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
+        # self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
 
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
@@ -624,9 +624,9 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
     #  不同部分使用不同的学习率
 
-    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
-    model = p_gcn_resnet101(param.pretrained, param.dataset, t=param.t, adjList=adjList,
-                          device=param.device, num_classes=param.num_labels, in_channel=in_channel)
+    in_channel = 2048
+    model = p_gcn_resnet101(param.pretrained, adjList=adjList,
+                            device=param.device, num_classes=param.num_labels, in_channel=in_channel)
     gcn_optimizer = None
     # optimizer = torch.optim.AdamW(model.get_feature_params(), lr=param.lr, weight_decay=1e-4)
     # gcn_optimizer = torch.optim.AdamW(model.get_gcn_params(), lr=0.01, weight_decay=1e-4)
