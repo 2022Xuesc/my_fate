@@ -305,9 +305,9 @@ class GCNFedAggregator(object):
             # Todo: 这里需要再改改
             #  没有分类层了，因此，无法使用FPSL了
 
-            self.model = aggregate_whole_model(tensors, degrees)
+            # self.model = aggregate_whole_model(tensors, degrees)
 
-            # self.model = aggregate_by_labels(tensors, degrees)
+            self.model = aggregate_by_labels(tensors, degrees)
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
