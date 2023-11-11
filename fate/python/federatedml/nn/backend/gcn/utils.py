@@ -337,5 +337,21 @@ def gen_A(num_classes, t, adj_file):
 def gen_adj(A):
     D = torch.pow(A.sum(1).float(), -0.5)
     D = torch.diag(D)
+    # 这一步执行的运算其实是D^T * A^T * D
+    # 前面已经经过转置了，那这一步应该不用对A进行转置
     adj = torch.matmul(torch.matmul(A, D).t(), D)
     return adj
+
+
+# 为每个场景都生成一个邻接矩阵
+def gen_adjs(A):
+    batch_size = A.size(0)
+    adjs = torch.zeros_like(A)
+    for i in range(batch_size):
+        # 这里对行求和
+        D = torch.pow(A[i].sum(1).float(), -0.5)
+        # 将其转换成对角矩阵
+        D = torch.diag(D)
+        adj = torch.matmul(torch.matmul(A[i], D).t(), D)
+        adjs[i] = adj
+    return adjs

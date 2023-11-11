@@ -257,8 +257,8 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 4
-    # param.max_iter = 1000
+    # param.batch_size = 1
+    # param.max_iter = 100
     # param.num_labels = 80
     # param.device = 'cuda:0'
 
