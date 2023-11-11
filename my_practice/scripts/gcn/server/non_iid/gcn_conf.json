@@ -46,7 +46,7 @@
       "guest": {
         "0": {
           "gcn_0": {
-            "device": "cuda:5",
+            "device": "cuda:1",
             "batch_size" : 16,
             "adj_file": "/data/projects/clustered_dataset/client1/train/anno.json"
           },
