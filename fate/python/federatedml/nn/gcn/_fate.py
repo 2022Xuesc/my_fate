@@ -165,7 +165,7 @@ class FedClientContext(_FedBaseContext):
             self._params = [
                 param
                 # 不是完全倒序，对于嵌套for循环，先声明的在前面
-                for param_group in optimizer.param_groups[0:3]  # 这里不考虑scene_linear的参数，因为关于场景的类别是不一致的
+                for param_group in optimizer.param_groups[0:7]  # 这里不考虑scene_linear的参数，因为关于场景的类别是不一致的
                 for param in param_group["params"]
             ]
             return
@@ -262,7 +262,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # param.max_iter = 1000
     # param.num_labels = 80
     # param.device = 'cuda:0'
-    # param.lr = 0.00001
+    # param.lr = 0.0001
     # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
@@ -357,9 +357,9 @@ class GCNFitter(object):
                                                                                            self.param.device)
 
         # 使用非对称损失
-        # self.criterion = AsymmetricLossOptimized().to(self.param.device)
+        self.criterion = AsymmetricLossOptimized().to(self.param.device)
 
-        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
+        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
 
         self.start_epoch, self.end_epoch = 0, epochs
 
@@ -480,40 +480,40 @@ class GCNFitter(object):
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter()),
                               (ENTROPY_LOSS_KEY, tnt.AverageValueMeter())])
 
-        # sigmoid_func = torch.nn.Sigmoid()  # 非对称损失中需要传入sigmoid之后的值
+        sigmoid_func = torch.nn.Sigmoid()  # 非对称损失中需要传入sigmoid之后的值
+        for i in range(100):
+            for train_step, ((features, inp), target) in enumerate(train_loader):
+                # features是图像特征，inp是输入的标签相关性矩阵
+                features = features.to(device)
+                target = target.to(device)
+                inp = inp.to(device)
 
-        for train_step, ((features, inp), target) in enumerate(train_loader):
-            # features是图像特征，inp是输入的标签相关性矩阵
-            features = features.to(device)
-            target = target.to(device)
-            inp = inp.to(device)
+                self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
-            self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
+                # 也可在聚合时候统计，这里为明了起见，直接统计
+                self._num_label_consumed += target.sum().item()
 
-            # 也可在聚合时候统计，这里为明了起见，直接统计
-            self._num_label_consumed += target.sum().item()
+                # 计算模型输出
+                # Todo: 这里还要传入target以计算熵函数
+                output = model(features, inp, y=target)
+                predicts = output['output']
+                entropy_loss = output['entropy_loss']
+                # Todo: 将计算结果添加到ap_meter中
+                self.ap_meter.add(predicts.data, target)
 
-            # 计算模型输出
-            # Todo: 这里还要传入target以计算熵函数
-            output = model(features, inp, y=target)
-            predicts = output['output']
-            entropy_loss = output['entropy_loss']
-            # Todo: 将计算结果添加到ap_meter中
-            self.ap_meter.add(predicts.data, target)
+                lambda_entropy = 1
+                objective_loss = criterion(sigmoid_func(predicts), target)
 
-            lambda_entropy = 1
-            objective_loss = criterion(predicts, target)
+                overall_loss = objective_loss + lambda_entropy * entropy_loss
 
-            overall_loss = objective_loss + lambda_entropy * entropy_loss
+                losses[OVERALL_LOSS_KEY].add(overall_loss.item())
+                losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
+                losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
+                optimizer.zero_grad()
 
-            losses[OVERALL_LOSS_KEY].add(overall_loss.item())
-            losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
-            losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
-            optimizer.zero_grad()
+                overall_loss.backward()
 
-            overall_loss.backward()
-
-            optimizer.step()
+                optimizer.step()
 
             # predicts_norm = torch.mean(predicts).item()
 
@@ -522,9 +522,9 @@ class GCNFitter(object):
             #     f"mAP={100 * self.ap_meter.value()[0].item()},loss={overall_loss.item()},predicts_norm={predicts_norm}")
 
         # Todo: 这里对学习率进行调整
-        # if (epoch + 1) % 20 == 0:
-        #     for param_group in optimizer.param_groups:
-        #         param_group['lr'] *= 0.9
+        if (epoch + 1) % 4 == 0:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] *= 0.9
 
         mAP, _ = self.ap_meter.value()
         mAP *= 100
@@ -549,7 +549,7 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # sigmoid_func = torch.nn.Sigmoid()
+        sigmoid_func = torch.nn.Sigmoid()
         model.eval()
         self.ap_meter.reset()
 
@@ -565,7 +565,7 @@ class GCNFitter(object):
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, target)
 
-                objective_loss = criterion(predicts, target)
+                objective_loss = criterion(sigmoid_func(predicts), target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
                 # Todo: 这里需要对target进行detach操作吗？
@@ -585,7 +585,7 @@ def _init_gcn_learner(param, device='cpu'):
     # 使用SALGL模型
     # 每个客户端捕捉到的是不同的场景，因此，用不到adjList了
     # Todo: adjList在多场景条件下的适配
-    model = sal_gl(param.pretrained, device)
+    model = full_salgl(param.pretrained, device)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 1

@@ -1,5 +1,6 @@
 import torchvision.models as torch_models
 
+from federatedml.nn.backend.gcn.models.full_salgl import FullSALGL
 from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
 from federatedml.nn.backend.gcn.models.salgl import SALGL
 
@@ -21,3 +22,8 @@ def p_gcn_resnet101(pretrained, adjList=None, device='cpu', num_classes=80, in_c
 def sal_gl(pretrained, device):
     model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
     return SALGL(model).to(device)
+
+
+def full_salgl(pretrained, device):
+    model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
+    return FullSALGL(model).to(device)
