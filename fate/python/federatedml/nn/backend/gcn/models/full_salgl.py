@@ -221,7 +221,7 @@ class FullSALGL(nn.Module):
 
         self.entropy = EntropyLoss()
         # 计算最大熵，预测向量呈均匀分布时的熵
-        self.max_en = self.entropy(torch.tensor([1 / num_scenes] * num_scenes).cuda())
+        self.max_en = self.entropy(torch.tensor([1 / num_scenes] * num_scenes))
 
         # embed_dim是标签嵌入的维度，300维？
         # embed_dim = 300
