@@ -94,6 +94,7 @@ class SALGL(nn.Module):
         self.pooling = nn.MaxPool2d(14, 14)
         # 计算场景的线性分类器
         self.scene_linear = nn.Linear(feat_dim, num_scenes, bias=False)
+        torch.nn.init.kaiming_normal_(self.scene_linear.weight)
         # 图卷积网络部分
         self.gc1 = GraphConvolution(in_channels, 1024)
         self.gc2 = GraphConvolution(1024, out_channels)
@@ -205,7 +206,6 @@ class SALGL(nn.Module):
             'output': output,
             'scene_probs': scene_probs,
             'entropy_loss': sample_en + batch_en,
-            # 'att_weights': alphas,
             'comat': comats
         }
 
@@ -215,5 +215,5 @@ class SALGL(nn.Module):
             {'params': self.features.parameters(), 'lr': lr * lrp},
             {'params': self.gc1.parameters(), 'lr': lr},
             {'params': self.gc2.parameters(), 'lr': lr},
-            {'params': self.scene_linear.parameters(), 'lr': lr}
+            {'params': self.scene_linear.parameters(), 'lr': lr}  # 线性分类器应该不能聚合吧？
         ]

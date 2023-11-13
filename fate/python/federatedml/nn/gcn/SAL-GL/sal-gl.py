@@ -45,7 +45,6 @@ avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'objective_loss', 'entropy_loss', 'overall_loss'])
 
 
-
 class _FedBaseContext(object):
     def __init__(self, max_num_aggregation, name):
         self._name = name
@@ -166,7 +165,7 @@ class FedClientContext(_FedBaseContext):
             self._params = [
                 param
                 # 不是完全倒序，对于嵌套for循环，先声明的在前面
-                for param_group in optimizer.param_groups
+                for param_group in optimizer.param_groups[0:3]  # 这里不考虑scene_linear的参数，因为关于场景的类别是不一致的
                 for param in param_group["params"]
             ]
             return
@@ -256,13 +255,14 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
+    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+
     # Todo: [WARN]
-    # param.batch_size = 1
-    # param.max_iter = 100
+    # param.batch_size = 4
+    # param.max_iter = 1000
     # param.num_labels = 80
     # param.device = 'cuda:0'
-
-    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # param.lr = 0.00001
     # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
@@ -357,9 +357,9 @@ class GCNFitter(object):
                                                                                            self.param.device)
 
         # 使用非对称损失
-        self.criterion = AsymmetricLossOptimized().to(self.param.device)
+        # self.criterion = AsymmetricLossOptimized().to(self.param.device)
 
-        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
+        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
 
         self.start_epoch, self.end_epoch = 0, epochs
 
@@ -480,7 +480,7 @@ class GCNFitter(object):
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter()),
                               (ENTROPY_LOSS_KEY, tnt.AverageValueMeter())])
 
-        sigmoid_func = torch.nn.Sigmoid()
+        # sigmoid_func = torch.nn.Sigmoid()  # 非对称损失中需要传入sigmoid之后的值
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
@@ -502,7 +502,7 @@ class GCNFitter(object):
             self.ap_meter.add(predicts.data, target)
 
             lambda_entropy = 1
-            objective_loss = criterion(sigmoid_func(predicts), target)
+            objective_loss = criterion(predicts, target)
 
             overall_loss = objective_loss + lambda_entropy * entropy_loss
 
@@ -515,14 +515,16 @@ class GCNFitter(object):
 
             optimizer.step()
 
+            # predicts_norm = torch.mean(predicts).item()
+
             # LOGGER.warn(
             #     f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},"
-            #     f"mAP={100 * self.ap_meter.value()[0].item()},loss={loss.item()}")
+            #     f"mAP={100 * self.ap_meter.value()[0].item()},loss={overall_loss.item()},predicts_norm={predicts_norm}")
 
         # Todo: 这里对学习率进行调整
-        if (epoch + 1) % 4 == 0:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.9
+        # if (epoch + 1) % 20 == 0:
+        #     for param_group in optimizer.param_groups:
+        #         param_group['lr'] *= 0.9
 
         mAP, _ = self.ap_meter.value()
         mAP *= 100
@@ -547,7 +549,7 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        sigmoid_func = torch.nn.Sigmoid()
+        # sigmoid_func = torch.nn.Sigmoid()
         model.eval()
         self.ap_meter.reset()
 
@@ -563,7 +565,7 @@ class GCNFitter(object):
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, target)
 
-                objective_loss = criterion(sigmoid_func(predicts), target)
+                objective_loss = criterion(predicts, target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
                 # Todo: 这里需要对target进行detach操作吗？
