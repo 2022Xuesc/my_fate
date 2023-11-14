@@ -268,7 +268,8 @@ class FullSALGL(nn.Module):
         pos = torch.flatten(pos, 2).transpose(1, 2)
         img_feats = self.transformer(img_feats, pos=pos)
         img_contexts = torch.mean(img_feats, dim=1)
-
+        # scene_cnts是该批次样本中每个场景的分类样本数
+        scene_cnts = [0] * self.num_scenes
         scene_scores = self.scene_linear(img_contexts)
         if self.training:
             _scene_scores = scene_scores
@@ -288,6 +289,8 @@ class FullSALGL(nn.Module):
                     max_scene_id = torch.argmax(_scene_probs[i])
                     # comats只加到对应的最大概率场景的标签共现矩阵上
                     self.comatrix[max_scene_id] += batch_comats[i]
+                    # 更新scene_cnts
+                    scene_cnts[max_scene_id] += 1
         # 计算场景的概率
         scene_probs = F.softmax(scene_scores, dim=-1)
         # 计算场景概率的熵损失
@@ -338,7 +341,8 @@ class FullSALGL(nn.Module):
             'output': output,
             'scene_probs': scene_probs,
             'entropy_loss': sample_en + batch_en,
-            'comat': comats
+            'comat': comats,
+            'scene_cnts': scene_cnts
         }
 
     # Todo: 获取需要优化的参数
