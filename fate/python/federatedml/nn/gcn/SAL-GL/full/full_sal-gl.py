@@ -102,7 +102,7 @@ class FedClientContext(_FedBaseContext):
 
     # Todo: 发送模型
     #  tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, weight):
+    def send_model(self, tensors, bn_data, weight, scene_info):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
@@ -112,7 +112,7 @@ class FedClientContext(_FedBaseContext):
             bn_arr = bn_item.data.cpu().numpy()
             bn_arrs.append(bn_arr)
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, weight, scene_info), suffix=self._suffix()
         )
 
     # 接收模型
@@ -129,9 +129,9 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, weight, device):
+    def do_aggregation(self, bn_data, weight, scene_info, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, weight)
+        self.send_model(self._params, bn_data, weight, scene_info)
         LOGGER.warn(f"{self.aggregation_iteration}个模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
@@ -169,6 +169,7 @@ class FedClientContext(_FedBaseContext):
                 for param in param_group["params"]
             ]
             return
+
         raise TypeError(f"params and optimizer can't be both none")
 
     def should_aggregate_on_epoch(self, epoch_index):
@@ -377,6 +378,7 @@ class GCNFitter(object):
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None
+        self.epoch_scene_cnts = None
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -397,6 +399,8 @@ class GCNFitter(object):
             self._all_consumed_data_aggregated = False
         else:
             self._num_data_consumed += num_samples
+        # 初始化epoch_scene_cnts
+        self.epoch_scene_cnts = None
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         metrics = valid_metrics
@@ -446,8 +450,12 @@ class GCNFitter(object):
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
+        # 包装一个scene_info，包括场景分类器和每个场景下的邻接矩阵
+        scene_info = ()
+
         # FedAvg聚合策略
         agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+                                                  scene_info=scene_info,
                                                   device=self.param.device)
         idx = 0
         for layer in self.model.modules():
@@ -481,39 +489,47 @@ class GCNFitter(object):
                               (ENTROPY_LOSS_KEY, tnt.AverageValueMeter())])
 
         sigmoid_func = torch.nn.Sigmoid()  # 非对称损失中需要传入sigmoid之后的值
-        for i in range(100):
-            for train_step, ((features, inp), target) in enumerate(train_loader):
-                # features是图像特征，inp是输入的标签相关性矩阵
-                features = features.to(device)
-                target = target.to(device)
-                inp = inp.to(device)
+        for train_step, ((features, inp), target) in enumerate(train_loader):
+            # features是图像特征，inp是输入的标签相关性矩阵
+            features = features.to(device)
+            target = target.to(device)
+            inp = inp.to(device)
 
-                self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
+            self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
-                # 也可在聚合时候统计，这里为明了起见，直接统计
-                self._num_label_consumed += target.sum().item()
+            # 也可在聚合时候统计，这里为明了起见，直接统计
+            self._num_label_consumed += target.sum().item()
 
-                # 计算模型输出
-                # Todo: 这里还要传入target以计算熵函数
-                output = model(features, inp, y=target)
-                predicts = output['output']
-                entropy_loss = output['entropy_loss']
-                # Todo: 将计算结果添加到ap_meter中
-                self.ap_meter.add(predicts.data, target)
+            # 计算模型输出
+            # Todo: 这里还要传入target以计算熵函数
+            output = model(features, inp, y=target)
+            predicts = output['output']
+            entropy_loss = output['entropy_loss']
+            batch_scene_cnts = output['scene_cnts']
+            # 将scene_cnts加到该epoch的scene_cnts中
+            num_scenes = len(batch_scene_cnts)
+            if self.epoch_scene_cnts is None:
+                self.epoch_scene_cnts = batch_scene_cnts
+            else:
+                for i in range(num_scenes):
+                    self.epoch_scene_cnts[i] += batch_scene_cnts[i]
 
-                lambda_entropy = 1
-                objective_loss = criterion(sigmoid_func(predicts), target)
+            # Todo: 将计算结果添加到ap_meter中
+            self.ap_meter.add(predicts.data, target)
 
-                overall_loss = objective_loss + lambda_entropy * entropy_loss
+            lambda_entropy = 1
+            objective_loss = criterion(sigmoid_func(predicts), target)
 
-                losses[OVERALL_LOSS_KEY].add(overall_loss.item())
-                losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
-                losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
-                optimizer.zero_grad()
+            overall_loss = objective_loss + lambda_entropy * entropy_loss
 
-                overall_loss.backward()
+            losses[OVERALL_LOSS_KEY].add(overall_loss.item())
+            losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
+            losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
+            optimizer.zero_grad()
 
-                optimizer.step()
+            overall_loss.backward()
+
+            optimizer.step()
 
             # predicts_norm = torch.mean(predicts).item()
 
