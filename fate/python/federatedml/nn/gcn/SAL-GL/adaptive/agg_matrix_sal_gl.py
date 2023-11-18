@@ -307,6 +307,7 @@ class GCNFedAggregator(object):
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
             cur_iteration = self.context.aggregation_iteration
             LOGGER.warn(f'收到{len(recv_elements)}个客户端发送过来的模型')
+            
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
 
@@ -469,7 +470,7 @@ class GCNFitter(object):
         # 包装一个scene_info，包括场景分类器和每个场景下的邻接矩阵
         my_id = self.context.name._uuid
         scene_info = (
-            self.model.scene_linear.weight.data, self.model.comatrix, self.epoch_scene_cnts, my_id)
+            self.model.scene_linear.weight.data, self.model.comatrixs, self.epoch_scene_cnts, my_id)
 
         # FedAvg聚合策略
         agg_bn_data, fixed_adjs = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
