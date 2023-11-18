@@ -3,6 +3,6 @@
     "namespace": "coco-clients10",
     "name": "client9_val",
     "address": {
-        "path": "/data/projects/clustered_dataset/client9/val"
+        "path": "/data/projects/dataset/clustered_dataset/client9/val"
     }
 }
