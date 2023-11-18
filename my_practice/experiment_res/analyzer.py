@@ -212,18 +212,36 @@ def compare_method(paths, file):
 
         file_path2 = os.path.join('gcn/c_gcn', os.path.join(path, file))
         data2 = pd.read_csv(file_path2)
+        
+        file_path3 = os.path.join('gcn/p_gcn_fedavg', os.path.join(path, file))
+        data3 = pd.read_csv(file_path3)
+        
+        file_path4 = os.path.join('gcn/p_gcn_fpsl', os.path.join(path, file))
+        data4 = pd.read_csv(file_path4)
+        
+        file_path5 = os.path.join('gcn/sal_gl', os.path.join(path, file))
+        data5 = pd.read_csv(file_path5)
+        
+        
 
         fpsl_mAP = data1['map']
         c_gcn_mAP = data2['map']
-
-
-        plt.plot(data1[x_axis], fpsl_mAP, 'g')
-        plt.plot(data2[x_axis], c_gcn_mAP, 'b')
+        p_gcn_fedavg_mAP = data3['map']
+        p_gcn_fpsl_mAP = data4['map']
+        sal_gl_mAP = data5['map']
+    
+        show_epochs = 100
+        
+        plt.plot(data1[x_axis][0:show_epochs], fpsl_mAP[0:show_epochs], 'g')
+        plt.plot(data2[x_axis][0:show_epochs], c_gcn_mAP[0:show_epochs], 'b')
+        plt.plot(data3[x_axis][0:show_epochs], p_gcn_fedavg_mAP[0:show_epochs], 'r')
+        plt.plot(data4[x_axis][0:show_epochs], p_gcn_fpsl_mAP[0:show_epochs], 'y')
+        plt.plot(data5[x_axis][0:show_epochs], sal_gl_mAP[0:show_epochs], 'purple')
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
 
-        plt.legend(['FPSL', 'C-GCN'])
+        plt.legend(['FPSL', 'C-GCN','P-GCN-FedAvg','P-GCN-FPSL','SAL-GL'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -304,7 +322,7 @@ def draw_train_and_valid(paths):
         train_data = pd.read_csv(train_path)
         valid_data = pd.read_csv(valid_path)
         epochs = valid_data['epoch']
-        train_mAP = handle_tensor_mAP(train_data['map'])
+        train_mAP = handle_tensor_mAP(train_data['map'][0:len(epochs)])
         valid_mAP = handle_tensor_mAP(valid_data['map'])
         losses = valid_data[f'loss']
 
@@ -339,16 +357,16 @@ def draw_train_and_valid(paths):
 #
 
 # Todo: 各个客户端自身的结果分析
-# paths = ["gcn/base_fpsl", 'gcn/c_gcn']
+# paths = ['gcn/sal_gl']
 # for path in paths:
 #     clients_path = [os.path.join(path, 'guest/10')]
-#
+# 
 #     for i in range(1, 10):
 #         clients_path.append(os.path.join(path, f'host/{i}'))
-#
+# 
 #     # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
 #     # draw_losses(clients_path, 'loss.csv')
-#
+# 
 #     # Todo: 各个客户端的结果分析
 #     arbiter_path = os.path.join(path, 'arbiter/999')
 #     draw_train_and_valid(clients_path)
@@ -364,4 +382,6 @@ for i in range(1, 10):
 clients_path.append('arbiter/999')
 
 compare_method(clients_path, 'valid.csv')
+
+
 # compare_layer_ratio_method(clients_path, 'valid.csv')
