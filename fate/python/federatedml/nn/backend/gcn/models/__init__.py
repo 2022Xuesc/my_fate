@@ -24,6 +24,6 @@ def sal_gl(pretrained, device):
     return SALGL(model).to(device)
 
 
-def full_salgl(pretrained, device):
+def full_salgl(pretrained, device, num_scenes=6, n_head=4):
     model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
-    return FullSALGL(model).to(device)
+    return FullSALGL(model, num_scenes=num_scenes, n_head=n_head).to(device)

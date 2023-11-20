@@ -179,9 +179,22 @@ class Element_Wise_Layer(nn.Module):
 
 
 # 定义SAL-GL模型
+# 对于每个网络层，都进行权重初始化
+#  1. self.features 使用预训练权重
+#  2. nn.Linear 已经进行了权重初始化-->恺明初始化
+#  3. 自定义的Parameter也已经进行了权重初始化
 class FullSALGL(nn.Module):
     # 传进来一个resnet101，截取其前一部分作为主干网络
-    def __init__(self, model, feat_dim=2048, att_dim=1024, num_scenes=2, in_channels=300,
+    # Todo: 比较重要的超参数
+    #  1. 场景个数 num_scenes=6
+    #  2. transformer相关：n_head=4、num_layers=1
+    #  3. 低秩双线性注意力中联合嵌入空间的维度：att_dim= 1024(300维和2048计算相关性)
+    #  4. 图卷积神经网络部分，中间层的维度：gcn_middle_dim=1024
+    #                     最后输出层的维度out_channels要和feat_dim相等，以进行concat操作
+    #  5. 是否进行相关性矩阵平滑：comat_smooth=False
+    #  
+    def __init__(self, model, img_size=448, embed_dim=300, feat_dim=2048, att_dim=1024, num_scenes=6,
+                 n_head=8, num_layers=1, gcn_middle_dim=1024,
                  out_channels=2048, num_classes=80, comat_smooth=False):
 
         super(FullSALGL, self).__init__()
@@ -200,23 +213,20 @@ class FullSALGL(nn.Module):
         self.num_classes = num_classes
         self.comat_smooth = comat_smooth
 
-        # 使用自定义的MaxPooling
-        self.pooling = nn.MaxPool2d(14, 14)
         # 计算场景的线性分类器
         self.scene_linear = nn.Linear(feat_dim, num_scenes, bias=False)
 
         # 引入transformer结构
-        self.transformer = TransformerEncoder(d_model=feat_dim, nhead=8, num_layers=1)
+        self.transformer = TransformerEncoder(d_model=feat_dim, nhead=n_head, num_layers=num_layers)
         self.position_embedding = build_position_encoding(feat_dim, "resnet101", "sine",
-                                                          img_size=448)  # 这里的img_size应该是图像特征的img_size
-        embed_dim = 300
+                                                          img_size=img_size)  # 这里的img_size应该是图像特征的img_size
+        # 低秩双线性注意力
         self.attention = LowRankBilinearAttention(feat_dim, embed_dim, att_dim)
 
         # 图卷积网络部分
-        self.gc1 = GraphConvolution(feat_dim, 1024)
-        self.gc2 = GraphConvolution(1024, out_channels)
+        self.gc1 = GraphConvolution(feat_dim, gcn_middle_dim)
+        self.gc2 = GraphConvolution(gcn_middle_dim, out_channels)
         self.relu = nn.LeakyReLU(0.2)
-        # Todo: register_buffer的好处
         self.register_buffer('comatrix', torch.zeros((num_scenes, num_classes, num_classes)))
 
         self.entropy = EntropyLoss()
@@ -257,16 +267,15 @@ class FullSALGL(nn.Module):
     def forward(self, x, inp, y=None):
         img_feats = self.features(x)
         # 将后两个维度H和W进行合并，然后放到第2维上面
+        # 此时的维度是(batch_size, channel, h * w)
         img_feats = torch.flatten(img_feats, start_dim=2).transpose(1, 2)
-        # 这里不应该进行pooling
-        # img_feats = self.pooling(img_feats)
-        # Todo: 将pooling后的特征展平
-        # img_feats = img_feats.view(img_feats.size(0), -1)
 
         # 计算位置编码
         pos = self.position_embedding(x)
         pos = torch.flatten(pos, 2).transpose(1, 2)
+        # 将关于位置的特征向量序列和位置编码输入到transformer中，自注意力机制输出和输入的img_feats形状相同
         img_feats = self.transformer(img_feats, pos=pos)
+        # 在每个位置上求平均值，得到(batch_size,feat_dim)，然后输入到场景分类器中求场景分布
         img_contexts = torch.mean(img_feats, dim=1)
         # scene_cnts是该批次样本中每个场景的分类样本数
         scene_cnts = [0] * self.num_scenes
@@ -279,12 +288,13 @@ class FullSALGL(nn.Module):
             batch_comats = torch.bmm(y.unsqueeze(2), y.unsqueeze(1))
             # _scene_probs的维度是(B, num_scenes)
             for i in range(_scene_probs.shape[0]):
-                # Todo: 采用各个场景的标签共现矩阵加权还是说只取最大概率场景的标签共现矩阵
+                # 采用各个场景的标签共现矩阵加权还是说只取最大概率场景的标签共现矩阵
                 if self.comat_smooth:
                     prob = _scene_probs[i].unsqueeze(-1).unsqueeze(-1)  # [num_scenes, 1, 1]
                     comat = batch_comats[i].unsqueeze(0)  # [1, num_labels, num_labels]
                     # 当前comat对每个场景都有贡献，贡献值即为scene的预测概率值
                     self.comatrix += prob * comat  # [num_scenes, num_labels, num_labels]
+                    # Todo: 当为矩阵更新方式为soft时，scene_cnts的统计变更
                 else:
                     max_scene_id = torch.argmax(_scene_probs[i])
                     # comats只加到对应的最大概率场景的标签共现矩阵上
@@ -299,7 +309,7 @@ class FullSALGL(nn.Module):
         _scene_probs = torch.mean(scene_probs, dim=0)
         # 计算和最大熵的差距，应该使这种差距尽可能小，使场景的预测更加多样化，缓解winner-take-all的问题
         # 这个是批次平均概率向量的熵，而前面的是概率向量熵的平均值，两者代表的是不同的含义
-        batch_en = (self.max_en - self.entropy(_scene_probs)) * 100
+        batch_en = self.max_en - self.entropy(_scene_probs)
 
         # attention计算每个标签的视觉表示
         # Todo: Transformer挖掘空间特征，复习Transformer
@@ -333,8 +343,6 @@ class FullSALGL(nn.Module):
         output = torch.cat([label_feats, x], dim=-1)
         output = self.fc(output)
         output = self.classifier(output)
-        # 此时x的输出就是每张图像的分类器
-        # output = torch.matmul(x, img_feats.unsqueeze(2)).squeeze(-1)
         # Todo: 求点积，得到预测向量
         # 返回前向传播的结果
         return {

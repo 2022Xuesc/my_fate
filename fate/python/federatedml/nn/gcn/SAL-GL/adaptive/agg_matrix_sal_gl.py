@@ -1,36 +1,24 @@
 # 服务器与客户端的通用逻辑
-import copy
-import json
-from collections import OrderedDict
-
-import numpy as np
-import typing
-import torchvision.transforms as transforms
-import torchnet.meter as tnt
 import math
-import os
-import logging
-import csv
-
 import torch
 import torch.nn
+import torchnet.meter as tnt
 
-from federatedml.nn.backend.gcn.config import config_scheduler
-from federatedml.nn.backend.gcn.models import *
-from federatedml.nn.backend.pytorch.data import COCO
-from federatedml.nn.homo_nn import _consts
-from federatedml.param.gcn_param import GCNParam
-from federatedml.util import LOGGER
+import copy
+import os
+import typing
+from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
+from federatedml.nn.backend.gcn.models import *
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
-from federatedml.nn.backend.gcn.utils import MultiScaleCrop, Warp
-from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
-
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
+from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
+from federatedml.param.gcn_param import GCNParam
+from federatedml.util import LOGGER
+from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 my_writer = MyWriter(dir_name=os.getcwd())
 
@@ -622,14 +610,19 @@ def _init_gcn_learner(param, device='cpu'):
     # 使用SALGL模型
     # 每个客户端捕捉到的是不同的场景，因此，用不到adjList了
     # Todo: adjList在多场景条件下的适配
-    model = full_salgl(param.pretrained, device)
-    gcn_optimizer = None
+    num_scenes = 6
+    n_head = 4
+    # 基础学习率调大一点，lrp调小点
+    lr, lrp = param.lr, 0.1
 
-    lr, lrp = param.lr, 1
-    optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
-                                lr=lr,
-                                momentum=0.9,
-                                weight_decay=1e-4)
+    model = full_salgl(param.pretrained, device, num_scenes=num_scenes, n_head=n_head)
+    gcn_optimizer = None
+    # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
+    #                             lr=lr,
+    #                             momentum=0.9,
+    #                             weight_decay=1e-4)
+    # 使用AdamW优化器试试
+    optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
