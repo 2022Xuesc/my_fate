@@ -130,10 +130,12 @@ def aggregate_scene_adjs(scene_infos):
             agg_scene_adj = np.zeros((num_labels, num_labels))
             for j in range(num_clients):
                 if coefficients[j] is not None:
-                    scene_id, weight = coefficients[j]
+                    # 这里的weight是余弦相似度，还要对其进行场景数的修正
+                    scene_id, weight = coefficients[j]  
                     coefficients[j][1] = weight * scene_infos[j][2][scene_id] / total_cnt
                     other_weights += coefficients[j][1]
-                    agg_scene_adj += scene_infos[j][1][scene_id] * weight
+                    # Todo: 这里即应该是修正后的权重coefficients[j][1]
+                    agg_scene_adj += scene_infos[j][1][scene_id] * coefficients[j][1]
             self_coefficient = 1 - other_weights
             agg_scene_adj += self_coefficient * scene_infos[i][1][k]
             # 进行聚合
