@@ -2,6 +2,7 @@ import torch
 import math
 import numpy as np
 
+
 class AveragePrecisionMeter(object):
     """
     计算每个类（标签）的平均精度
@@ -79,7 +80,7 @@ class AveragePrecisionMeter(object):
             return 0
         # ap = torch.zeros(self.scores.size(1))
         # 初始化全-1的张量，表示
-        ap = torch.full((self.scores.size(1),),-1.)
+        ap = torch.full((self.scores.size(1),), -1.)
         # rg = torch.arange(1, self.scores.size(0)).float()
         # compute average precision for each class
         non_zero_labels = 0
@@ -158,15 +159,43 @@ class AveragePrecisionMeter(object):
             scores = scores_[:, k]
             targets = targets_[:, k]
             targets[targets == -1] = 0
+            # Ng[k]是真正包含该标签的数量
             Ng[k] = np.sum(targets == 1)
+            # Todo: 这里为什么以scores大于等于0为界限
+            #  总得设置一个界限，这里设置0
+            # Np[k]是第k个标签预测的图像的数量，scores >= 0
             Np[k] = np.sum(scores >= 0)
+            # Nc[k]是第k个标签正确预测的图像的数量，target为1且预测分数scores大于等于0
             Nc[k] = np.sum(targets * (scores >= 0))
-        Np[Np == 0] = 1
-        OP = np.sum(Nc) / np.sum(Np)
-        OR = np.sum(Nc) / np.sum(Ng)
-        OF1 = (2 * OP * OR) / (OP + OR)
-
-        CP = np.sum(Nc / Np) / n_class
-        CR = np.sum(Nc / Ng) / n_class
-        CF1 = (2 * CP * CR) / (CP + CR)
+        # Todo: 如果对应的指标返回-1
+        if np.sum(Np) == 0:  # 这个其实不太可能？
+            OP = -1
+            OR = -1
+            OF1 = -1
+        else:
+            OP = np.sum(Nc) / np.sum(Np)  # 如果Np对应项为0，则Nc对应项也一定是0
+            OR = np.sum(Nc) / np.sum(Ng)
+            OF1 = (2 * OP * OR) / (OP + OR)
+        # 逐个标签进行计算，如果值为-1，说明无法计算
+        CP_SUM = 0
+        CP_CNT = 0
+        CR_SUM = 0
+        CR_CNT = 0
+        CP = -1
+        CR = -1
+        CF1 = -1
+        # 这里遍历每一个标签
+        for i in range(n_class):
+            if Np[i] != 0:
+                CP_CNT += 1
+                CP_SUM += Nc[i] / Np[i]
+            if Ng[i] != 0:
+                CR_CNT += 1
+                CR_SUM += Nc[i] / Ng[i]
+        if CP_CNT != 0:
+            CP = CP_SUM / CP_CNT
+        if CR_CNT != 0:
+            CR = CR_SUM / CR_CNT
+        if CP != -1 and CR != -1:
+            CF1 = (2 * CP * CR) / (CP + CR)
         return OP, OR, OF1, CP, CR, CF1
