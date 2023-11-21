@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "nuswide-clients10",
+    "name": "client4_train",
+    "address": {
+        "path": "/data/projects/dataset/nuswide_clustered/client4/train"
+    }
+}

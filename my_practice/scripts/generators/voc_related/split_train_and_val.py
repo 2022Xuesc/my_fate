@@ -19,8 +19,12 @@ val_images = json.load(val_file)
 
 images_dir = "/home/klaus125/research/dataset/VOC2007/JPEGImages"
 target_train_path = os.path.join(images_dir, "train")
+if not os.path.exists(target_train_path):
+    os.makedirs(target_train_path)
 target_val_path = os.path.join(images_dir, "val")
 
+if not os.path.exists(target_val_path):
+    os.makedirs(target_val_path)
 for filename in os.listdir(images_dir):
     if not filename.endswith(".jpg"):
         continue

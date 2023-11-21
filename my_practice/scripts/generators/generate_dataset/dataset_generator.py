@@ -169,7 +169,9 @@ def generate_anno(data, images_dir, dataset="COCO", phase='val'):
     anno_list = []
     for filename in files:
         # 如果filename不是图像文件名称
-        if not filename.startswith('COCO') and (not filename.endswith('.jpg')):
+        # if not filename.startswith('COCO') and (not filename.endswith('.jpg')):
+        #     continue
+        if not filename.endswith('.jpg'):
             continue
         cur_img_id = str(get_image_id(filename, dataset))
         if cur_img_id not in image_id:
@@ -233,6 +235,7 @@ def category_to_idx(category):
 
 coco_dir = '../../../dataset/coco'
 voc_dir = '../../../dataset/voc_expanded'
+nuswide_dir = '../../../dataset/nuswide'
 
 # Todo: 服务器端的未执行代码
 # client_nums = 10
@@ -248,11 +251,12 @@ voc_dir = '../../../dataset/voc_expanded'
 # Todo: 客户端待执行代码
 client_nums = 10
 # image_dir = "/home/klaus125/research/dataset/clustered_dataset/"
-image_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc"
-dataset = "VOC"
+# image_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc"
+image_dir = '/home/klaus125/research/dataset/NUS-WIDE/images/clustered'
+dataset = "nuswide"
 for i in range(client_nums):
     client_id = i + 1
-    generate_anno(voc_dir, os.path.join(image_dir, f'client{client_id}/train'), dataset=dataset, phase='train')
-    generate_anno(voc_dir, os.path.join(image_dir, f'client{client_id}/val'), dataset=dataset, phase='val')
+    generate_anno(nuswide_dir, os.path.join(image_dir, f'client{client_id}/train'), dataset=dataset, phase='train')
+    generate_anno(nuswide_dir, os.path.join(image_dir, f'client{client_id}/val'), dataset=dataset, phase='val')
     generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
     generate_configs(os.path.join(image_dir, f'client{client_id}/val'))

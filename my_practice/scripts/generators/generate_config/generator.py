@@ -1,9 +1,9 @@
 import json
 import os.path
 
-data_dir = '/data/projects/dataset/clustered_dataset'
-namespace = 'coco-clients10'
-type = 'coco/non-iid'
+data_dir = '/data/projects/dataset/nuswide_clustered'
+namespace = 'nuswide-clients10'
+type = 'nuswide/non-iid'
 
 client_num = 10
 phases = ['train', 'val']

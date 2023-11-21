@@ -17,6 +17,7 @@ for type in types:
     # 遍历训练集中的每张图片，创建一个字典
     main_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/VOCdevkit/VOC2007/ImageSets/Main"
     type_file = os.path.join(main_dir, f"{type}.txt")
+    # Todo: 先读取train/val包含的文件列表
     with open(type_file, 'r') as file:
         for line in file:
             image_id = line.strip()

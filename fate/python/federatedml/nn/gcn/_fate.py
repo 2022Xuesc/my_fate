@@ -254,7 +254,7 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
-    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    category_dir = '/data/projects/fate/my_practice/dataset/nuswide/'
 
     # Todo: [WARN]
     # param.batch_size = 2
@@ -615,7 +615,7 @@ def _init_gcn_learner(param, device='cpu'):
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
 
-    model = full_salgl(param.pretrained, device, num_scenes=num_scenes, n_head=n_head)
+    model = full_salgl(param.pretrained, device, num_scenes=num_scenes, n_head=n_head, num_classes=param.num_labels)
     gcn_optimizer = None
     # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
     #                             lr=lr,
