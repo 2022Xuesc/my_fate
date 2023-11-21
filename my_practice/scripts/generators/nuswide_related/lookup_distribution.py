@@ -13,6 +13,8 @@ val_file = open(val_image_id_path, 'r')
 val_images = json.load(val_file)
 print("验证集大小： ", len(val_images))
 
+print(len(train_images) + len(val_images))
+
 # 将两个字典合并输出为train_image_id_path
 # print(len(train_images))
 # train_images.update(val_images)
@@ -36,7 +38,7 @@ else:
 #
 # # Todo: 输出一下聚类后每个客户端的数据集大小
 num_clients = 10
-clustered_dir = "/home/klaus125/research/dataset/NUS-WIDE/images/clustered"
+clustered_dir = "/home/klaus125/research/dataset/NUS-WIDE/images/nuswide_clustered"
 for i in range(1, num_clients + 1):
     client_path = os.path.join(clustered_dir, f'client{i}')
     client_train_path = os.path.join(client_path, 'train')
@@ -45,17 +47,17 @@ for i in range(1, num_clients + 1):
     train_json_path = os.path.join(client_train_path, 'anno.json')
     val_json_path = os.path.join(client_val_path, 'anno.json')
     
-    train_json = json.load(open(train_json_path, 'r'))
-    if len(train_json) != len(os.listdir(client_train_path)) - 2:
-        print('ERROR')
-    else:
-        print('匹配')   
-    val_json = json.load(open(val_json_path, 'r'))
-    if len(val_json) != len(os.listdir(client_val_path)) - 2:
-        print('ERROR')
-    else:
-        print('匹配')
+    # train_json = json.load(open(train_json_path, 'r'))
+    # if len(train_json) != len(os.listdir(client_train_path)) - 2:
+    #     print('ERROR')
+    # else:
+    #     print('匹配')   
+    # val_json = json.load(open(val_json_path, 'r'))
+    # if len(val_json) != len(os.listdir(client_val_path)) - 2:
+    #     print('ERROR')
+    # else:
+    #     print('匹配')
 
-    # print(f"===============客户端{i}=================")
-    # print("训练集大小", len(os.listdir(client_train_path)))
-    # print("验证集大小", len(os.listdir(client_val_path)))
+    print(f"===============客户端{i}=================")
+    print("训练集大小", len(os.listdir(client_train_path)))
+    print("验证集大小", len(os.listdir(client_val_path)))
