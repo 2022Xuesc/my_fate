@@ -254,7 +254,11 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
-    category_dir = '/data/projects/fate/my_practice/dataset/nuswide/'
+    dataset = 'nuswide'
+    # dataset = 'coco'
+
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
+    inp_name = f'{dataset}_glove_word2vec.pkl'
 
     # Todo: [WARN]
     # param.batch_size = 2
@@ -271,7 +275,6 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    inp_name = 'coco_glove_word2vec.pkl'
     # 构建数据集
 
     batch_size = param.batch_size
