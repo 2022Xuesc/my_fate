@@ -357,31 +357,31 @@ def draw_train_and_valid(paths):
 #
 
 # Todo: 各个客户端自身的结果分析
-# paths = ['gcn/sal_gl']
-# for path in paths:
-#     clients_path = [os.path.join(path, 'guest/10')]
-# 
-#     for i in range(1, 10):
-#         clients_path.append(os.path.join(path, f'host/{i}'))
-# 
-#     # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
-#     # draw_losses(clients_path, 'loss.csv')
-# 
-#     # Todo: 各个客户端的结果分析
-#     arbiter_path = os.path.join(path, 'arbiter/999')
-#     draw_train_and_valid(clients_path)
-#     draw(arbiter_path, loss_file='avgloss.csv')
+paths = ['gcn/sal_gl_scene_6_fedavg']
+for path in paths:
+    clients_path = [os.path.join(path, 'guest/10')]
+
+    for i in range(1, 10):
+        clients_path.append(os.path.join(path, f'host/{i}'))
+
+    # draw(clients_path, train_file='train.csv', valid_file='valid.csv')
+    # draw_losses(clients_path, 'loss.csv')
+
+    # Todo: 各个客户端的结果分析
+    arbiter_path = os.path.join(path, 'arbiter/999')
+    draw_train_and_valid(clients_path)
+    draw(arbiter_path, loss_file='avgloss.csv')
 
 
 # Todo: 比较方法
-clients_path = ['guest/10']
-
-for i in range(1, 10):
-    clients_path.append(f'host/{i}')
-# 将服务器端也加进去
-clients_path.append('arbiter/999')
-
-compare_method(clients_path, 'valid.csv')
+# clients_path = ['guest/10']
+# 
+# for i in range(1, 10):
+#     clients_path.append(f'host/{i}')
+# # 将服务器端也加进去
+# clients_path.append('arbiter/999')
+# 
+# compare_method(clients_path, 'valid.csv')
 
 
 # compare_layer_ratio_method(clients_path, 'valid.csv')

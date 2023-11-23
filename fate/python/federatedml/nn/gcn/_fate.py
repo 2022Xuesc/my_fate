@@ -254,14 +254,14 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
-    dataset = 'nuswide'
-    # dataset = 'coco'
-
-    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
+    # dataset = 'nuswide'
+    dataset = 'coco'
     inp_name = f'{dataset}_glove_word2vec.pkl'
 
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
+
     # Todo: [WARN]
-    # param.batch_size = 2
+    # param.batch_size = 1
     # param.max_iter = 1000
     # param.num_labels = 80
     # param.device = 'cuda:0'
@@ -311,7 +311,10 @@ class GCNFedAggregator(object):
 
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
 
-            self.model = aggregate_whole_model(tensors, degrees)
+            # tensors的最后两层参数是分类器的参数，直接调用FPSL的聚合方法进行聚合
+            # self.model = aggregate_whole_model(tensors, degrees)
+            # Todo: FPSL聚合方式
+            self.model = aggregate_by_labels(tensors, degrees)
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.context.send_model((self.model, self.bn_data, fixed_adjs))

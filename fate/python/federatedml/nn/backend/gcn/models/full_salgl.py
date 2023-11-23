@@ -362,6 +362,7 @@ class FullSALGL(nn.Module):
             {'params': self.transformer.parameters(), 'lr': lr},
             {'params': self.attention.parameters(), 'lr': lr},
             {'params': self.fc.parameters(), 'lr': lr},
+            # Todo: Debug查看一下分类器参数
             {'params': self.classifier.parameters(), 'lr': lr},
             # Todo: 以下是不能聚合的参数
             {'params': self.scene_linear.parameters(), 'lr': lr}

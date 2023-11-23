@@ -14,7 +14,8 @@ def calculate_stats(float_list):
 # paths = ['sync_fpsl_resnet', 'sync_fpsl_agg_bn', 'sync_fpsl_fixed_ratio_drop',
 #          'sync_fpsl_lamp', 'sync_fpsl_dep_global', 'sync_fpsl_st', 'sync_fpsl_st_dep']
 # paths = ['sync_fpsl_resnet','sync_fpsl_fixed_ratio_drop','sync_fpsl_bn_only_split','sync_fpsl_st']
-paths = ['gcn/base_fpsl','gcn/c_gcn','gcn/p_gcn_fedavg','gcn/p_gcn_fpsl','gcn/sal_gl']
+paths = ['gcn/base_fpsl', 'gcn/c_gcn', 'gcn/p_gcn_fedavg', 'gcn/p_gcn_fpsl', 'gcn/sal_gl_scene_2_fedavg',
+         'gcn/sal_gl_scene_6_fedavg']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):

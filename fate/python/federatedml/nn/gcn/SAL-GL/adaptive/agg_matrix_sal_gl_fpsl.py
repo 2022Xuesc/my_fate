@@ -254,15 +254,19 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
-    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # dataset = 'nuswide'
+    dataset = 'coco'
+    inp_name = f'{dataset}_glove_word2vec.pkl'
+
+    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
 
     # Todo: [WARN]
-    # param.batch_size = 4
-    # param.max_iter = 1000
-    # param.num_labels = 80
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    param.batch_size = 1
+    param.max_iter = 1000
+    param.num_labels = 80
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -271,7 +275,6 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    inp_name = 'coco_glove_word2vec.pkl'
     # 构建数据集
 
     batch_size = param.batch_size
@@ -308,7 +311,10 @@ class GCNFedAggregator(object):
 
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
 
-            self.model = aggregate_whole_model(tensors, degrees)
+            # tensors的最后两层参数是分类器的参数，直接调用FPSL的聚合方法进行聚合
+            # self.model = aggregate_whole_model(tensors, degrees)
+            # Todo: FPSL聚合方式
+            self.model = aggregate_by_labels(tensors, degrees)
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.context.send_model((self.model, self.bn_data, fixed_adjs))
@@ -615,7 +621,7 @@ def _init_gcn_learner(param, device='cpu'):
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
 
-    model = full_salgl(param.pretrained, device, num_scenes=num_scenes, n_head=n_head)
+    model = full_salgl(param.pretrained, device, num_scenes=num_scenes, n_head=n_head, num_classes=param.num_labels)
     gcn_optimizer = None
     # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
     #                             lr=lr,
