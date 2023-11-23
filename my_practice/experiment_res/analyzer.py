@@ -219,7 +219,7 @@ def compare_method(paths, file):
         file_path4 = os.path.join('gcn/p_gcn_fpsl', os.path.join(path, file))
         data4 = pd.read_csv(file_path4)
         
-        file_path5 = os.path.join('gcn/sal_gl', os.path.join(path, file))
+        file_path5 = os.path.join('gcn/sal_gl_scene_2_fedavg', os.path.join(path, file))
         data5 = pd.read_csv(file_path5)
         
         
