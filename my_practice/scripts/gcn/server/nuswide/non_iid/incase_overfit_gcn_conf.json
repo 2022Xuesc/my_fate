@@ -34,7 +34,7 @@
         "max_iter": 100,
         "batch_size": 2,
         "aggregate_every_n_epoch": 4,
-        "lr": 0.0001,
+        "lr": 0.00005,
         "num_labels": 81,
         "pretrained": true,
         "dataset": "ms-nuswide",
