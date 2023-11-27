@@ -99,7 +99,7 @@ FULL-SALGL（场景数为2）:
     COCO:
         FedAvg: 202311201558581176690  # Todo: batch_size = 8   Good
         FPSL: 202311230701216594250    # Todo: batch_size = 4   Not Good
-        FPSL: 
+        FPSL: 202311240041370215820
     NUSWIDE
         FedAvg: 202311222019273056150
         FPSL: 

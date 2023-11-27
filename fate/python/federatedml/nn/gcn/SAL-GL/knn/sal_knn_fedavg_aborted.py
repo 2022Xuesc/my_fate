@@ -254,14 +254,10 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
-    # dataset = 'nuswide'
-    dataset = 'coco'
-    inp_name = f'{dataset}_glove_word2vec.pkl'
-
-    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
+    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
 
     # Todo: [WARN]
-    param.batch_size = 1
+    param.batch_size = 8
     param.max_iter = 1000
     param.num_labels = 80
     param.device = 'cuda:0'
@@ -275,6 +271,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
+    inp_name = 'coco_glove_word2vec.pkl'
     # 构建数据集
 
     batch_size = param.batch_size
@@ -311,10 +308,7 @@ class GCNFedAggregator(object):
 
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
 
-            # tensors的最后两层参数是分类器的参数，直接调用FPSL的聚合方法进行聚合
-            # self.model = aggregate_whole_model(tensors, degrees)
-            # Todo: FPSL聚合方式
-            self.model = aggregate_by_labels(tensors, degrees)
+            self.model = aggregate_whole_model(tensors, degrees)
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.context.send_model((self.model, self.bn_data, fixed_adjs))
@@ -389,7 +383,6 @@ class GCNFitter(object):
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None
-        self.epoch_scene_cnts = None
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -410,8 +403,6 @@ class GCNFitter(object):
             self._all_consumed_data_aggregated = False
         else:
             self._num_data_consumed += num_samples
-        # 初始化epoch_scene_cnts
-        self.epoch_scene_cnts = None
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         metrics = valid_metrics
@@ -463,7 +454,7 @@ class GCNFitter(object):
 
         # 包装一个scene_info，包括场景分类器和每个场景下的邻接矩阵
         my_id = self.context.name._uuid
-        scene_info = (self.model.scene_linear.weight.data, self.model.comatrix, self.epoch_scene_cnts, my_id)
+        scene_info = (self.model.scene_linear.weight.data, self.model.comatrix, self.model.total_scene_cnts, my_id)
 
         # FedAvg聚合策略
         agg_bn_data, fixed_adjs = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
@@ -519,27 +510,15 @@ class GCNFitter(object):
             # Todo: 这里还要传入target以计算熵函数
             output = model(features, inp, y=target)
             predicts = output['output']
-            entropy_loss = output['entropy_loss']
-            batch_scene_cnts = output['scene_cnts']
-            # 将scene_cnts加到该epoch的scene_cnts中
-            num_scenes = len(batch_scene_cnts)
-            if self.epoch_scene_cnts is None:
-                self.epoch_scene_cnts = batch_scene_cnts
-            else:
-                for i in range(num_scenes):
-                    self.epoch_scene_cnts[i] += batch_scene_cnts[i]
-
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, target)
 
-            lambda_entropy = 1
             objective_loss = criterion(sigmoid_func(predicts), target)
 
-            overall_loss = objective_loss + lambda_entropy * entropy_loss
+            overall_loss = objective_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
-            losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
             optimizer.zero_grad()
 
             overall_loss.backward()
@@ -621,12 +600,9 @@ def _init_gcn_learner(param, device='cpu'):
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
 
-    model = full_salgl(param.pretrained, device, num_scenes=num_scenes, n_head=n_head, num_classes=param.num_labels)
+    model = salgl_knn(param.pretrained, device, num_scenes=num_scenes, n_head=n_head)
     gcn_optimizer = None
-    # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
-    #                             lr=lr,
-    #                             momentum=0.9,
-    #                             weight_decay=1e-4)
+
     # 使用AdamW优化器试试
     optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
 
