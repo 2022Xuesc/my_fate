@@ -21,36 +21,37 @@ def kmeans(
     initial_state = initial_state.to(device)
 
     iteration = 0
-    while True:
-        dis = pairwise_distance_function(X, initial_state)
+    # while True:
 
-        choice_cluster = torch.argmin(dis, dim=1)
+    dis = pairwise_distance_function(X, initial_state)
 
-        initial_state_pre = initial_state.clone()
+    choice_cluster = torch.argmin(dis, dim=1)
 
-        for index in range(num_clusters):
-            selected = torch.nonzero(choice_cluster == index).squeeze().to(device)
+    initial_state_pre = initial_state.clone()
 
-            selected = torch.index_select(X, 0, selected)
-            # 没有选择的聚类，则直接跳过
-            if len(selected) == 0:
-                continue
-            # 使用加权更新
-            w1 = scene_cnts[index]
-            weight = w1 + len(selected)
-            # Todo: 和原来的场景数加权平均
-            initial_state[index] = (w1 * initial_state[index] + selected.sum(dim=0)) / weight
+    for index in range(num_clusters):
+        selected = torch.nonzero(choice_cluster == index).squeeze().to(device)
 
-        center_shift = torch.sum(
-            torch.sqrt(
-                torch.sum((initial_state - initial_state_pre) ** 2, dim=1)
-            ))
+        selected = torch.index_select(X, 0, selected)
+        # 没有选择的聚类，则直接跳过
+        if len(selected) == 0:
+            continue
+        # 使用加权更新
+        w1 = scene_cnts[index]
+        weight = w1 + len(selected)
+        # Todo: 和原来的场景数加权平均
+        initial_state[index] = (w1 * initial_state[index] + selected.sum(dim=0)) / weight
 
-        # increment iteration
-        iteration = iteration + 1
+        # center_shift = torch.sum(
+        #     torch.sqrt(
+        #         torch.sum((initial_state - initial_state_pre) ** 2, dim=1)
+        #     ))
 
-        if center_shift ** 2 < tol:
-            break
+        # # increment iteration
+        # iteration = iteration + 1
+        # 
+        # if center_shift ** 2 < tol:
+        #     break
     # 返回该批次样本对应的聚类类别和更新后的聚类中心
     # choice_cluster = [cluster_id.item() for cluster_id in choice_cluster]
     return choice_cluster.to(device), initial_state

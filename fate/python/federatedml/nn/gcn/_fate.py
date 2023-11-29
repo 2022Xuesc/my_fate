@@ -534,9 +534,8 @@ class GCNFitter(object):
 
             # predicts_norm = torch.mean(predicts).item()
 
-            # LOGGER.warn(
-            #     f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},"
-            #     f"mAP={100 * self.ap_meter.value()[0].item()},loss={overall_loss.item()},predicts_norm={predicts_norm}")
+            LOGGER.warn(
+                f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch}")
 
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:
