@@ -216,6 +216,10 @@ class SALGL_KNN(nn.Module):
 
         # 维护场景中心，是一个num_scenes,feat_dim维的tensor
         self.centers = torch.Tensor(num_scenes, feat_dim)
+        # 对场景中心初始化，使其分布均匀
+        # 那也要让传入的图像上下文特征尽量分布均匀
+        torch.nn.init.kaiming_uniform_(self.centers, a=math.sqrt(5))
+
         self.total_scene_cnts = [0] * num_scenes
 
         # 引入transformer结构

@@ -32,6 +32,8 @@ avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 # 训练时的损失组成记录
 train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'objective_loss', 'entropy_loss', 'overall_loss'])
 
+scene_cnts_writer = my_writer.get("total_scene_cnts.csv")
+
 
 class _FedBaseContext(object):
     def __init__(self, max_num_aggregation, name):
@@ -454,7 +456,12 @@ class GCNFitter(object):
 
         # 包装一个scene_info，包括场景分类器和每个场景下的邻接矩阵
         my_id = self.context.name._uuid
-        scene_info = (self.model.scene_linear.weight.data, self.model.comatrix, self.model.total_scene_cnts, my_id)
+
+        # 这里使用的不是scene_linear，而是centers
+        scene_info = (self.model.centers.data, self.model.comatrix, self.model.total_scene_cnts, my_id)
+
+        # 记录scene_cnts信息
+        scene_cnts_writer.writerow([epoch] + self.model.total_scene_cnts)
 
         # FedAvg聚合策略
         agg_bn_data, fixed_adjs = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
@@ -595,7 +602,7 @@ def _init_gcn_learner(param, device='cpu'):
     # 使用SALGL模型
     # 每个客户端捕捉到的是不同的场景，因此，用不到adjList了
     # Todo: adjList在多场景条件下的适配
-    num_scenes = 6
+    num_scenes = 4  # 先设置一个比较小的值
     n_head = 4
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
