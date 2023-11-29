@@ -33,6 +33,7 @@ avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'objective_loss', 'entropy_loss', 'overall_loss'])
 
 scene_cnts_writer = my_writer.get("total_scene_cnts.csv")
+centers_writer = my_writer.get("centers.csv")
 
 
 class _FedBaseContext(object):
@@ -259,7 +260,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
 
     # Todo: [WARN]
-    param.batch_size = 8
+    param.batch_size = 2
     param.max_iter = 1000
     param.num_labels = 80
     param.device = 'cuda:0'
@@ -516,6 +517,10 @@ class GCNFitter(object):
             # 计算模型输出
             # Todo: 这里还要传入target以计算熵函数
             output = model(features, inp, y=target)
+
+            # 记录一下中心点的变化
+            centers_writer.writerow([epoch] + self.model.centers.shape)
+
             predicts = output['output']
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, target)
@@ -535,8 +540,7 @@ class GCNFitter(object):
             # predicts_norm = torch.mean(predicts).item()
 
             # LOGGER.warn(
-            #     f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},"
-            #     f"mAP={100 * self.ap_meter.value()[0].item()},loss={overall_loss.item()},predicts_norm={predicts_norm}")
+            #     f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch}")
 
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:

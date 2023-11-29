@@ -33,6 +33,7 @@ avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'objective_loss', 'entropy_loss', 'overall_loss'])
 
 scene_cnts_writer = my_writer.get("total_scene_cnts.csv")
+centers_writer = my_writer.get("centers.csv")
 
 
 class _FedBaseContext(object):
@@ -256,15 +257,15 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
-    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
 
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 80
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 80
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -516,6 +517,10 @@ class GCNFitter(object):
             # 计算模型输出
             # Todo: 这里还要传入target以计算熵函数
             output = model(features, inp, y=target)
+
+            # 记录一下中心点的变化
+            centers_writer.writerow([epoch] + self.model.centers.shape)
+
             predicts = output['output']
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, target)
