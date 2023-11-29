@@ -78,7 +78,7 @@ class DatasetLoader(object):
         batch_size = max(1, min(batch_size, len(train_dataset), len(valid_dataset)))
 
         shuffle = True
-        drop_last = False
+        drop_last = True
         num_workers = 32
 
         train_loader = torch.utils.data.DataLoader(
