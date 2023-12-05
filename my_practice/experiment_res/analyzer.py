@@ -359,7 +359,7 @@ def draw_train_and_valid(paths):
 #
 
 # Todo: 各个客户端自身的结果分析
-# paths = ['gcn/sal_gl_scene_6_fedavg']
+# paths = ['gcn/salgl_4_fedavg','gcn/knn_4_fedavg']
 # for path in paths:
 #     clients_path = [os.path.join(path, 'guest/10')]
 # 
