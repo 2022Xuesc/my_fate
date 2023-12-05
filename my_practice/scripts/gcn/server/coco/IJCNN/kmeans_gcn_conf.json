@@ -175,7 +175,7 @@
         },
         "6": {
           "gcn_0": {
-            "device": "cuda:1",
+            "device": "cuda:2",
             "adj_file": "/data/projects/clustered_dataset/client8/train/anno.json"
           },
           "reader_0": {
@@ -193,7 +193,7 @@
         },
         "7": {
           "gcn_0": {
-            "device": "cuda:1",
+            "device": "cuda:2",
             "adj_file": "/data/projects/clustered_dataset/client9/train/anno.json"
           },
           "reader_0": {
@@ -211,7 +211,7 @@
         },
         "8": {
           "gcn_0": {
-            "device": "cuda:1",
+            "device": "cuda:0",
             "adj_file": "/data/projects/clustered_dataset/client10/train/anno.json"
           },
           "reader_0": {
