@@ -89,11 +89,7 @@ def aggregate_relation_matrix(relation_matrices, degrees):
     return relation_matrix
 
 
-# infos[0]为scene_linear参数
-# infos[1]为scene_adjs
-# infos[2]为scene_cnts
-# 返回的应该是每个客户端每个场景的邻接矩阵，即scene_adjs
-def aggregate_scene_adjs(scene_infos):
+def aggregate_scene_adjs_with_cnts(scene_infos):
     num_clients = len(scene_infos)
     num_scenes = len(scene_infos[0][0])
     num_labels = len(scene_infos[0][1][0])
@@ -131,7 +127,7 @@ def aggregate_scene_adjs(scene_infos):
             for j in range(num_clients):
                 if coefficients[j] is not None:
                     # 这里的weight是余弦相似度，还要对其进行场景数的修正
-                    scene_id, weight = coefficients[j]  
+                    scene_id, weight = coefficients[j]
                     coefficients[j][1] = weight * scene_infos[j][2][scene_id] / total_cnt
                     other_weights += coefficients[j][1]
                     # Todo: 这里即应该是修正后的权重coefficients[j][1]
@@ -141,3 +137,54 @@ def aggregate_scene_adjs(scene_infos):
             # 进行聚合
             fixed_adjs[i][k] = agg_scene_adj
     return (names, fixed_adjs)
+
+
+# infos[0]为scene_linear参数
+# infos[1]为scene_adjs
+# infos[2]为scene_cnts
+# 返回的应该是每个客户端每个场景的邻接矩阵，即scene_adjs
+# Todo: 这里不应该考虑scene_cnts
+def aggregate_scene_adjs(scene_infos):
+    num_clients = len(scene_infos)
+    num_scenes = len(scene_infos[0][0])
+    num_labels = len(scene_infos[0][1][0])
+    fixed_adjs = np.zeros((num_clients, num_scenes, num_labels, num_labels))
+    names = [scene_infos[i][3] for i in range(num_clients)]
+    for i in range(num_clients):
+        linear_i = scene_infos[i][0]
+        for k, scene_k in enumerate(linear_i):
+            # 记录每个权重和对应的场景
+            coefficients = [None] * num_clients
+            cosine_similarities = np.zeros(num_scenes)
+            # 遍历每个其他客户端j
+            for j in range(num_clients):
+                if j == i:
+                    continue
+                linear_j = scene_infos[j][0]
+                for l, scene_l in enumerate(linear_j):
+                    dot_product = np.dot(scene_k, scene_l)
+                    norm_vector1 = np.linalg.norm(scene_k)
+                    norm_vector2 = np.linalg.norm(scene_l)
+                    cosine_similarities[l] = dot_product / (norm_vector1 * norm_vector2)
+                # 从余弦相似度选出最大的那个场景，记录场景id和场景相似度
+                max_scene_id = cosine_similarities.argmax()  # Todo: 如果余弦相似度为负数，则不进行聚合
+                max_scene_similarity = cosine_similarities[max_scene_id]
+                # 如果相似度为负数，则跳过当前客户端
+                if max_scene_similarity < 0:
+                    continue
+                coefficients[j] = [max_scene_id, max_scene_similarity]
+            # 再次遍历每个客户端
+            agg_scene_adj = np.zeros((num_labels, num_labels))
+            # 算上自身的相似度，即聚合权重为1
+            total_weight = 1
+            for j in range(num_clients):
+                if coefficients[j] is not None:
+                    # 这里的weight是余弦相似度，还要对其进行场景数的修正
+                    scene_id, weight = coefficients[j]
+                    total_weight += coefficients[j][1]
+                    agg_scene_adj += scene_infos[j][1][scene_id] * coefficients[j][1]
+            agg_scene_adj += scene_infos[i][1][k]
+            agg_scene_adj /= total_weight
+            # 进行聚合
+            fixed_adjs[i][k] = agg_scene_adj
+    return names, fixed_adjs

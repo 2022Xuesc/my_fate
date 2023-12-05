@@ -109,10 +109,10 @@ KNN:
         FedAvg: 202311290454587453610
         Scene_linear同参对比: 202311300839284826500
 
-
-
-
-
+Todo: 论文实验，小心验证
+KMeans
+        backbone        pooling         job_id
+        
 
 
 

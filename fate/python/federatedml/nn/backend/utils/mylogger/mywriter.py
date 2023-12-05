@@ -14,5 +14,6 @@ class MyWriter(object):
         file = open(os.path.join(self.stats_dir, file_name), 'w', buffering=buf_size)
         writer = csv.writer(file)
         # 写入表头信息，如果有的话
-        writer.writerow(header)
+        if len(header) != 0:
+            writer.writerow(header)
         return writer
