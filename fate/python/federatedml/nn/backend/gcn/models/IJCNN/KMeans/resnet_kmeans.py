@@ -78,7 +78,7 @@ class ResnetKmeans(nn.Module):
         )
         self.num_scenes = num_scenes
         self.num_classes = num_classes
-        self.pooling = nn.MaxPool2d(14, 14)
+        # self.pooling = nn.MaxPool2d(14, 14)
         # 维护场景中心，是一个num_scenes,feat_dim维的tensor
         self.centers = torch.Tensor(num_scenes, feat_dim)
         # 对场景中心初始化，使其分布均匀
@@ -128,13 +128,14 @@ class ResnetKmeans(nn.Module):
 
     def forward(self, x, inp, y=None):
         img_feats = self.features(x)
-        att_feats = torch.flatten(img_feats, start_dim=2).transpose(1, 2)
+        img_feats = torch.flatten(img_feats, start_dim=2).transpose(1, 2)
         # Todo: 这里使用MaxPooling还是AveragePooling？
-        feature = self.pooling(img_feats)
+        # feature = self.pooling(img_feats)
 
-        feature = feature.view(feature.size(0), -1)
+        # feature = feature.view(feature.size(0), -1)
+        img_contexts = torch.mean(img_feats, dim=1)
 
-        scene_ids_x, self.centers = kmeans(feature, num_clusters=self.num_scenes, initial_state=self.centers,
+        scene_ids_x, self.centers = kmeans(img_contexts, num_clusters=self.num_scenes, initial_state=self.centers,
                                            scene_cnts=self.total_scene_cnts)
 
         if self.training:
@@ -151,7 +152,7 @@ class ResnetKmeans(nn.Module):
 
         # attention计算每个标签的视觉表示
         # attention: [batch_size]
-        label_feats, alphas = self.attention(att_feats, inp)
+        label_feats, alphas = self.attention(img_feats, inp)
 
         comats = self.comatrix2prob()
         # 取出每张图像对应的概率最大的场景索引
