@@ -1,42 +1,56 @@
 ————————————————————————————————————
 gcn/base_fpsl
-Minimum: 37.9
-Maximum: 76.3
-Mean: 54.6
+Minimum: 37.94
+Maximum: 76.29
+Mean: 54.59
 Variance: 10.5
 ————————————————————————————————————
 ————————————————————————————————————
 gcn/c_gcn
-Minimum: 40.7
-Maximum: 80.4
-Mean: 58.4
+Minimum: 40.73
+Maximum: 80.43
+Mean: 58.42
 Variance: 10.9
 ————————————————————————————————————
 ————————————————————————————————————
 gcn/p_gcn_fedavg
-Minimum: 39.0
-Maximum: 79.6
-Mean: 57.6
+Minimum: 38.98
+Maximum: 79.62
+Mean: 57.63
 Variance: 11.4
 ————————————————————————————————————
 ————————————————————————————————————
 gcn/p_gcn_fpsl
-Minimum: 41.2
-Maximum: 79.8
-Mean: 58.4
+Minimum: 41.24
+Maximum: 79.82
+Mean: 58.44
 Variance: 10.6
 ————————————————————————————————————
 ————————————————————————————————————
 gcn/sal_gl_scene_2_fedavg
-Minimum: 37.7
-Maximum: 80.9
-Mean: 57.7
+Minimum: 37.65
+Maximum: 80.92
+Mean: 57.71
 Variance: 11.7
 ————————————————————————————————————
 ————————————————————————————————————
 gcn/sal_gl_scene_6_fedavg
-Minimum: 41.6
-Maximum: 81.8
-Mean: 61.0
+Minimum: 41.63
+Maximum: 81.76
+Mean: 61.04
 Variance: 11.0
+————————————————————————————————————
+————————————————————————————————————
+gcn/knn_4_fedavg
+Minimum: 42.69
+Maximum: 81.95
+Mean: 61.16
+Variance: 11.1
+————————————————————————————————————
+————————————————————————————————————
+gcn/salgl_4_fedavg
+Minimum: 41.96
+Maximum: 82.05
+Mean: 61.08
+Variance: 10.8
 ————————————————————————————————————

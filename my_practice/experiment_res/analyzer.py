@@ -219,31 +219,40 @@ def compare_method(paths, file):
         # file_path4 = os.path.join('gcn/p_gcn_fpsl', os.path.join(path, file))
         # data4 = pd.read_csv(file_path4)
 
-        file_path5 = os.path.join('gcn/sal_gl_scene_2_fedavg', os.path.join(path, file))
-        data5 = pd.read_csv(file_path5)
+        # file_path5 = os.path.join('gcn/sal_gl_scene_2_fedavg', os.path.join(path, file))
+        # data5 = pd.read_csv(file_path5)
 
-        file_path6 = os.path.join('gcn/sal_gl_scene_6_fedavg', os.path.join(path, file))
-        data6 = pd.read_csv(file_path6)
+        # file_path6 = os.path.join('gcn/sal_gl_scene_6_fedavg', os.path.join(path, file))
+        # data6 = pd.read_csv(file_path6)
+
+        kmeans_path = os.path.join('gcn/knn_4_fedavg', os.path.join(path, file))
+        kmeans_data = pd.read_csv(kmeans_path)
+
+        agg_salgl_4_path = os.path.join('gcn/salgl_4_fedavg', os.path.join(path, file))
+        agg_salgl_4_data = pd.read_csv(agg_salgl_4_path)
 
         fpsl_mAP = data1['map']
         c_gcn_mAP = data2['map']
         # p_gcn_fedavg_mAP = data3['map']
         # p_gcn_fpsl_mAP = data4['map']
-        sal_gl_mAP = data5['map']
-        agg_sglgl_mAP = data6['map']
+        # sal_gl_mAP = data5['map']
+        # agg_salgl_mAP = data6['map']
+        kmeans_mAP = kmeans_data['map']
+        agg_salgl_4_mAP = agg_salgl_4_data['map']
 
-        show_epochs = 30
+        show_epochs = 20
 
         plt.plot(data1[x_axis][0:show_epochs], fpsl_mAP[0:show_epochs], 'g')
         plt.plot(data2[x_axis][0:show_epochs], c_gcn_mAP[0:show_epochs], 'b')
         # plt.plot(data3[x_axis][0:show_epochs], p_gcn_fedavg_mAP[0:show_epochs], 'r')
         # plt.plot(data4[x_axis][0:show_epochs], p_gcn_fpsl_mAP[0:show_epochs], 'y')
-        plt.plot(data5[x_axis][0:show_epochs], sal_gl_mAP[0:show_epochs], 'purple')
-        plt.plot(data6[x_axis][0:show_epochs], agg_sglgl_mAP[0:show_epochs], 'r')
+        # plt.plot(data5[x_axis][0:show_epochs], sal_gl_mAP[0:show_epochs], 'purple')
+        plt.plot(agg_salgl_4_data[x_axis][0:show_epochs], agg_salgl_4_mAP[0:show_epochs], 'r')
+        plt.plot(kmeans_data[x_axis][0:show_epochs],kmeans_mAP[0:show_epochs],'purple')
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
-        plt.legend(['FPSL', 'C-GCN', 'SAL-GL', 'SAL-GL-AGG-SCENE'])
+        plt.legend(['FPSL', 'C-GCN', 'Agg_SALGL_with_FC', 'Agg_SALGL_with_KMeans'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
