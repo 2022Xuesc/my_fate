@@ -33,7 +33,11 @@ avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'objective_loss', 'entropy_loss', 'overall_loss'])
 
 scene_cnts_writer = my_writer.get("total_scene_cnts.csv")
-centers_writer = my_writer.get("centers.csv")
+
+centers_dir = os.path.join(os.path.join(os.getcwd(), 'stats'), 'centers')
+
+if not os.path.exists(centers_dir):
+    os.makedirs(centers_dir)
 
 
 class _FedBaseContext(object):
@@ -518,9 +522,6 @@ class GCNFitter(object):
             # Todo: 这里还要传入target以计算熵函数
             output = model(features, inp, y=target)
 
-            # 记录一下中心点的变化
-            centers_writer.writerow([epoch] + self.model.centers.shape)
-
             predicts = output['output']
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, target)
@@ -609,9 +610,9 @@ def _init_gcn_learner(param, device='cpu'):
     num_scenes = 4  # 先设置一个比较小的值
     n_head = 4
     # 基础学习率调大一点，lrp调小点
-    lr, lrp = param.lr, 0.1
+    lr, lrp = param.lr, 1
 
-    model = salgl_knn(param.pretrained, device, num_scenes=num_scenes, n_head=n_head)
+    model = vit_kmeans(param.pretrained, device, num_scenes=num_scenes, n_head=n_head)
     gcn_optimizer = None
 
     # 使用AdamW优化器试试

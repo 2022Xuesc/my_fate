@@ -170,7 +170,7 @@ class FedClientContext(_FedBaseContext):
             self._params = [
                 param
                 # 不是完全倒序，对于嵌套for循环，先声明的在前面
-                for param_group in optimizer.param_groups  # 这里不考虑scene_linear的参数，因为关于场景的类别是不一致的
+                for param_group in optimizer.param_groups[0:7]  # 这里不考虑scene_linear的参数，因为关于场景的类别是不一致的
                 for param in param_group["params"]
             ]
             return
@@ -372,6 +372,8 @@ class GCNFitter(object):
         # 使用非对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
 
+        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
+
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -491,7 +493,6 @@ class GCNFitter(object):
         return valid_metrics
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
-
         total_samples = len(train_loader.sampler)
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
         steps_per_epoch = math.ceil(total_samples / batch_size)
@@ -518,6 +519,7 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
+            # Todo: 这里还要传入target以计算熵函数
             output = model(features, inp, y=target)
 
             predicts = output['output']
@@ -550,10 +552,6 @@ class GCNFitter(object):
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         # 这里还统计其他数据
-
-        # Todo: 记录一下中心点的变化
-        # 使用torch保存
-        torch.save(self.model.centers, os.path.join(centers_dir, f'centers_{epoch}.pth'))
 
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
@@ -610,10 +608,11 @@ def _init_gcn_learner(param, device='cpu'):
     # 每个客户端捕捉到的是不同的场景，因此，用不到adjList了
     # Todo: adjList在多场景条件下的适配
     num_scenes = 4  # 先设置一个比较小的值
+    n_head = 4
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 1
 
-    model = resnet_kmeans(param.pretrained, device, num_scenes=num_scenes)
+    model = vit_kmeans(param.pretrained, device, num_scenes=num_scenes, n_head=n_head)
     gcn_optimizer = None
 
     # 使用AdamW优化器试试

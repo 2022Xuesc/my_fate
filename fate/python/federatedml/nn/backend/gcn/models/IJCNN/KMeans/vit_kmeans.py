@@ -184,7 +184,7 @@ class Element_Wise_Layer(nn.Module):
 #  1. self.features 使用预训练权重
 #  2. nn.Linear 已经进行了权重初始化-->恺明初始化
 #  3. 自定义的Parameter也已经进行了权重初始化
-class SALGL_KNN(nn.Module):
+class VitKMeans(nn.Module):
     # 传进来一个resnet101，截取其前一部分作为主干网络
     # Todo: 比较重要的超参数
     #  1. 场景个数 num_scenes=6
@@ -198,7 +198,7 @@ class SALGL_KNN(nn.Module):
                  n_head=8, num_layers=1, gcn_middle_dim=1024,
                  out_channels=2048, num_classes=80, comat_smooth=False):
 
-        super(SALGL_KNN, self).__init__()
+        super(VitKMeans, self).__init__()
         # cnn主干网络，提取特征
         self.features = nn.Sequential(
             model.conv1,
