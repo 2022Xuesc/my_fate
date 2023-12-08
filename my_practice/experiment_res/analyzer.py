@@ -195,10 +195,12 @@ def compare_layer_ratio_method(paths, file):
 def compare_method(paths, file):
     is_arbiter = False
     for path in paths:
+        show_epochs = 20
         if path.startswith('arbiter'):
             file = 'avgloss.csv'
             is_arbiter = True
             x_axis = 'agg_iter'
+            show_epochs = 6
         else:
             file = 'valid.csv'
             x_axis = 'epoch'
@@ -240,15 +242,13 @@ def compare_method(paths, file):
         kmeans_mAP = kmeans_data['map']
         agg_salgl_4_mAP = agg_salgl_4_data['map']
 
-        show_epochs = 20
-
         plt.plot(data1[x_axis][0:show_epochs], fpsl_mAP[0:show_epochs], 'g')
         plt.plot(data2[x_axis][0:show_epochs], c_gcn_mAP[0:show_epochs], 'b')
         # plt.plot(data3[x_axis][0:show_epochs], p_gcn_fedavg_mAP[0:show_epochs], 'r')
         # plt.plot(data4[x_axis][0:show_epochs], p_gcn_fpsl_mAP[0:show_epochs], 'y')
         # plt.plot(data5[x_axis][0:show_epochs], sal_gl_mAP[0:show_epochs], 'purple')
         plt.plot(agg_salgl_4_data[x_axis][0:show_epochs], agg_salgl_4_mAP[0:show_epochs], 'r')
-        plt.plot(kmeans_data[x_axis][0:show_epochs],kmeans_mAP[0:show_epochs],'purple')
+        plt.plot(kmeans_data[x_axis][0:show_epochs], kmeans_mAP[0:show_epochs], 'purple')
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
