@@ -610,7 +610,7 @@ def _init_gcn_learner(param, device='cpu'):
     num_scenes = 4  # 先设置一个比较小的值
     n_head = 4
     # 基础学习率调大一点，lrp调小点
-    lr, lrp = param.lr, 1
+    lr, lrp = param.lr, 0.1
 
     model = vit_kmeans(param.pretrained, device, num_scenes=num_scenes, n_head=n_head)
     gcn_optimizer = None

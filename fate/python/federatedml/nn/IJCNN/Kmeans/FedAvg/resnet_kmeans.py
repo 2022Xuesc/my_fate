@@ -611,7 +611,7 @@ def _init_gcn_learner(param, device='cpu'):
     # Todo: adjList在多场景条件下的适配
     num_scenes = 4  # 先设置一个比较小的值
     # 基础学习率调大一点，lrp调小点
-    lr, lrp = param.lr, 1
+    lr, lrp = param.lr, 0.1
 
     model = resnet_kmeans(param.pretrained, device, num_scenes=num_scenes)
     gcn_optimizer = None
