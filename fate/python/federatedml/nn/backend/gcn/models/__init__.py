@@ -1,5 +1,6 @@
 import torchvision.models as torch_models
 
+from federatedml.nn.backend.gcn.models.IJCNN.SALGL.resnet_salgl import ResnetSalgl
 from federatedml.nn.backend.gcn.models.full_salgl import FullSALGL
 from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
 from federatedml.nn.backend.gcn.models.salgl import SALGL
@@ -41,6 +42,12 @@ def salgl_knn(pretrained, device, num_scenes=6, n_head=4, num_classes=80):
 def resnet_agg_salgl(pretrained, device, num_scenes=6, num_classes=80):
     model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
     return ResnetAggSalgl(model, num_scenes=num_scenes, num_classes=num_classes).to(device)
+
+
+def resnet_salgl(pretrained, device, num_scenes=6, num_classes=80):
+    model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
+    return ResnetSalgl(model, num_scenes=num_scenes, num_classes=num_classes).to(device)
+
 
 def resnet_kmeans(pretrained, device, num_scenes=6, num_classes=80):
     model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
