@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202312051426244267580"
-job_id = "202312051426244267580"
+dir_id = "202312090655511150160"
+job_id = "202312090655511150160"
 module_name = 'gcn_0'
-target_dir = 'IJCNN/resnet_kmeans'
+target_dir = 'IJCNN/resnet_agg_salgl'
 client_num = 10
 
 
