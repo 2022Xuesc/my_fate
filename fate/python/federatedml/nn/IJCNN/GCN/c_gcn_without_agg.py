@@ -377,9 +377,9 @@ class GCNFitter(object):
                                                                                            adjList)
 
         # 使用非对称损失
-        self.criterion = AsymmetricLossOptimized().to(self.param.device)
+        # self.criterion = AsymmetricLossOptimized().to(self.param.device)
 
-        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
+        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
 
         self.start_epoch, self.end_epoch = 0, epochs
 
@@ -508,7 +508,7 @@ class GCNFitter(object):
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-        sigmoid_func = torch.nn.Sigmoid()
+        # sigmoid_func = torch.nn.Sigmoid()
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
@@ -526,7 +526,8 @@ class GCNFitter(object):
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(output.data, target)
 
-            loss = criterion(sigmoid_func(output), target)
+            # loss = criterion(sigmoid_func(output), target)
+            loss = criterion(output, target)
 
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
@@ -561,7 +562,7 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        sigmoid_func = torch.nn.Sigmoid()
+        # sigmoid_func = torch.nn.Sigmoid()
         model.eval()
         self.ap_meter.reset()
 
@@ -572,7 +573,7 @@ class GCNFitter(object):
                 target = target.to(device)
 
                 output = model(features, inp)
-                loss = criterion(sigmoid_func(output), target)
+                loss = criterion(output, target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
                 # Todo: 这里需要对target进行detach操作吗？
@@ -598,14 +599,14 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     gcn_optimizer = None
 
     # 注意，这里的lrp设置为0.1
-    lr, lrp = param.lr, 0.1
+    lr, lrp = param.lr, 1
 
     # 使用AdamW优化器
-    optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
-    # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
-    #                             lr=lr,
-    #                             momentum=0.9,
-    #                             weight_decay=1e-4)
+    # optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
+    optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
+                                lr=lr,
+                                momentum=0.9,
+                                weight_decay=1e-4)
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
