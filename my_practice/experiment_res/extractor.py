@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202312090655511150160"
-job_id = "202312090655511150160"
+dir_id = "202312100444526507410"
+job_id = "202312100444526507410"
 module_name = 'gcn_0'
-target_dir = 'IJCNN/resnet_agg_salgl'
+target_dir = 'IJCNN/resnet_salgl'
 client_num = 10
 
 
@@ -28,8 +28,6 @@ def mv_files(dir_path, target_path):
         file_path = os.path.join(files_dir, filename)
         if os.path.isfile(file_path):
             shutil.copy(file_path, target_path)
-        else:
-            shutil.copytree(file_path, f'{target_path}/centers')
 
 
 def mv_stats(role, role_ids, target_dir):
@@ -47,5 +45,6 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
 
