@@ -1,25 +1,36 @@
 # 服务器与客户端的通用逻辑
-import math
-import torch
-import torch.nn
-import torchnet.meter as tnt
-
 import copy
 import json
-import os
-import typing
 from collections import OrderedDict
-from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
-from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.gcn.models import resnet_c_gcn
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import AsymmetricLossOptimized
-from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
-from federatedml.nn.backend.utils.aggregators.aggregator import *
-from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
-from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
+
+import numpy as np
+import typing
+import torchvision.transforms as transforms
+import torchnet.meter as tnt
+import math
+import os
+import logging
+import csv
+
+import torch
+import torch.nn
+
+from federatedml.nn.backend.gcn.config import config_scheduler
+from federatedml.nn.backend.gcn.models import *
+from federatedml.nn.backend.pytorch.data import COCO
+from federatedml.nn.homo_nn import _consts
 from federatedml.param.gcn_param import GCNParam
 from federatedml.util import LOGGER
+from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
+from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
+from federatedml.nn.backend.gcn.utils import MultiScaleCrop, Warp
+from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
+from federatedml.nn.backend.utils.aggregators.aggregator import *
+
+from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 
 my_writer = MyWriter(dir_name=os.getcwd())
 
@@ -89,7 +100,7 @@ class FedClientContext(_FedBaseContext):
 
     # Todo: 发送模型
     #  tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, weight):
+    def send_model(self, tensors, bn_data, relation_matrix, weight):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
@@ -99,7 +110,7 @@ class FedClientContext(_FedBaseContext):
             bn_arr = bn_item.data.cpu().numpy()
             bn_arrs.append(bn_arr)
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, relation_matrix, weight), suffix=self._suffix()
         )
 
     # 接收模型
@@ -116,14 +127,14 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, weight, device):
+    def do_aggregation(self, bn_data, relation_matrix, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, weight)
+        self.send_model(self._params, bn_data, relation_matrix, weight)
         LOGGER.warn(f"{self.aggregation_iteration}个模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data = recv_elements
+        global_model, bn_data, relation_matrix = recv_elements
         # 使用接收的全局模型更新本地模型
         agg_tensors = []
         for arr in global_model:
@@ -137,7 +148,7 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors
+        return bn_tensors, relation_matrix
 
     # 关于度量的向量
     def do_convergence_check(self, weight, metrics):
@@ -243,13 +254,13 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 1
-    param.max_iter = 100
-    param.num_labels = 80
-    param.device = 'cuda:0'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # param.batch_size = 1
+    # param.max_iter = 100
+    # param.num_labels = 80
+    # param.device = 'cuda:0'
 
-    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -264,6 +275,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     batch_size = param.batch_size
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
+    # Todo: 图像规模减小
     train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
 
     fitter = GCNFitter(param, epochs, context=context)
@@ -275,6 +287,7 @@ class GCNFedAggregator(object):
         self.context = context
         self.model = None
         self.bn_data = None
+        self.relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -283,17 +296,22 @@ class GCNFedAggregator(object):
             LOGGER.warn(f'收到{len(recv_elements)}个客户端发送过来的模型')
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
+            relation_matrices = [party_tuple[2] for party_tuple in recv_elements]
+            np.save(f'relation_matrices{cur_iteration}', relation_matrices)
 
-            degrees = [party_tuple[2] for party_tuple in recv_elements]
-
+            degrees = [party_tuple[3] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
+            self.relation_matrix = aggregate_relation_matrix(relation_matrices, degrees)
             # Todo: 这里需要再改改
             #  没有分类层了，因此，无法使用FPSL了
 
             self.model = aggregate_whole_model(tensors, degrees)
+
+            # self.model = aggregate_by_labels(tensors, degrees)
+
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((self.model, self.bn_data))
+            self.context.send_model((self.model, self.bn_data, self.relation_matrix))
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
             self.context.do_convergence_check()
@@ -341,7 +359,7 @@ class GCNFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: [WARN]
-        self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
+        # self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
 
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
@@ -377,9 +395,9 @@ class GCNFitter(object):
                                                                                            adjList)
 
         # 使用非对称损失
-        self.criterion = AsymmetricLossOptimized().to(self.param.device)
+        # self.criterion = AsymmetricLossOptimized().to(self.param.device)
 
-        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
+        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
 
         self.start_epoch, self.end_epoch = 0, epochs
 
@@ -476,7 +494,8 @@ class GCNFitter(object):
         weight_list.append(self._num_data_consumed)
 
         # FedAvg聚合策略
-        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+        agg_bn_data, adjList = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+                                                           relation_matrix=self.adjList,
                                                            device=self.param.device)
         idx = 0
         for layer in self.model.modules():
@@ -486,6 +505,7 @@ class GCNFitter(object):
                 layer.running_var.data.copy_(agg_bn_data[idx])
                 idx += 1
 
+        self.model.updateA(adjList)
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         self.train_one_epoch(epoch, train_loader, scheduler)
@@ -508,7 +528,7 @@ class GCNFitter(object):
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-        sigmoid_func = torch.nn.Sigmoid()
+        # sigmoid_func = torch.nn.Sigmoid()
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
@@ -526,15 +546,29 @@ class GCNFitter(object):
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(output.data, target)
 
-            loss = criterion(sigmoid_func(output), target)
+            # loss = criterion(sigmoid_func(output), target)
 
+            loss = criterion(output, target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
+            # self.gcn_optimizer.zero_grad()
 
             loss.backward()
 
+            # Todo: 移除掉较大的梯度
+            #  太容易受影响了吧
+            # torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=0.5)
             optimizer.step()
+
+            # LOGGER.warn(
+            #     f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},"
+            #     f"mAP={100 * self.ap_meter.value()[0].item()},loss={loss.item()}")
+
+            # self.gcn_optimizer.step()
+
+            # self.lr_scheduler.step()
+            # self.gcn_lr_scheduler.step()
 
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:
@@ -572,12 +606,13 @@ class GCNFitter(object):
                 target = target.to(device)
 
                 output = model(features, inp)
-                loss = criterion(sigmoid_func(output), target)
+                # loss = criterion(sigmoid_func(output), target)
+
+                loss = criterion(output, target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
                 # Todo: 这里需要对target进行detach操作吗？
                 self.ap_meter.add(output.data, target)
-
         mAP, _ = self.ap_meter.value()
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
@@ -592,20 +627,20 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
     #  不同部分使用不同的学习率
 
-    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
-    model = resnet_c_gcn(param.pretrained, param.dataset, t=param.t, adjList=adjList,
-                         device=param.device, num_classes=param.num_labels, in_channel=in_channel)
+    in_channel = 2048
+    model = p_gcn_resnet101(param.pretrained, adjList=adjList,
+                            device=param.device, num_classes=param.num_labels, in_channel=in_channel)
     gcn_optimizer = None
+    # optimizer = torch.optim.AdamW(model.get_feature_params(), lr=param.lr, weight_decay=1e-4)
+    # gcn_optimizer = torch.optim.AdamW(model.get_gcn_params(), lr=0.01, weight_decay=1e-4)
 
-    # 注意，这里的lrp设置为0.1
-    lr, lrp = param.lr, 0.1
+    # optimizer = torch.optim.AdamW(model.get_config_optim(), lr=param.lr, weight_decay=1e-4)
 
-    # 使用AdamW优化器
-    optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
-    # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
-    #                             lr=lr,
-    #                             momentum=0.9,
-    #                             weight_decay=1e-4)
+    lr, lrp = param.lr, 1
+    optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
+                                lr=lr,
+                                momentum=0.9,
+                                weight_decay=1e-4)
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer

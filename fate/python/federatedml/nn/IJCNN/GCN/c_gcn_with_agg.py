@@ -89,7 +89,7 @@ class FedClientContext(_FedBaseContext):
 
     # Todo: 发送模型
     #  tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, weight):
+    def send_model(self, tensors, bn_data, relation_matrix, weight):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
@@ -99,7 +99,7 @@ class FedClientContext(_FedBaseContext):
             bn_arr = bn_item.data.cpu().numpy()
             bn_arrs.append(bn_arr)
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, relation_matrix, weight), suffix=self._suffix()
         )
 
     # 接收模型
@@ -116,14 +116,14 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, weight, device):
+    def do_aggregation(self, bn_data, relation_matrix, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, weight)
+        self.send_model(self._params, bn_data, relation_matrix, weight)
         LOGGER.warn(f"{self.aggregation_iteration}个模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data = recv_elements
+        global_model, bn_data, relation_matrix = recv_elements
         # 使用接收的全局模型更新本地模型
         agg_tensors = []
         for arr in global_model:
@@ -137,7 +137,7 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors
+        return bn_tensors, relation_matrix
 
     # 关于度量的向量
     def do_convergence_check(self, weight, metrics):
@@ -243,13 +243,13 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 1
-    param.max_iter = 100
-    param.num_labels = 80
-    param.device = 'cuda:0'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # param.batch_size = 1
+    # param.max_iter = 100
+    # param.num_labels = 80
+    # param.device = 'cuda:0'
 
-    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -264,6 +264,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     batch_size = param.batch_size
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
+    # Todo: 图像规模减小
     train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
 
     fitter = GCNFitter(param, epochs, context=context)
@@ -275,6 +276,7 @@ class GCNFedAggregator(object):
         self.context = context
         self.model = None
         self.bn_data = None
+        self.relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -283,17 +285,19 @@ class GCNFedAggregator(object):
             LOGGER.warn(f'收到{len(recv_elements)}个客户端发送过来的模型')
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
+            relation_matrices = [party_tuple[2] for party_tuple in recv_elements]
+            np.save(f'relation_matrices{cur_iteration}', relation_matrices)
 
-            degrees = [party_tuple[2] for party_tuple in recv_elements]
-
+            degrees = [party_tuple[3] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
+            self.relation_matrix = aggregate_relation_matrix(relation_matrices, degrees)
             # Todo: 这里需要再改改
             #  没有分类层了，因此，无法使用FPSL了
 
             self.model = aggregate_whole_model(tensors, degrees)
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((self.model, self.bn_data))
+            self.context.send_model((self.model, self.bn_data, self.relation_matrix))
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
             self.context.do_convergence_check()
@@ -341,7 +345,7 @@ class GCNFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: [WARN]
-        self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
+        # self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
 
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
@@ -476,7 +480,8 @@ class GCNFitter(object):
         weight_list.append(self._num_data_consumed)
 
         # FedAvg聚合策略
-        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+        agg_bn_data, adjList = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+                                                           relation_matrix=self.adjList,
                                                            device=self.param.device)
         idx = 0
         for layer in self.model.modules():
@@ -486,6 +491,7 @@ class GCNFitter(object):
                 layer.running_var.data.copy_(agg_bn_data[idx])
                 idx += 1
 
+        self.model.updateA(adjList)
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         self.train_one_epoch(epoch, train_loader, scheduler)
@@ -577,7 +583,7 @@ class GCNFitter(object):
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
                 # Todo: 这里需要对target进行detach操作吗？
                 self.ap_meter.add(output.data, target)
-
+                
         mAP, _ = self.ap_meter.value()
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean

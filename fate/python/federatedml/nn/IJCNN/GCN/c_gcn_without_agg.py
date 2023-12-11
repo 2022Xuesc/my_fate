@@ -285,7 +285,7 @@ class GCNFedAggregator(object):
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
 
             degrees = [party_tuple[2] for party_tuple in recv_elements]
-
+            
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
             # Todo: 这里需要再改改
             #  没有分类层了，因此，无法使用FPSL了
@@ -341,7 +341,7 @@ class GCNFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: [WARN]
-        self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
+        # self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
 
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
@@ -476,7 +476,7 @@ class GCNFitter(object):
         weight_list.append(self._num_data_consumed)
 
         # FedAvg聚合策略
-        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+        agg_bn_data, adjList = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
                                                            device=self.param.device)
         idx = 0
         for layer in self.model.modules():
@@ -486,6 +486,7 @@ class GCNFitter(object):
                 layer.running_var.data.copy_(agg_bn_data[idx])
                 idx += 1
 
+        self.model.updateA(adjList)
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         self.train_one_epoch(epoch, train_loader, scheduler)
