@@ -275,9 +275,15 @@ class COCO(Dataset):
                 self.inp = pickle.load(f)
             self.inp_name = inp_name
 
+    
+    
     def get_anno(self):
         list_path = os.path.join(self.images_dir, 'anno.json')
         self.img_list = json.load(open(list_path, 'r'))
+        # Todo: 如何读取
+        #  1. 正常随机读取
+        #  2. 按照标签顺序读
+        # self.img_list.sort(key=lambda x: sorted(x['labels']))
         category_path = os.path.join(self.config_dir, 'category.json')
         self.cat2idx = json.load(open(category_path, 'r'))
 
