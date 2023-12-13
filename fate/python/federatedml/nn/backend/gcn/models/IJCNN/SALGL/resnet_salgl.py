@@ -184,7 +184,8 @@ class ResnetSalgl(nn.Module):
             'output': output,
             'scene_probs': scene_probs,
             'entropy_loss': sample_en + batch_en,
-            'comat': comats
+            'comat': comats,
+            'scene_indices': indices
         }
 
     # Todo: 获取需要优化的参数

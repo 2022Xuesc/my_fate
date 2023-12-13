@@ -3,9 +3,9 @@ import csv
 
 
 class MyWriter(object):
-    def __init__(self, dir_name):
+    def __init__(self, dir_name,stats_name='stats'):
         super(MyWriter, self).__init__()
-        self.stats_dir = os.path.join(dir_name, 'stats')
+        self.stats_dir = os.path.join(dir_name,stats_name)
         if not os.path.exists(self.stats_dir):
             os.makedirs(self.stats_dir)
 

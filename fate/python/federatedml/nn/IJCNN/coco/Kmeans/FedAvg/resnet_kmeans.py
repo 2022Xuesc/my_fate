@@ -593,7 +593,7 @@ class GCNFitter(object):
 
                 losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
                 # Todo: 这里需要对target进行detach操作吗？
-                self.ap_meter.add(predicts.data, target)
+                # self.ap_meter.add(predicts.data, target)
 
         mAP, _ = self.ap_meter.value()
         mAP *= 100

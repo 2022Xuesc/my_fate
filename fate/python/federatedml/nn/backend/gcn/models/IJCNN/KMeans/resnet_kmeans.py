@@ -178,7 +178,8 @@ class ResnetKmeans(nn.Module):
         # 返回前向传播的结果
         return {
             'output': output,
-            'comat': comats
+            'comat': comats,
+            'scene_ids': scene_ids_x
         }
 
     # Todo: 获取需要优化的参数
