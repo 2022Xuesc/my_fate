@@ -8,7 +8,7 @@ def calculate_stats(float_list):
     maximum = max(float_list)
     mean = statistics.mean(float_list)
     variance = statistics.stdev(float_list)
-    return minimum , maximum , mean 
+    return minimum, maximum, mean
 
 
 # paths = ['sync_fpsl_resnet','sync_fpsl_fixed_ratio_drop','sync_fpsl_bn_only_split','sync_fpsl_st']
@@ -20,7 +20,8 @@ def calculate_stats(float_list):
 # IJCNN相关
 # Todo: 计算mAP指标、OF1指标和CF1指标
 
-paths = ['IJCNN/resnet_salgl', 'IJCNN/resnet_agg_salgl', 'IJCNN/resnet_kmeans_lrp_0.1','gcn/c_gcn','gcn/p_gcn_fedavg']
+paths = ['gcn/base_fpsl', 'IJCNN/resnet_salgl', 'IJCNN/resnet_agg_salgl', 'IJCNN/resnet_kmeans_lrp_0.1', 'gcn/c_gcn',
+         'gcn/p_gcn_fedavg']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):
@@ -29,7 +30,7 @@ for path in paths:
     mAPs = []
     CF1s = []
     OF1s = []
-    
+
     for i in range(len(clients_path)):
         with open(os.path.join(clients_path[i], 'valid.csv'), 'r') as csv_file:
             reader = csv.DictReader(csv_file)
@@ -49,7 +50,9 @@ for path in paths:
     WOF1, BOF1, AOF1 = calculate_stats(OF1s)
     print('————————————————————————————————————')
     print(path)
-    print(f"mAP: WmAP = {WmAP:.1f}, BmAP = {BmAP:.1f}, AmAP = {AmAP:.1f}")
-    print(f"CF1: WCF1 = {WCF1:.1f}, BCF1 = {BCF1:.1f}, ACF1 = {ACF1:.1f}")
-    print(f"OF1: WOF1 = {WOF1:.1f}, BOF1 = {BOF1:.1f}, AOF1 = {AOF1:.1f}")
+    print(f"mAP: AmAP, WmAP, BmAP = {AmAP:.1f}, {WmAP:.1f}, {BmAP:.1f}")
+    print(f"CF1: ACF1, WCF1, BCF1 = {ACF1:.1f}, {WCF1:.1f}, {BCF1:.1f}")
+    print(f"OF1: ACF1, WCF1, BCF1 = {AOF1:.1f}, {WOF1:.1f}, {BOF1:.1f}")
+    print(
+        f"{AmAP:.1f} & {WmAP:.1f} & {BmAP:.1f} & {ACF1:.1f} & {WCF1:.1f} & {BCF1:.1f} & {AOF1:.1f} & {WOF1:.1f}& {BOF1:.1f}")
     print('————————————————————————————————————')
