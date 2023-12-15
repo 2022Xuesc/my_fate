@@ -174,3 +174,5 @@ Dockerfile
 **/__pycache__
 docker-entrypoint.sh
 packages_md5.txt
+
+local_experiment_res
