@@ -1,18 +1,12 @@
+import math
 import torch
 import torch.nn as nn
-
 import torch.nn.functional as F
 from torch.nn import Parameter
 
 from federatedml.nn.backend.gcn.models.graph_convolution import GraphConvolution
 from federatedml.nn.backend.gcn.models.salgl import EntropyLoss, LowRankBilinearAttention
-from federatedml.nn.backend.gcn.utils import gen_adjs, gen_adj
-import math
-from torch import Tensor
-from typing import Optional
-from federatedml.nn.backend.gcn.kmeans_torch import kmeans
-
-import copy
+from federatedml.nn.backend.gcn.utils import gen_adjs
 
 
 class Element_Wise_Layer(nn.Module):
