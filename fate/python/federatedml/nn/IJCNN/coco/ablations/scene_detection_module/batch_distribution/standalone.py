@@ -282,12 +282,13 @@ class AsymmetricLossOptimized(nn.Module):
 
 
 class COCO(Dataset):
-    def __init__(self, images_dir, config_dir, transforms=None, inp_name=None):
+    def __init__(self, images_dir, config_dir, transforms=None, inp_name=None, valid=False):
         self.images_dir = images_dir
         self.config_dir = config_dir
         self.transforms = transforms
         self.img_list = []
         self.cat2idx = None
+        self.valid = valid
         # 初始化
         self.get_anno()
 
@@ -300,14 +301,15 @@ class COCO(Dataset):
             self.inp_name = inp_name
 
     def get_anno(self):
-        # list_path = os.path.join(self.images_dir, 'anno.json')
-        # self.img_list = json.load(open(list_path, 'r'))
-        num_scenes = args.num_scenes
-        image2scene_id = json.load(open(f'dirstributions/{method}_{num_scenes}_image2scene_id.json'))
-        # img_list是一个dict的集合，因此，将其封装成file_name + labels的形式
-        for image_id in image2scene_id:
-            self.img_list += image2scene_id[image_id]
-
+        if self.valid:
+            list_path = os.path.join(self.images_dir, 'anno.json')
+            self.img_list = json.load(open(list_path, 'r'))
+        else:
+            num_scenes = args.num_scenes
+            image2scene_id = json.load(open(f'dirstributions/{method}_{num_scenes}_image2scene_id.json'))
+            # img_list是一个dict的集合，因此，将其封装成file_name + labels的形式
+            for image_id in image2scene_id:
+                self.img_list += image2scene_id[image_id]
         category_path = os.path.join(self.config_dir, 'category.json')
         self.cat2idx = json.load(open(category_path, 'r'))
 
@@ -487,11 +489,11 @@ class DatasetLoader(object):
         train_dataset = COCO(images_dir=self.train_path,
                              config_dir=self.category_dir,
                              transforms=train_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
-                             inp_name=self.inp_name)
+                             inp_name=self.inp_name, valid=False)
         valid_dataset = COCO(images_dir=self.valid_path,
                              config_dir=self.category_dir,
                              transforms=valid_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
-                             inp_name=self.inp_name)
+                             inp_name=self.inp_name, valid=True)
 
         # 对batch_size进行修正
         batch_size = max(1, min(batch_size, len(train_dataset), len(valid_dataset)))
@@ -670,8 +672,8 @@ class GraphConvolution(nn.Module):
 
     def __repr__(self):
         return self.__class__.__name__ + ' (' \
-            + str(self.in_features) + ' -> ' \
-            + str(self.out_features) + ')'
+               + str(self.in_features) + ' -> ' \
+               + str(self.out_features) + ')'
 
 
 def gen_adjs(A):
@@ -962,3 +964,4 @@ for epoch in range(epochs):
     OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = ap_meter.overall_topk(3)
     metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item()]
     valid_writer.writerow([epoch] + metrics)
+
