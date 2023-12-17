@@ -32,13 +32,6 @@ avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 # 训练时的损失组成记录
 train_loss_writer = my_writer.get("train_loss.csv", header=['epoch', 'objective_loss', 'entropy_loss', 'overall_loss'])
 
-scene_cnts_writer = my_writer.get("total_scene_cnts.csv")
-
-centers_dir = os.path.join(os.path.join(os.getcwd(), 'stats'), 'centers')
-
-if not os.path.exists(centers_dir):
-    os.makedirs(centers_dir)
-
 
 class _FedBaseContext(object):
     def __init__(self, max_num_aggregation, name):
@@ -170,7 +163,7 @@ class FedClientContext(_FedBaseContext):
             self._params = [
                 param
                 # 不是完全倒序，对于嵌套for循环，先声明的在前面
-                for param_group in optimizer.param_groups  # 这里不考虑scene_linear的参数，因为关于场景的类别是不一致的
+                for param_group in optimizer.param_groups[0:6]  # 这里不考虑scene_linear的参数，因为关于场景的类别是不一致的
                 for param in param_group["params"]
             ]
             return
@@ -261,13 +254,12 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
-    # dataset = 'coco'
     dataset = 'nuswide'
     inp_name = f'{dataset}_glove_word2vec.pkl'
     category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
 
     # Todo: [WARN]
-    # param.batch_size = 2
+    # param.batch_size = 1
     # param.max_iter = 1000
     # param.num_labels = 80
     # param.device = 'cuda:0'
@@ -374,6 +366,8 @@ class GCNFitter(object):
         # 使用非对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
 
+        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
+
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -390,6 +384,7 @@ class GCNFitter(object):
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None
+        self.epoch_scene_cnts = None
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -410,6 +405,8 @@ class GCNFitter(object):
             self._all_consumed_data_aggregated = False
         else:
             self._num_data_consumed += num_samples
+        # 初始化epoch_scene_cnts
+        self.epoch_scene_cnts = None
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         metrics = valid_metrics
@@ -461,12 +458,7 @@ class GCNFitter(object):
 
         # 包装一个scene_info，包括场景分类器和每个场景下的邻接矩阵
         my_id = self.context.name._uuid
-
-        # 这里使用的不是scene_linear，而是centers
-        scene_info = (self.model.centers.data, self.model.comatrix, self.model.total_scene_cnts, my_id)
-
-        # 记录scene_cnts信息
-        scene_cnts_writer.writerow([epoch] + self.model.total_scene_cnts)
+        scene_info = (self.model.scene_linear.weight.data, self.model.comatrix, self.model.total_scene_cnts, my_id)
 
         # FedAvg聚合策略
         agg_bn_data, fixed_adjs = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
@@ -493,7 +485,6 @@ class GCNFitter(object):
         return valid_metrics
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
-
         total_samples = len(train_loader.sampler)
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
         steps_per_epoch = math.ceil(total_samples / batch_size)
@@ -520,18 +511,22 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
+            # Todo: 这里还要传入target以计算熵函数
             output = model(features, inp, y=target)
-
             predicts = output['output']
+            entropy_loss = output['entropy_loss']
+
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, target)
 
+            lambda_entropy = 1
             objective_loss = criterion(sigmoid_func(predicts), target)
 
-            overall_loss = objective_loss
+            overall_loss = objective_loss + lambda_entropy * entropy_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
+            losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
             optimizer.zero_grad()
 
             overall_loss.backward()
@@ -541,7 +536,8 @@ class GCNFitter(object):
             # predicts_norm = torch.mean(predicts).item()
 
             # LOGGER.warn(
-            #     f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch}")
+            #     f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},"
+            #     f"mAP={100 * self.ap_meter.value()[0].item()},loss={overall_loss.item()},predicts_norm={predicts_norm}")
 
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:
@@ -552,10 +548,6 @@ class GCNFitter(object):
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         # 这里还统计其他数据
-
-        # Todo: 记录一下中心点的变化
-        # 使用torch保存
-        torch.save(self.model.centers, os.path.join(centers_dir, f'centers_{epoch}.pth'))
 
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
@@ -611,13 +603,16 @@ def _init_gcn_learner(param, device='cpu'):
     # 使用SALGL模型
     # 每个客户端捕捉到的是不同的场景，因此，用不到adjList了
     # Todo: adjList在多场景条件下的适配
-    num_scenes = 4  # 先设置一个比较小的值
+    num_scenes = 15
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
 
-    model = resnet_kmeans(param.pretrained, device, num_scenes=num_scenes, num_classes=param.num_labels)
+    model = resnet_agg_salgl(param.pretrained, device, num_scenes=num_scenes)
     gcn_optimizer = None
-
+    # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
+    #                             lr=lr,
+    #                             momentum=0.9,
+    #                             weight_decay=1e-4)
     # 使用AdamW优化器试试
     optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
 
