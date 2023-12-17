@@ -304,7 +304,8 @@ class COCO(Dataset):
             self.img_list = json.load(open(list_path, 'r'))
         else:
             num_scenes = args.num_scenes
-            image2scene_id = json.load(open(f'dirstributions/{method}_{num_scenes}_image2scene_id.json'))
+            # image2scene_id = json.load(open(f'dirstributions/{method}_{num_scenes}_image2scene_id.json'))
+            image2scene_id = json.load(open(f'dirstributions/kmeans_15_image2scene_id.json'))
             # img_list是一个dict的集合，因此，将其封装成file_name + labels的形式
             for image_id in image2scene_id:
                 self.img_list += image2scene_id[image_id]
