@@ -603,11 +603,11 @@ def _init_gcn_learner(param, device='cpu'):
     # 使用SALGL模型
     # 每个客户端捕捉到的是不同的场景，因此，用不到adjList了
     # Todo: adjList在多场景条件下的适配
-    num_scenes = 15
+    num_scenes = 4
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
 
-    model = resnet_agg_salgl(param.pretrained, device, num_scenes=num_scenes)
+    model = resnet_agg_salgl(param.pretrained, device, num_scenes=num_scenes, num_classes=param.num_labels)
     gcn_optimizer = None
     # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
     #                             lr=lr,
