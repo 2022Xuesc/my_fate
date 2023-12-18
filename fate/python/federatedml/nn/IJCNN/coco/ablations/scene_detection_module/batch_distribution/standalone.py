@@ -856,7 +856,7 @@ batch_size = 8
 lr, lrp = 0.0001, 0.1
 num_classes = 80
 
-stats_dir = f'{method}_{num_scenes}_stats'
+stats_dir = f'same_{method}_{num_scenes}_stats'
 my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
 
 client_header = ['epoch', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map']

@@ -261,8 +261,8 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
-    # dataset = 'coco'
-    dataset = 'nuswide'
+    dataset = 'coco'
+    # dataset = 'nuswide'
     inp_name = f'{dataset}_glove_word2vec.pkl'
     category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
 
