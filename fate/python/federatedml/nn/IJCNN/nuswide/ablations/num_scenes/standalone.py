@@ -17,6 +17,8 @@ import pickle
 import random
 
 
+method = "fc"
+
 class AveragePrecisionMeter(object):
     """
     计算每个类（标签）的平均精度
@@ -848,7 +850,7 @@ batch_size = 8
 lr, lrp = 0.0001, 0.1
 num_classes = 81
 
-stats_dir = f'stats_num_scenes_{num_scenes}'
+stats_dir = f'{method}_{num_scenes}_stats'
 my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
 
 client_header = ['epoch', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map']
