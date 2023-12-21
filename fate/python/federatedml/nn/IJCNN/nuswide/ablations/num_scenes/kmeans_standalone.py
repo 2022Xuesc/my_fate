@@ -920,7 +920,7 @@ args = parser.parse_args()
 num_scenes = args.num_scenes
 device = args.device
 
-epochs = 40
+epochs = 400
 batch_size = 8
 
 lr, lrp = 0.0001, 0.1
@@ -938,9 +938,18 @@ valid_writer = my_writer.get("valid.csv", header=client_header)
 model = torch_models.resnet101(pretrained=True, num_classes=1000)
 model = ResnetKmeans(model, num_scenes=num_scenes, num_classes=num_classes).to(device)
 # 准备模型相关
-optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=lr, weight_decay=1e-4)
+# optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=lr, weight_decay=1e-4)
+
+optimizer = torch.optim.SGD(model.get_config_optim(lr=lr,lrp=lrp),
+                            lr=lr,
+                            momentum=0.9,
+                            weight_decay=1e-4)
+
 
 criterion = AsymmetricLossOptimized().to(device)
+
+
+
 
 ap_meter = AveragePrecisionMeter(difficult_examples=False)
 
@@ -955,13 +964,13 @@ inp_name = f'{dataset}_glove_word2vec.pkl'
 
 # COCO数据集
 # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
-# train_path = '/data/projects/dataset/clustered_dataset/client1/train'
-# valid_path = '/data/projects/dataset/clustered_dataset/client1/val'
+# train_path = '/data/projects/dataset/clustered_dataset/client2/train'
+# valid_path = '/data/projects/dataset/clustered_dataset/client2/val'
 
 # NUSWIDE数据集
 category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
-train_path = '/data/projects/dataset/nuswide_clustered/client1/train'
-valid_path = '/data/projects/dataset/nuswide_clustered/client1/val'
+train_path = '/data/projects/dataset/nuswide_clustered/client2/train'
+valid_path = '/data/projects/dataset/nuswide_clustered/client2/val'
 
 
 dataset_loader = DatasetLoader(category_dir, train_path, valid_path, inp_name)
@@ -1043,3 +1052,4 @@ for epoch in range(epochs):
     OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = ap_meter.overall_topk(3)
     metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item()]
     valid_writer.writerow([epoch] + metrics)
+

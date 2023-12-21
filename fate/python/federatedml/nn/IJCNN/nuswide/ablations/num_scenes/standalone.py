@@ -837,6 +837,9 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_scenes', default=4, type=int)
 parser.add_argument('--device', default='cuda:0', type=str)
+# 输入不同的学习率
+parser.add_argument('--lr', default='0.0001',type=float)
+parser.add_argument("--lrp", default='0.1',type=float)
 
 args = parser.parse_args()
 
@@ -844,12 +847,13 @@ args = parser.parse_args()
 num_scenes = args.num_scenes
 device = args.device
 
-epochs = 40
+epochs = 400
 batch_size = 8
 
-lr, lrp = 0.0001, 0.1
+lr, lrp = args.lr, args.lrp
 num_classes = 81
 
+# stats_dir = f'num_scenes_{num_scenes}_lr_{lr}_lrp_{lrp}_stats'
 stats_dir = f'{method}_{num_scenes}_stats'
 my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
 
@@ -860,8 +864,19 @@ valid_writer = my_writer.get("valid.csv", header=client_header)
 
 model = torch_models.resnet101(pretrained=True, num_classes=1000)
 model = ResnetSalgl(model, num_scenes=num_scenes, num_classes=num_classes).to(device)
+
 # 准备模型相关
-optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=lr, weight_decay=1e-4)
+
+# 使用AdamW优化器
+# optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=lr, weight_decay=1e-4)
+
+# Todo: 使用SGD优化器
+optimizer = torch.optim.SGD(model.get_config_optim(lr=lr,lrp=lrp),
+                            lr=lr,
+                            momentum=0.9,
+                            weight_decay=1e-4)
+
+
 
 criterion = AsymmetricLossOptimized().to(device)
 
@@ -876,8 +891,8 @@ inp_name = f'{dataset}_glove_word2vec.pkl'
 # valid_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
 
 category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
-train_path = '/data/projects/dataset/nuswide_clustered/client1/train'
-valid_path = '/data/projects/dataset/nuswide_clustered/client1/val'
+train_path = '/data/projects/dataset/nuswide_clustered/client2/train'
+valid_path = '/data/projects/dataset/nuswide_clustered/client2/val'
 
 dataset_loader = DatasetLoader(category_dir, train_path, valid_path, inp_name)
 train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
@@ -893,6 +908,11 @@ for epoch in range(epochs):
     # 训练阶段
     ap_meter.reset()
     model.train()
+
+    total_samples = len(train_loader.sampler)
+    batch_size = train_loader.batch_size
+    steps = math.ceil(total_samples / batch_size)
+    
     for train_step, ((features, inp), target) in enumerate(train_loader):
         features = features.to(device)
         target = target.to(device)
@@ -914,6 +934,10 @@ for epoch in range(epochs):
         objective_loss = criterion(sigmoid_func(predicts), target)
 
         overall_loss = objective_loss + entropy_loss
+        # print(f'step = {train_step} / {steps}, predicts = {predicts}')
+        # 输出学习率，损失，看损失有没有下降
+        # print(f'epoch = {epoch},step = {train_step} / {steps}, obj_loss = {objective_loss.item()},'
+        #       f' entropy_loss = {entropy_loss.item()}, overall_loss = {overall_loss.item()}')
 
         optimizer.zero_grad()
 
@@ -925,6 +949,9 @@ for epoch in range(epochs):
             param_group['lr'] *= 0.9
     mAP, _ = ap_meter.value()
     mAP *= 100
+    
+    # print(f'epoch = {epoch}, mAP = {mAP} **********************')
+    
     # 统计指标
     OP, OR, OF1, CP, CR, CF1 = ap_meter.overall()
     OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = ap_meter.overall_topk(3)
@@ -959,3 +986,4 @@ for epoch in range(epochs):
     OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = ap_meter.overall_topk(3)
     metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item()]
     valid_writer.writerow([epoch] + metrics)
+
