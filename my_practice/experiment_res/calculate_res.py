@@ -20,8 +20,10 @@ def calculate_stats(float_list):
 # IJCNN相关
 # Todo: 计算mAP指标、OF1指标和CF1指标
 
-paths = ['gcn/base_fpsl', 'IJCNN/resnet_salgl', 'IJCNN/resnet_agg_salgl', 'IJCNN/resnet_kmeans_lrp_0.1', 'gcn/c_gcn',
-         'gcn/p_gcn_fedavg']
+# paths = ['gcn/base_fpsl', 'IJCNN/resnet_salgl', 'IJCNN/resnet_agg_salgl', 'IJCNN/resnet_kmeans_lrp_0.1', 'gcn/c_gcn',
+#          'gcn/p_gcn_fedavg']
+
+paths = ['IJCNN/nuswide_kmeans']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):
