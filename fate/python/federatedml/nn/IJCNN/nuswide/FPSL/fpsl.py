@@ -1,23 +1,21 @@
 # 服务器与客户端的通用逻辑
 import math
-import torch
 import torch.nn
 import torchnet.meter as tnt
 
 import copy
-import json
 import os
 import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.gcn.models import resnet_c_gcn
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import AsymmetricLossOptimized
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.multi_label.models import *
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
-from federatedml.param.gcn_param import GCNParam
+from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
@@ -34,16 +32,15 @@ avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 
 class _FedBaseContext(object):
     def __init__(self, max_num_aggregation, name):
-        self._name = name
-
-        # Todo: 客户端设置最大聚合轮次和当前聚合轮次
-        #  供同步和简单异步使用
         self.max_num_aggregation = max_num_aggregation
+        self._name = name
         self._aggregation_iteration = 0
 
-    # Todo: 定义发送消息的后缀
-    #  会变化的是当前聚合轮次，表示为哪个回合的模型发送聚合权重
     def _suffix(self, group: str = "model"):
+        # Todo: 注意这里的后缀
+        #  self._name --> "default"
+        #  group      --> "model"
+        #  iteration  --> `当前聚合轮次`
         return (
             self._name,
             group,
@@ -57,6 +54,7 @@ class _FedBaseContext(object):
     def aggregation_iteration(self):
         return self._aggregation_iteration
 
+    # Todo: 这里暂时没有配置early-stop相关的策略
     def finished(self):
         if self._aggregation_iteration >= self.max_num_aggregation:
             return True
@@ -65,7 +63,7 @@ class _FedBaseContext(object):
 
 # 创建客户端的上下文
 class FedClientContext(_FedBaseContext):
-    def __init__(self, max_num_aggregation, aggregate_every_n_epoch, name="default"):
+    def __init__(self, max_num_aggregation, aggregate_every_n_epoch, name="feat"):
         super(FedClientContext, self).__init__(max_num_aggregation=max_num_aggregation, name=name)
         self.transfer_variable = SecureAggregatorTransVar()
         self.aggregator = aggregator.Client(self.transfer_variable.aggregator_trans_var)
@@ -76,9 +74,8 @@ class FedClientContext(_FedBaseContext):
         self._params: list = []
 
         self._should_stop = False
-        self.metrics_summary = []
+        self.loss_summary = []
 
-    # Todo: 服务器和客户端之间建立连接的部分，可以不用考虑
     def init(self):
         self.random_padding_cipher.create_cipher()
 
@@ -87,9 +84,9 @@ class FedClientContext(_FedBaseContext):
             torch.clone(tensor).detach().mul_(weight)
         ).numpy()
 
-    # Todo: 发送模型
-    #  tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, relation_matrix, weight):
+    # 发送模型
+    # 这里tensors是模型参数，weight是模型聚合权重
+    def send_model(self, tensors, bn_data, weight):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
@@ -99,37 +96,29 @@ class FedClientContext(_FedBaseContext):
             bn_arr = bn_item.data.cpu().numpy()
             bn_arrs.append(bn_arr)
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, relation_matrix, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
         )
 
     # 接收模型
     def recv_model(self):
         return self.aggregator.get_aggregated_model(suffix=self._suffix())
 
-    # Todo: 向服务器发送相关的度量指标
     def send_metrics(self, metrics, weight):
         self.aggregator.send_model((metrics, weight), suffix=self._suffix(group="metrics"))
 
-    def recv_convergence(self):
-        return self.aggregator.get_aggregated_model(
-            suffix=self._suffix(group="convergence")
-        )
-
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, relation_matrix, weight, device):
+    def do_aggregation(self, bn_data, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, relation_matrix, weight)
-        LOGGER.warn(f"{self.aggregation_iteration}个模型发送完毕")
+        self.send_model(self._params, bn_data, weight)
+        LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data, relation_matrix = recv_elements
-        # 使用接收的全局模型更新本地模型
+        global_model, bn_data = recv_elements
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
         for param, agg_tensor in zip(self._params, agg_tensors):
-            # Todo: param.grad处理的是哪种情况
             if param.grad is None:
                 continue
             param.data.copy_(agg_tensor)
@@ -137,13 +126,10 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors, relation_matrix
+        return bn_tensors
 
-    # 关于度量的向量
     def do_convergence_check(self, weight, metrics):
         self.send_metrics(metrics, weight)
-        # 接收收敛情况
-        # return self.recv_convergence()
         return False
 
     # 配置聚合参数，将优化器中的参数提取出来
@@ -170,8 +156,8 @@ class FedClientContext(_FedBaseContext):
 
 # 创建服务器端的上下文
 class FedServerContext(_FedBaseContext):
-    # Todo: 这里的name关系到FATE架构的通信，不能随便更改
-    def __init__(self, max_num_aggregation, eps=0.0, name="default"):
+    # Todo: 这里的name关系到FATE架构的通信，至少执行同一联邦学习任务的服务器端和客户端的名称应一样
+    def __init__(self, max_num_aggregation, eps=0.0, name="feat"):
         super(FedServerContext, self).__init__(
             max_num_aggregation=max_num_aggregation, name=name
         )
@@ -217,95 +203,53 @@ class FedServerContext(_FedBaseContext):
                 total_metrics = [x + y for x, y in zip(total_metrics, cur_metrics)]  # Todo: 这样是附加，而不是对应位置相加
             total_weight += weight
 
-        # 这里的除也要改
         mean_metrics = [metric / total_weight for metric in total_metrics]
 
         avgloss_writer.writerow([self.aggregation_iteration] + mean_metrics)
 
         mean_loss = mean_metrics[-1]
-
         is_converged = abs(mean_loss - self._loss) < self._eps
-
         self._loss = mean_metrics[-1]
         LOGGER.info(f"convergence check: loss={mean_loss}, is_converged={is_converged}")
         return is_converged, mean_loss
 
 
-def build_aggregator(param: GCNParam, init_iteration=0):
-    context = FedServerContext(
-        max_num_aggregation=param.max_iter,
-        eps=param.early_stop_eps
-    )
-    context.init(init_aggregation_iteration=init_iteration)
-    fed_aggregator = GCNFedAggregator(context)
-    return fed_aggregator
-
-
-def build_fitter(param: GCNParam, train_data, valid_data):
-    # Todo: [WARN]
-    # param.batch_size = 1
-    # param.max_iter = 100
-    # param.num_labels = 80
-    # param.device = 'cuda:0'
-
-    dataset = 'nuswide'
-    inp_name = f'{dataset}_glove_word2vec.pkl'
-
-    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
-
-    epochs = param.aggregate_every_n_epoch * param.max_iter
-    context = FedClientContext(
-        max_num_aggregation=param.max_iter,
-        aggregate_every_n_epoch=param.aggregate_every_n_epoch
-    )
-    # 与服务器进行握手
-    context.init()
-    # 构建数据集
-
-    batch_size = param.batch_size
-    dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
-
-    # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
-
-    fitter = GCNFitter(param, epochs, context=context)
-    return fitter, train_loader, valid_loader
-
-
-class GCNFedAggregator(object):
+class SyncAggregator(object):
     def __init__(self, context: FedServerContext):
         self.context = context
         self.model = None
         self.bn_data = None
-        self.relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
+            # Todo: 这里应该是同步接收的方式
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
+
             cur_iteration = self.context.aggregation_iteration
             LOGGER.warn(f'收到{len(recv_elements)}个客户端发送过来的模型')
+
             tensors = [party_tuple[0] for party_tuple in recv_elements]
+            # 还有bn层的统计数据
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
-            relation_matrices = [party_tuple[2] for party_tuple in recv_elements]
-            np.save(f'relation_matrices{cur_iteration}', relation_matrices)
-
-            degrees = [party_tuple[3] for party_tuple in recv_elements]
+            # Todo: 对BN层的统计数据进行处理
+            # 抽取出
+            degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
-            self.relation_matrix = aggregate_relation_matrix(relation_matrices, degrees)
-            # Todo: 这里需要再改改
-            #  没有分类层了，因此，无法使用FPSL了
+            # 分标签进行聚合
+            aggregate_by_labels(tensors, degrees)
 
-            self.model = aggregate_whole_model(tensors, degrees)
+            self.model = tensors[0]
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((self.model, self.bn_data, self.relation_matrix))
+            self.context.send_model((self.model, self.bn_data))
+
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
-
+            # 还需要进行收敛验证，目的是统计平均结果
             self.context.do_convergence_check()
-
+            # 同步方式下，服务器端也需要记录聚合轮次
             self.context.increase_aggregation_iteration()
 
+        # Todo: 除了保存参数之外，还要保存BN层的统计数据mean和var
         if self.context.finished():
             print(os.getcwd())
             np.save('global_model', self.model)
@@ -318,8 +262,6 @@ class GCNFedAggregator(object):
     def load_model(cls, model_obj, meta_obj, param):
         param.restore_from_pb(meta_obj.params)
 
-    pass
-
     @classmethod
     def load_model(cls, model_obj, meta_obj, param):
         pass
@@ -331,8 +273,51 @@ class GCNFedAggregator(object):
         LOGGER.info(f"label aligned, mapping: {label_mapping}")
 
 
-# Todo: 对gcn fitter的改写
-class GCNFitter(object):
+def build_aggregator(param: MultiLabelParam, init_iteration=0):
+    # Todo: [WARN]
+    # param.max_iter = 100
+
+    context = FedServerContext(
+        max_num_aggregation=param.max_iter,
+        eps=param.early_stop_eps
+    )
+    context.init(init_aggregation_iteration=init_iteration)
+    # Todo: 这里设置同步或异步的聚合方式
+    fed_aggregator = SyncAggregator(context)
+    return fed_aggregator
+
+
+def build_fitter(param: MultiLabelParam, train_data, valid_data):
+    # Todo: [WARN]
+    # param.batch_size = 1
+    # param.max_iter = 100
+    # param.num_labels = 80
+    dataset = 'nuswide'
+
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+
+    epochs = param.aggregate_every_n_epoch * param.max_iter
+    context = FedClientContext(
+        max_num_aggregation=param.max_iter,
+        aggregate_every_n_epoch=param.aggregate_every_n_epoch
+    )
+    # 与服务器进行握手
+    context.init()
+
+    batch_size = param.batch_size
+
+    dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path)
+
+    # Todo: 图像规模减小
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
+
+    fitter = MultiLabelFitter(param, epochs, context=context)
+
+    return fitter, train_loader, valid_loader
+
+
+class MultiLabelFitter(object):
     def __init__(
             self,
             param,
@@ -346,78 +331,40 @@ class GCNFitter(object):
         self.context = context
         self.label_mapping = label_mapping
 
-        # Todo: [WARN]
-        # self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
+        # Todo: 原始的ResNet101分类器
+        (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
 
-        image_id2labels = json.load(open(self.param.adj_file, 'r'))
-        num_labels = self.param.num_labels
-        adjList = np.zeros((num_labels, num_labels))
-        nums = np.zeros(num_labels)
-        for image_info in image_id2labels:
-            labels = image_info['labels']
-            for label in labels:
-                nums[label] += 1
-            n = len(labels)
-            for i in range(n):
-                for j in range(i + 1, n):
-                    x = labels[i]
-                    y = labels[j]
-                    adjList[x][y] += 1
-                    adjList[y][x] += 1
-        nums = nums[:, np.newaxis]
-        # 遍历每一行
-        for i in range(num_labels):
-            if nums[i] != 0:
-                adjList[i] = adjList[i] / nums[i]
-        # 遍历A，将主对角线元素设置为1
-        t = self.param.t
-        adjList[adjList < t] = 0
-        adjList[adjList >= t] = 1
-        adjList = adjList * 0.25 / (adjList.sum(0, keepdims=True) + 1e-6)
-        adjList = adjList + np.identity(num_labels, np.int)
-        self.adjList = adjList
-
-        # Todo: 现有的gcn分类器
-        self.model, self.scheduler, self.optimizer, self.gcn_optimizer = _init_gcn_learner(self.param,
-                                                                                           self.param.device,
-                                                                                           adjList)
-
-        # 使用非对称损失
-        # self.criterion = AsymmetricLossOptimized().to(self.param.device)
-
-        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
-
+        # 使用对称损失
+        self.criterion = AsymmetricLossOptimized().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
         # 1. 按照训练使用的总样本数进行聚合
         self._num_data_consumed = 0
         # Todo: 以下两种参数需要知道确切的标签信息，因此，在训练的批次迭代中进行更新
+        #  FLAG论文客户端在聚合时可根据标签列表信息直接计算聚合权重
+        #  而PS论文需要将标签出现向量发送给服务器端实现分标签聚合
         # 2. 按照训练使用的标签数进行聚合，对应FLAG论文
         self._num_label_consumed = 0
-        # 3. 按照每个标签所包含的样本数进行聚合，维护一个list，对应Partial Supervised论文
+        # 3. 按照每个标签所包含的样本数进行聚合，维护一个list，对应FLAG论文和Partial Supervised论文
         self._num_per_labels = [0] * self.param.num_labels
 
-        # Todo: 初始化平均精度度量器
+        # Todo: 创建ap_meter
         self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
 
         self.lr_scheduler = None
-        self.gcn_lr_scheduler = None
 
     def get_label_mapping(self):
         return self.label_mapping
 
     # 执行拟合操作
     def fit(self, train_loader, valid_loader):
-        # self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
-        #                                                         max_lr=self.param.lr,
-        #                                                         epochs=self.end_epoch,
-        #                                                         steps_per_epoch=len(train_loader))
-        #
-        # self.gcn_lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
-        #                                                             max_lr=0.01,
-        #                                                             epochs=self.end_epoch,
-        #                                                             steps_per_epoch=len(train_loader))
+
+        # 初始化OneCycleLR学习率调度器
+        self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizer,
+                                                                max_lr=self.param.lr,
+                                                                epochs=self.end_epoch,
+                                                                steps_per_epoch=len(train_loader))
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
@@ -426,6 +373,7 @@ class GCNFitter(object):
             if self.context.should_stop():
                 break
 
+    # Todo: 聚合依赖数据的更新
     def on_fit_epoch_start(self, epoch, num_samples):
         if self._all_consumed_data_aggregated:
             self._num_data_consumed = num_samples
@@ -437,38 +385,40 @@ class GCNFitter(object):
         metrics = valid_metrics
         if self.context.should_aggregate_on_epoch(epoch):
             self.aggregate_model(epoch)
+            # 同步模式下，需要发送loss和mAP
             status = self.context.do_convergence_check(
-                len(valid_loader.sampler), metrics
+                self._num_data_consumed, metrics
             )
             if status:
                 self.context.set_converged()
             self._all_consumed_data_aggregated = True
 
+            # 将相关指标重置为0
             self._num_data_consumed = 0
             self._num_label_consumed = 0
             self._num_per_labels = [0] * self.param.num_labels
 
             self.context.increase_aggregation_iteration()
 
+        # if (epoch + 1) % 50 == 0:
+        #     torch.save(self.model.state_dict(), f'model_{epoch + 1}.path')
+
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
-        # 度量重置
         self.ap_meter.reset()
-        # Todo: 调整学习率的部分放到scheduler中执行
-        metrics = self.train(train_loader, self.model, self.criterion, self.optimizer, epoch, self.param.device,
-                             scheduler)
+        metrics = self.train(train_loader, self.model, self.criterion, self.optimizer,
+                             epoch, self.param.device, scheduler)
         return metrics
 
     def validate_one_epoch(self, epoch, valid_loader, scheduler):
         self.ap_meter.reset()
-        metrics = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device, scheduler)
+        metrics = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device,
+                                  scheduler)
         return metrics
 
-    def aggregate_model(self, epoch):
+    def aggregate_model(self, epoch=None, weight=None):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
-        # 调用上下文执行聚合
-        # 发送模型并接收聚合后的模型
 
         # bn_data添加
         bn_data = []
@@ -481,10 +431,7 @@ class GCNFitter(object):
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
-        # FedAvg聚合策略
-        agg_bn_data, adjList = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
-                                                           relation_matrix=self.adjList,
-                                                           device=self.param.device)
+        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data, device=self.param.device)
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -492,8 +439,6 @@ class GCNFitter(object):
                 idx += 1
                 layer.running_var.data.copy_(agg_bn_data[idx])
                 idx += 1
-
-        self.model.updateA(adjList)
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         self.train_one_epoch(epoch, train_loader, scheduler)
@@ -509,46 +454,36 @@ class GCNFitter(object):
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
         steps_per_epoch = math.ceil(total_samples / batch_size)
 
+        self.ap_meter.reset()
         model.train()
-        # Todo: 记录损失的相关信息
+
+        # 对Loss进行更新
         OVERALL_LOSS_KEY = 'Overall Loss'
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-
         sigmoid_func = torch.nn.Sigmoid()
-
-        for train_step, ((features, inp), target) in enumerate(train_loader):
-            # features是图像特征，inp是输入的标签相关性矩阵
-            features = features.to(device)
+        # 这里不使用inp
+        for train_step, (inputs, target) in enumerate(train_loader):
+            inputs = inputs.to(device)
             target = target.to(device)
-            inp = inp.to(device)
 
+            # Debug看这里的统计是否准确
             self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
             # 也可在聚合时候统计，这里为明了起见，直接统计
             self._num_label_consumed += target.sum().item()
 
-            # 计算模型输出
-            output = model(features, inp)
-            # Todo: 将计算结果添加到ap_meter中
-            self.ap_meter.add(output.data, target)
+            output = model(inputs)
+            self.ap_meter.add(output.data, target.data)
 
-            # loss = criterion(sigmoid_func(output), target)
-            loss = criterion(output, target)
-
+            loss = criterion(sigmoid_func(output), target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
-
             loss.backward()
-
             optimizer.step()
-
-        # Todo: 这里对学习率进行调整
-        if (epoch + 1) % 4 == 0:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.9
+            self.lr_scheduler.step()
 
         mAP, _ = self.ap_meter.value()
         mAP *= 100
@@ -562,31 +497,33 @@ class GCNFitter(object):
         return metrics
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
-        total_samples = len(valid_loader.sampler)
-        batch_size = valid_loader.batch_size
-        steps = math.ceil(total_samples / batch_size)
-
+        # 对Loss进行更新
         OVERALL_LOSS_KEY = 'Overall Loss'
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # sigmoid_func = torch.nn.Sigmoid()
+
+        total_samples = len(valid_loader.sampler)
+        batch_size = valid_loader.batch_size
+
+        total_steps = math.ceil(total_samples / batch_size)
+
+        sigmoid_func = torch.nn.Sigmoid()
+
         model.eval()
+        # Todo: 在开始训练之前，重置ap_meter
         self.ap_meter.reset()
-
         with torch.no_grad():
-            for validate_step, ((features, inp), target) in enumerate(valid_loader):
-                features = features.to(device)
-                inp = inp.to(device)
+            for validate_step, (inputs, target) in enumerate(valid_loader):
+                inputs = inputs.to(device)
                 target = target.to(device)
-
-                output = model(features, inp)
-                # loss = criterion(sigmoid_func(output), target)
-                loss = criterion(output, target)
-
+                output = model(inputs)
+                loss = criterion(sigmoid_func(output), target)
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
-                # Todo: 这里需要对target进行detach操作吗？
-                self.ap_meter.add(output.data, target)
+
+                # 将输出和对应的target加入到ap_meter中
+                # Todo: 对相关格式的验证
+                self.ap_meter.add(output.data, target.data)
 
         mAP, _ = self.ap_meter.value()
         mAP *= 100
@@ -598,24 +535,10 @@ class GCNFitter(object):
         return metrics
 
 
-def _init_gcn_learner(param, device='cpu', adjList=None):
-    # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
-    #  不同部分使用不同的学习率
-
-    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
-    model = resnet_c_gcn(param.pretrained, param.dataset, t=param.t, adjList=adjList,
-                         device=param.device, num_classes=param.num_labels, in_channel=in_channel)
-    gcn_optimizer = None
-
-    # 注意，这里的lrp设置为0.1
-    lr, lrp = param.lr, 0.1
-
-    # 使用AdamW优化器
-    # optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
-    optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
-                                lr=lr,
-                                momentum=0.9,
-                                weight_decay=1e-4)
-
+def _init_learner(param, device='cpu'):
+    # Todo: 将通用部分提取出来
+    model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels)
+    # 使用Adam优化器
+    optimizer = torch.optim.AdamW(model.parameters(), lr=param.lr, weight_decay=1e-4)
     scheduler = None
-    return model, scheduler, optimizer, gcn_optimizer
+    return model, scheduler, optimizer
