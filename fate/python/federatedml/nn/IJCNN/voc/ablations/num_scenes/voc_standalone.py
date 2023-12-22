@@ -736,7 +736,7 @@ class AsymmetricLossOptimized(nn.Module):
         return -self.loss.sum()
 
 
-batch_size = 4
+batch_size = 32
 
 inp_name = 'voc_expanded_glove_word2vec.pkl'
 
@@ -773,7 +773,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_scenes', default=4, type=int)
-parser.add_argument('--device', default='cuda:0', type=str)
+parser.add_argument('--device', default='cuda:4', type=str)
 # 输入不同的学习率
 parser.add_argument('--lr', default='0.0001', type=float)
 parser.add_argument("--lrp", default='0.1', type=float)
