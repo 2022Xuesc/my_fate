@@ -176,3 +176,5 @@ docker-entrypoint.sh
 packages_md5.txt
 
 local_experiment_res
+
+/my_practice/scripts/generators/glove/word2vec.json
