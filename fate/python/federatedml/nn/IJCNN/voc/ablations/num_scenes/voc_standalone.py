@@ -2,36 +2,20 @@
 import math
 import numpy as np
 import torch
+import torch.nn
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.models as torch_models
 import torchvision.transforms as transforms
 from PIL import Image
+from torch.nn import Parameter
+from torch.utils.data import Dataset
 from torch.utils.data import Dataset
 
-import json
 import csv
-import random
-
+import json
 import os
 import os.path
-import pickle
-
-import torch.backends.cudnn as cudnn
-import math
-import numpy as np
-import torch
-import torch.nn
-import torch.nn as nn
-import torchvision.transforms as transforms
-from PIL import Image
-from torch.utils.data import Dataset
-from torch.nn import Parameter
-
-import torch.nn.functional as F
-
-import csv
-import json
-import os
 import os.path
 import pickle
 import random
@@ -754,10 +738,14 @@ class AsymmetricLossOptimized(nn.Module):
 
 batch_size = 4
 
-# root_path = "/data/projects/voc_standalone"
-root_path = "/home/klaus125/research/dataset/voc_standalone"
-inp_name = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded/voc_expanded_glove_word2vec.pkl'
-category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+inp_name = 'voc_expanded_glove_word2vec.pkl'
+
+root_path = "/data/projects/dataset/voc_standalone"
+category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
+
+
+# root_path = "/home/klaus125/research/dataset/voc_standalone"
+# category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
 
 num_labels = 20
 
@@ -865,7 +853,6 @@ for epoch in range(epochs):
         overall_loss.backward()
         optimizer.step()
 
-        print(f'{train_step} / {steps_per_epoch}, loss = {overall_loss.item()}')
 
     if (epoch + 1) % 4 == 0:
         for param_group in optimizer.param_groups:

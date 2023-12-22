@@ -16,8 +16,76 @@ import os.path
 import pickle
 import random
 
-
 method = "kmeans"
+
+object_categories = ['aeroplane', 'bicycle', 'bird', 'boat',
+                     'bottle', 'bus', 'car', 'cat', 'chair',
+                     'cow', 'diningtable', 'dog', 'horse',
+                     'motorbike', 'person', 'pottedplant',
+                     'sheep', 'sofa', 'train', 'tvmonitor']
+
+
+def read_object_labels_csv(file, header=True):
+    images = []
+    num_categories = 0
+    with open(file, 'r') as f:
+        reader = csv.reader(f)
+        rownum = 0
+        for row in reader:
+            if header and rownum == 0:
+                header = row
+            else:
+                if num_categories == 0:
+                    num_categories = len(row) - 1
+                name = row[0]
+                labels = (np.asarray(row[1:num_categories + 1])).astype(np.float32)
+                labels = torch.from_numpy(labels)
+                item = (name, labels)
+                images.append(item)
+            rownum += 1
+    return images
+
+
+# Todo: VOC还需要返回inp数据
+class Voc2007Classification(Dataset):
+    def __init__(self, root, set, transform=None, target_transform=None, config_dir=None, inp_name=None):
+        self.root = root
+        self.set = set
+        self.path_images = os.path.join(root, set)
+        self.transform = transform
+        self.target_transform = target_transform
+
+        path_csv = os.path.join(self.root, 'csvs')
+        file_csv = os.path.join(path_csv, 'classification_' + set + '.csv')
+
+        self.classes = object_categories
+        self.images = read_object_labels_csv(file_csv)
+
+        self.config_dir = config_dir
+
+        if inp_name is not None:
+            inp_file = os.path.join(self.config_dir, inp_name)
+            with open(inp_file, 'rb') as f:
+                self.inp = pickle.load(f)
+            self.inp_name = inp_name
+
+    def __getitem__(self, index):
+        path, target = self.images[index]
+        img = Image.open(os.path.join(self.path_images, path + '.jpg')).convert('RGB')
+        if self.transform is not None:
+            img = self.transform(img)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+        if self.inp is not None:
+            return (img, self.inp, index), target
+        return img, target
+
+    def __len__(self):
+        return len(self.images)
+
+    def get_number_classes(self):
+        return len(self.classes)
+
 
 class AveragePrecisionMeter(object):
     """
@@ -94,28 +162,21 @@ class AveragePrecisionMeter(object):
 
         if self.scores.numel() == 0:
             return 0
-        # ap = torch.zeros(self.scores.size(1))
-        # 初始化全-1的张量，表示
-        ap = torch.full((self.scores.size(1),), -1.)
-        # rg = torch.arange(1, self.scores.size(0)).float()
+        ap = torch.zeros(self.scores.size(1))
+        rg = torch.arange(1, self.scores.size(0)).float()
         # compute average precision for each class
-        non_zero_labels = 0
-        non_zero_ap_sum = 0
+        # non_zero_labels = 0
         for k in range(self.scores.size(1)):
-            targets = self.targets[:, k]
-            # 如果本地没有正标签，则直接跳过
-            if targets.sum() == 0:
-                continue
-            non_zero_labels += 1
             # sort scores
             scores = self.scores[:, k]
+            targets = self.targets[:, k]
             # compute average precision
             ap[k] = AveragePrecisionMeter.average_precision(scores, targets, self.difficult_examples)
-            non_zero_ap_sum += ap[k]
+            # if targets.sum() != 0:
+            #     non_zero_labels += 1
         # Todo: 在这里判断不为空的标签个数，直接求均值
-        mAP = non_zero_ap_sum / non_zero_labels
-        # 并且返回每个标签的预测精度
-        return mAP, ap.tolist()
+        # return ap.sum() / non_zero_labels
+        return ap.mean() * 100, ap.tolist()
 
     @staticmethod
     def average_precision(output, target, difficult_examples=False):
@@ -131,6 +192,7 @@ class AveragePrecisionMeter(object):
         # 遍历排序后的下标即可
         for i in indices:
             label = target[i]
+            # Todo: 如果是设置跳过较难预测的样本并且标签为0，则跳过
             if difficult_examples and label == 0:
                 continue
             # 更新正标签的个数
@@ -143,8 +205,8 @@ class AveragePrecisionMeter(object):
                 precision_at_i += pos_count / total_count
         # 除以样本的正标签个数对精度进行平均
         # Todo: 一般不需要该判断语句，每个样本总有正标签
-        if pos_count != 0:
-            precision_at_i /= pos_count
+        # if pos_count != 0:
+        precision_at_i /= pos_count
         # 返回该样本的average precision
         return precision_at_i
 
@@ -175,45 +237,17 @@ class AveragePrecisionMeter(object):
             scores = scores_[:, k]
             targets = targets_[:, k]
             targets[targets == -1] = 0
-            # Ng[k]是真正包含该标签的数量
             Ng[k] = np.sum(targets == 1)
-            # Todo: 这里为什么以scores大于等于0为界限
-            #  总得设置一个界限，这里设置0
-            # Np[k]是第k个标签预测的图像的数量，scores >= 0
             Np[k] = np.sum(scores >= 0)
-            # Nc[k]是第k个标签正确预测的图像的数量，target为1且预测分数scores大于等于0
             Nc[k] = np.sum(targets * (scores >= 0))
-        # Todo: 如果对应的指标返回-1
-        if np.sum(Np) == 0:  # 这个其实不太可能？
-            OP = -1
-            OR = -1
-            OF1 = -1
-        else:
-            OP = np.sum(Nc) / np.sum(Np)  # 如果Np对应项为0，则Nc对应项也一定是0
-            OR = np.sum(Nc) / np.sum(Ng)
-            OF1 = (2 * OP * OR) / (OP + OR)
-        # 逐个标签进行计算，如果值为-1，说明无法计算
-        CP_SUM = 0
-        CP_CNT = 0
-        CR_SUM = 0
-        CR_CNT = 0
-        CP = -1
-        CR = -1
-        CF1 = -1
-        # 这里遍历每一个标签
-        for i in range(n_class):
-            if Np[i] != 0:
-                CP_CNT += 1
-                CP_SUM += Nc[i] / Np[i]
-            if Ng[i] != 0:
-                CR_CNT += 1
-                CR_SUM += Nc[i] / Ng[i]
-        if CP_CNT != 0:
-            CP = CP_SUM / CP_CNT
-        if CR_CNT != 0:
-            CR = CR_SUM / CR_CNT
-        if CP != -1 and CR != -1:
-            CF1 = (2 * CP * CR) / (CP + CR)
+        Np[Np == 0] = 1
+        OP = np.sum(Nc) / np.sum(Np)
+        OR = np.sum(Nc) / np.sum(Ng)
+        OF1 = (2 * OP * OR) / (OP + OR)
+
+        CP = np.sum(Nc / Np) / n_class
+        CR = np.sum(Nc / Ng) / n_class
+        CF1 = (2 * CP * CR) / (CP + CR)
         return OP, OR, OF1, CP, CR, CF1
 
 
@@ -269,58 +303,6 @@ class AsymmetricLossOptimized(nn.Module):
             self.loss *= self.asymmetric_w
 
         return -self.loss.sum()
-
-
-class COCO(Dataset):
-    def __init__(self, images_dir, config_dir, transforms=None, inp_name=None):
-        self.images_dir = images_dir
-        self.config_dir = config_dir
-        self.transforms = transforms
-        self.img_list = []
-        self.cat2idx = None
-        self.get_anno()
-
-        self.num_classes = len(self.cat2idx)
-        self.inp = None
-        if inp_name is not None:
-            inp_file = os.path.join(self.config_dir, inp_name)
-            with open(inp_file, 'rb') as f:
-                self.inp = pickle.load(f)
-            self.inp_name = inp_name
-
-    def get_anno(self):
-        list_path = os.path.join(self.images_dir, 'anno.json')
-        self.img_list = json.load(open(list_path, 'r'))
-        # Todo: 如何读取
-        #  1. 正常随机读取
-        #  2. 按照标签顺序读
-        # self.img_list.sort(key=lambda x: sorted(x['labels']))
-        category_path = os.path.join(self.config_dir, 'category.json')
-        self.cat2idx = json.load(open(category_path, 'r'))
-
-    def __len__(self):
-        return len(self.img_list)
-
-    def __getitem__(self, index):
-        item = self.img_list[index]
-        img, target = self.get(item)
-        # 如果self.inp不为空，说明是在GCN的配置环境下
-        if self.inp is not None:
-            return (img, self.inp), target
-        else:  # 否则使用的是常规的网络，直接返回img和target即可
-            return img, target
-
-    def get(self, item):
-        filename = item['file_name']
-        labels = sorted(item['labels'])
-        # 读取图像数据
-        img = Image.open(os.path.join(self.images_dir, filename)).convert('RGB')
-        if self.transforms is not None:
-            img = self.transforms(img)
-        # Todo: 这里负标签设置为0，正标签设置为1
-        target = np.zeros(self.num_classes, np.float32)
-        target[labels] = 1
-        return img, target
 
 
 class Warp(object):
@@ -408,94 +390,6 @@ class MultiScaleCrop(object):
 
     def __str__(self):
         return self.__class__.__name__
-
-
-def gcn_train_transforms(resize_scale, crop_scale):
-    return transforms.Compose([
-        # 将短边缩放到resize_scale，另一边等比例缩放
-        transforms.Resize((resize_scale, resize_scale)),
-        MultiScaleCrop(crop_scale, scales=(1.0, 0.875, 0.75, 0.66, 0.5), max_distort=2),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-
-def gcn_valid_transforms(resize_scale, crop_scale):
-    return transforms.Compose([
-        Warp(crop_scale),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-
-def train_transforms(resize_scale, crop_scale, is_gcn=False):
-    if is_gcn:
-        return gcn_train_transforms(resize_scale, crop_scale)
-    return transforms.Compose([
-        # 将图像缩放为256*256
-        transforms.Resize(resize_scale),
-        # 随机裁剪出224*224大小的图像用于训练
-        transforms.RandomResizedCrop(crop_scale),
-        # 将图像进行水平翻转
-        transforms.RandomHorizontalFlip(),
-        # 转换为张量
-        transforms.ToTensor(),
-        # 对图像进行归一化，以下两个list分别是RGB通道的均值和标准差
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-
-def valid_transforms(resize_scale, crop_scale, is_gcn=False):
-    if is_gcn:
-        return gcn_valid_transforms(resize_scale, crop_scale)
-    return transforms.Compose([
-        transforms.Resize(resize_scale),
-        # 输入图像是224*224
-        transforms.CenterCrop(crop_scale),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-
-class DatasetLoader(object):
-    # category_dir是配置文件所在的目录
-    def __init__(self, category_dir, train_path, valid_path, inp_name=None):
-        super(DatasetLoader, self).__init__()
-        self.category_dir = category_dir
-        self.train_path = train_path
-        self.valid_path = valid_path
-        self.inp_name = inp_name
-        self.is_gcn = inp_name is not None
-
-    # 传resize_scale，一般是512或256
-    # 传crop_scale，一般是448或224
-    def get_loaders(self, batch_size, resize_scale=512, crop_scale=448):
-        train_dataset = COCO(images_dir=self.train_path,
-                             config_dir=self.category_dir,
-                             transforms=train_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
-                             inp_name=self.inp_name)
-        valid_dataset = COCO(images_dir=self.valid_path,
-                             config_dir=self.category_dir,
-                             transforms=valid_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
-                             inp_name=self.inp_name)
-
-        # 对batch_size进行修正
-        batch_size = max(1, min(batch_size, len(train_dataset), len(valid_dataset)))
-
-        shuffle = False
-        drop_last = True
-        num_workers = 32
-
-        train_loader = torch.utils.data.DataLoader(
-            dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
-            drop_last=drop_last, shuffle=shuffle
-        )
-        valid_loader = torch.utils.data.DataLoader(
-            dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
-            drop_last=drop_last, shuffle=shuffle
-        )
-        return train_loader, valid_loader
 
 
 from torch.nn import Parameter
@@ -592,24 +486,6 @@ class LowRankBilinearAttention(nn.Module):
         label_repr = torch.bmm(alpha, x1)
         # 返回标签的特征表示（每个空间位置的加权）以及注意力值
         return label_repr, alpha
-
-
-class EntropyLoss(nn.Module):
-    def __init__(self, margin=0.0) -> None:
-        super().__init__()
-        self.margin = margin
-
-    # 前向传播
-    # 计算概率向量的熵
-    def forward(self, x, eps=1e-7):
-        # 计算xlogx
-        x = x * torch.log(x + eps)
-        # 对每个批次进行求和，计算熵
-        en = -1 * torch.sum(x, dim=-1)
-        # 求均值，该batch的预测向量的熵的平均值
-        # 越小说明每张图像对场景的预测越准确，越好
-        en = torch.mean(en)
-        return en
 
 
 class GraphConvolution(nn.Module):
@@ -906,77 +782,98 @@ class ResnetKmeans(nn.Module):
         ]
 
 
+train_transforms = transforms.Compose([
+    transforms.Resize((512, 512)),
+    MultiScaleCrop(448, scales=(1.0, 0.875, 0.75, 0.66, 0.5), max_distort=2),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+val_transforms = transforms.Compose([
+    Warp(448),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
 import torchvision.models as torch_models
+
+
+batch_size = 16
+
+inp_name = 'voc_expanded_glove_word2vec.pkl'
+
+root_path = "/data/projects/dataset/voc_standalone"
+category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
+
+
+# root_path = "/home/klaus125/research/dataset/voc_standalone"
+# category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+
+
+num_labels = 20
+
+# 既定的配置，一般不会发生变化
+num_workers = 32
+drop_last = True
+
+train_dataset = Voc2007Classification(root_path, "trainval", config_dir=category_dir, inp_name=inp_name)
+train_dataset.transform = train_transforms
+valid_dataset = Voc2007Classification(root_path, "test", config_dir=category_dir, inp_name=inp_name)
+valid_dataset.transform = val_transforms
+
+train_loader = torch.utils.data.DataLoader(
+    dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
+    drop_last=drop_last, shuffle=True
+)
+val_loader = torch.utils.data.DataLoader(
+    dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
+    drop_last=drop_last, shuffle=False
+)
 
 import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_scenes', default=4, type=int)
-parser.add_argument('--device', default='cuda:0', type=str)
+parser.add_argument('--device', default='cuda:5', type=str)
+# 输入不同的学习率
+parser.add_argument('--lr', default='0.0001', type=float)
+parser.add_argument("--lrp", default='0.1', type=float)
 
 args = parser.parse_args()
 
-# Todo: 场景数量
 num_scenes = args.num_scenes
 device = args.device
-
-epochs = 400
-batch_size = 8
-
-lr, lrp = 0.0001, 0.1
-# 在NUSWIDE数据集下进行实验
-num_classes = 81
+lr, lrp = args.lr, args.lrp
 
 stats_dir = f'{method}_{num_scenes}_stats'
+
 my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
 
-client_header = ['epoch', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map']
+train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
+valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP', 'valid_loss'])
 
-train_writer = my_writer.get("train.csv", header=client_header)
-valid_writer = my_writer.get("valid.csv", header=client_header)
+train_aps_writer = my_writer.get("train_aps.csv")
+val_aps_writer = my_writer.get("val_aps.csv")
 
 model = torch_models.resnet101(pretrained=True, num_classes=1000)
-model = ResnetKmeans(model, num_scenes=num_scenes, num_classes=num_classes).to(device)
+model = ResnetKmeans(model, num_scenes=num_scenes, num_classes=num_labels).to(device)
 # 准备模型相关
-# optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=lr, weight_decay=1e-4)
+optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=lr, weight_decay=1e-4)
 
-optimizer = torch.optim.SGD(model.get_config_optim(lr=lr,lrp=lrp),
-                            lr=lr,
-                            momentum=0.9,
-                            weight_decay=1e-4)
+# optimizer = torch.optim.SGD(model.get_config_optim(lr=lr,lrp=lrp),
+#                             lr=lr,
+#                             momentum=0.9,
+#                             weight_decay=1e-4)
 
 
 criterion = AsymmetricLossOptimized().to(device)
 
-
-
-
 ap_meter = AveragePrecisionMeter(difficult_examples=False)
 
-# 准备数据集
-dataset = "nuswide"
-inp_name = f'{dataset}_glove_word2vec.pkl'
-
-# 本地数据集
-# category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
-# train_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
-# valid_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
-
-# COCO数据集
-# category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
-# train_path = '/data/projects/dataset/clustered_dataset/client2/train'
-# valid_path = '/data/projects/dataset/clustered_dataset/client2/val'
-
-# NUSWIDE数据集
-category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
-train_path = '/data/projects/dataset/nuswide_clustered/client2/train'
-valid_path = '/data/projects/dataset/nuswide_clustered/client2/val'
-
-
-dataset_loader = DatasetLoader(category_dir, train_path, valid_path, inp_name)
-train_loader, valid_loader = dataset_loader.get_loaders(batch_size)
-
 sigmoid_func = torch.nn.Sigmoid()
+
+epochs = 200
 
 # 开始训练
 for epoch in range(epochs):
@@ -987,22 +884,27 @@ for epoch in range(epochs):
     # 训练阶段
     ap_meter.reset()
     model.train()
-    for train_step, ((features, inp), target) in enumerate(train_loader):
+    for train_step, ((features, inp, indices), target) in enumerate(train_loader):
         features = features.to(device)
-        target = target.to(device)
         inp = inp.to(device)
+        
+        prev_target = target.clone()
+        # 对target进行转换
+        target[target == 0] = 1
+        target[target == -1] = 0
+        target = target.to(device)
+
         output = model(features, inp, y=target)
         predicts = output['output']
 
         scene_indices = output['scene_indices']
         # Todo: 在这里统计，检索到图像名称并建立关系
-        # 这是loader的索引，根据该索引可以索引到图像名称以及标签
-        indices = list(train_loader.batch_sampler)[train_step]
+
         for i in range(len(indices)):
             index = indices[i]
-            scene_images[scene_indices[i].item()].append(train_loader.dataset.img_list[index])
+            scene_images[scene_indices[i].item()].append(train_loader.dataset.images[index][0])
 
-        ap_meter.add(predicts.data, target)
+        ap_meter.add(predicts.data, prev_target)
 
         objective_loss = criterion(sigmoid_func(predicts), target)
 
@@ -1016,13 +918,11 @@ for epoch in range(epochs):
     if (epoch + 1) % 4 == 0:
         for param_group in optimizer.param_groups:
             param_group['lr'] *= 0.9
-    mAP, _ = ap_meter.value()
-    mAP *= 100
-    # 统计指标
-    OP, OR, OF1, CP, CR, CF1 = ap_meter.overall()
-    OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = ap_meter.overall_topk(3)
-    metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item()]
-    train_writer.writerow([epoch] + metrics)
+
+    mAP, aps = ap_meter.value()
+
+    train_writer.writerow([epoch, mAP.item()])
+    train_aps_writer.writerow(aps)
 
     json_path = f'{stats_dir}/scene_images_{epoch}.json'
     json_content = json.dumps(scene_images, indent=4)
@@ -1032,24 +932,22 @@ for epoch in range(epochs):
     # 验证阶段
     model.eval()
     ap_meter.reset()
+
     with torch.no_grad():
-        for validate_step, ((features, inp), target) in enumerate(valid_loader):
+        for validate_step, ((features, inp, indices), target) in enumerate(val_loader):
             features = features.to(device)
             inp = inp.to(device)
+
+            prev_target = target.clone()
+            target[target == 0] = 1
+            target[target == -1] = 0
             target = target.to(device)
 
             output = model(features, inp, y=target)
             predicts = output['output']
 
             # Todo: 将计算结果添加到ap_meter中
-            ap_meter.add(predicts.data, target)
+            ap_meter.add(predicts.data, prev_target)
 
-            # objective_loss = criterion(sigmoid_func(predicts), target)
-
-    mAP, _ = ap_meter.value()
-    mAP *= 100
-    OP, OR, OF1, CP, CR, CF1 = ap_meter.overall()
-    OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = ap_meter.overall_topk(3)
-    metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item()]
-    valid_writer.writerow([epoch] + metrics)
-
+        mAP, aps = ap_meter.value()
+        valid_writer.writerow([epoch, mAP.item()])
