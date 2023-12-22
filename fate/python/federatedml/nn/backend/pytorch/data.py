@@ -275,8 +275,6 @@ class COCO(Dataset):
                 self.inp = pickle.load(f)
             self.inp_name = inp_name
 
-    
-    
     def get_anno(self):
         list_path = os.path.join(self.images_dir, 'anno.json')
         self.img_list = json.load(open(list_path, 'r'))

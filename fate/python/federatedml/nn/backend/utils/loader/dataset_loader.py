@@ -77,7 +77,7 @@ class DatasetLoader(object):
         # 对batch_size进行修正
         batch_size = max(1, min(batch_size, len(train_dataset), len(valid_dataset)))
 
-        shuffle = False
+        shuffle = True
         drop_last = True
         num_workers = 32
 
