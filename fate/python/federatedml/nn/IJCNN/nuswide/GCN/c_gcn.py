@@ -250,8 +250,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
 
     dataset = 'nuswide'
     inp_name = f'{dataset}_glove_word2vec.pkl'
-
-    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}/'
+    
+    category_dir =  f'/data/projects/fate/my_practice/dataset/{dataset}/'
     # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
@@ -587,7 +587,7 @@ class GCNFitter(object):
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
                 # Todo: 这里需要对target进行detach操作吗？
                 self.ap_meter.add(output.data, target)
-
+                
         mAP, _ = self.ap_meter.value()
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
