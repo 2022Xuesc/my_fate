@@ -36,11 +36,13 @@ import os.path
 import pickle
 import random
 
+method = 'fc'
+
 
 class MyWriter(object):
-    def __init__(self, dir_name):
+    def __init__(self, dir_name, stats_name='stats'):
         super(MyWriter, self).__init__()
-        self.stats_dir = os.path.join(dir_name, 'stats')
+        self.stats_dir = os.path.join(dir_name, stats_name)
         if not os.path.exists(self.stats_dir):
             os.makedirs(self.stats_dir)
 
@@ -49,17 +51,9 @@ class MyWriter(object):
         file = open(os.path.join(self.stats_dir, file_name), 'w', buffering=buf_size)
         writer = csv.writer(file)
         # 写入表头信息，如果有的话
-        writer.writerow(header)
+        if len(header) != 0:
+            writer.writerow(header)
         return writer
-
-
-my_writer = MyWriter(dir_name=os.getcwd())
-
-train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
-valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP', 'valid_loss'])
-
-train_aps_writer = my_writer.get("train_aps.csv")
-val_aps_writer = my_writer.get("val_aps.csv")
 
 
 # import util
@@ -256,8 +250,9 @@ def read_object_labels_csv(file, header=True):
     return images
 
 
+# Todo: VOC还需要返回inp数据
 class Voc2007Classification(Dataset):
-    def __init__(self, root, set, transform=None, target_transform=None, ):
+    def __init__(self, root, set, transform=None, target_transform=None, config_dir=None, inp_name=None):
         self.root = root
         self.set = set
         self.path_images = os.path.join(root, set)
@@ -270,6 +265,14 @@ class Voc2007Classification(Dataset):
         self.classes = object_categories
         self.images = read_object_labels_csv(file_csv)
 
+        self.config_dir = config_dir
+
+        if inp_name is not None:
+            inp_file = os.path.join(self.config_dir, inp_name)
+            with open(inp_file, 'rb') as f:
+                self.inp = pickle.load(f)
+            self.inp_name = inp_name
+
     def __getitem__(self, index):
         path, target = self.images[index]
         img = Image.open(os.path.join(self.path_images, path + '.jpg')).convert('RGB')
@@ -277,7 +280,8 @@ class Voc2007Classification(Dataset):
             img = self.transform(img)
         if self.target_transform is not None:
             target = self.target_transform(target)
-
+        if self.inp is not None:
+            return (img, self.inp, index), target
         return img, target
 
     def __len__(self):
@@ -693,6 +697,7 @@ val_transforms = transforms.Compose([
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
+
 class AsymmetricLossOptimized(nn.Module):
 
     def __init__(self, gamma_neg=4, gamma_pos=1, clip=0.05, eps=1e-8, disable_torch_grad_focal_loss=False):
@@ -746,47 +751,35 @@ class AsymmetricLossOptimized(nn.Module):
 
         return -self.loss.sum()
 
-# batch_size = 2
-# root_path = '/home/klaus125/research/dataset/voc_standalone'
-# device = 'cuda:0'
-# epoch_step = 1
 
-batch_size = 16
-root_path = "/data/projects/voc_standalone"
-# epoch_step = 30
+batch_size = 4
+
+# root_path = "/data/projects/voc_standalone"
+root_path = "/home/klaus125/research/dataset/voc_standalone"
+inp_name = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded/voc_expanded_glove_word2vec.pkl'
+category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
 
 num_labels = 20
-momentum = 0.9
-# 相关训练参数的设置，和client1的配置相一致
-# lr = 0.1
-# lrp = 0.1
-learning_rate = 1e-4
 
 # 既定的配置，一般不会发生变化
 num_workers = 32
-drop_last = False
-pin_memory = True
-cudnn.benchmark = True
+drop_last = True
 
 # Todo: 设置设备id？
 
-train_dataset = Voc2007Classification(root_path, "trainval")
+train_dataset = Voc2007Classification(root_path, "trainval", config_dir=category_dir, inp_name=inp_name)
 train_dataset.transform = train_transforms
-valid_dataset = Voc2007Classification(root_path, "test")
+valid_dataset = Voc2007Classification(root_path, "test", config_dir=category_dir, inp_name=inp_name)
 valid_dataset.transform = val_transforms
 
 train_loader = torch.utils.data.DataLoader(
     dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
-    drop_last=drop_last, pin_memory=pin_memory, shuffle=True
+    drop_last=drop_last, shuffle=True
 )
 val_loader = torch.utils.data.DataLoader(
     dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
-    drop_last=drop_last, pin_memory=pin_memory, shuffle=False
+    drop_last=drop_last, shuffle=False
 )
-
-# res_model = torch_models.resnet101(pretrained=True)
-# model = MyResNetModel(model=res_model, num_classes=num_labels).to(device)
-
 
 import argparse
 
@@ -794,8 +787,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--num_scenes', default=4, type=int)
 parser.add_argument('--device', default='cuda:0', type=str)
 # 输入不同的学习率
-parser.add_argument('--lr', default='0.0001',type=float)
-parser.add_argument("--lrp", default='0.1',type=float)
+parser.add_argument('--lr', default='0.0001', type=float)
+parser.add_argument("--lrp", default='0.1', type=float)
 
 args = parser.parse_args()
 
@@ -803,18 +796,24 @@ num_scenes = args.num_scenes
 device = args.device
 lr, lrp = args.lr, args.lrp
 
+stats_dir = f'{method}_{num_scenes}_stats'
 
+my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
+
+train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
+valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP', 'valid_loss'])
+
+train_aps_writer = my_writer.get("train_aps.csv")
+val_aps_writer = my_writer.get("val_aps.csv")
 
 model = torch_models.resnet101(pretrained=False, num_classes=1000)
 
 # 使用salgl模型
-model = ResnetSalgl(model,num_scenes=num_scenes,num_classes=num_labels).to(device)
+model = ResnetSalgl(model, num_scenes=num_scenes, num_classes=num_labels).to(device)
 
 criterion = AsymmetricLossOptimized().to(device)
 
-
 optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=lr, weight_decay=1e-4)
-
 
 ap_meter = AveragePrecisionMeter(difficult_examples=True)
 
@@ -828,14 +827,16 @@ for epoch in range(epochs):
         scene_images[i] = []
     ap_meter.reset()
     model.train()
-    
+
     # 训练阶段
     total_samples = len(train_loader.sampler)
     steps_per_epoch = math.ceil(total_samples / batch_size)
 
     # 直接输出信息到控制台上
-    for train_step, (inputs, target) in enumerate(train_loader):
-        inputs = inputs.to(device)
+    for train_step, ((features, inp, indices), target) in enumerate(train_loader):
+        features = features.to(device)
+        inp = inp.to(device)
+
         # Todo: 注意这里的数据转换部分
         prev_target = target.clone()
         # 对target进行转换
@@ -843,29 +844,42 @@ for epoch in range(epochs):
         target[target == -1] = 0
         target = target.to(device)
 
-        output = model(inputs)
-        ap_meter.add(output.data, prev_target)
+        output = model(features, inp, y=target)
+        predicts = output['output']
+        entropy_loss = output['entropy_loss']
+        scene_indices = output['scene_indices']
+        # Todo: 在这里统计，检索到图像名称并建立关系
+        # 这是loader的索引，根据该索引可以索引到图像名称以及标签
+        for i in range(len(indices)):
+            index = indices[i]
+            # Todo: 这里有问题!!!
+            scene_images[scene_indices[i].item()].append(train_loader.dataset.images[index][0])
+
+        ap_meter.add(predicts.data, prev_target)
 
         # Todo: 这里x不需要经过sigmoid
-        loss = criterion(torch.nn.Sigmoid()(output), target)
-
+        loss = criterion(torch.nn.Sigmoid()(predicts), target)
+        overall_loss = loss + entropy_loss
 
         optimizer.zero_grad()
-        loss.backward()
+        overall_loss.backward()
         optimizer.step()
 
-    epoch_loss /= steps_per_epoch
-    # after_scheduler_lr = optimizer.param_groups[0]['lr']
+        print(f'{train_step} / {steps_per_epoch}, loss = {overall_loss.item()}')
 
-    # Todo: 更新学习率
-    # if (epoch + 1) % epoch_step == 0:
-    #     for param_group in optimizer.param_groups:
-    #         param_group['lr'] = param_group['lr'] * 0.1
+    if (epoch + 1) % 4 == 0:
+        for param_group in optimizer.param_groups:
+            param_group['lr'] *= 0.9
 
     mAP, aps = ap_meter.value()
 
-    train_writer.writerow([epoch, mAP.item(), epoch_loss])
+    train_writer.writerow([epoch, mAP.item()])
     train_aps_writer.writerow(aps)
+
+    json_path = f'{stats_dir}/scene_images_{epoch}.json'
+    json_content = json.dumps(scene_images, indent=4)
+    with open(json_path, 'w') as json_file:
+        json_file.write(json_content)
 
     # 验证阶段
     model.eval()
@@ -874,18 +888,20 @@ for epoch in range(epochs):
     total_val_samples = len(val_loader.sampler)
     val_steps_per_epoch = math.ceil(total_samples / batch_size)
     epoch_val_loss = 0
-    for i, (inputs, target) in enumerate(val_loader):
-        inputs = inputs.to(device)
-        prev_target = target.clone()
-        target[target == 0] = 1
-        target[target == -1] = 0
-        target = target.to(device)
+    with torch.no_grad():
+        for i, ((features, inp, indices), target) in enumerate(val_loader):
+            features = features.to(device)
+            inp = inp.to(device)
 
-        output = model(inputs)
-        loss = criterion(torch.nn.Sigmoid()(output), target)
-        epoch_val_loss += loss.item()
-        ap_meter.add(output.data, prev_target)
-    mAP, aps = ap_meter.value()
-    epoch_val_loss /= val_steps_per_epoch
-    valid_writer.writerow([epoch, mAP.item(), epoch_val_loss])
-    val_aps_writer.writerow(aps)
+            prev_target = target.clone()
+            target[target == 0] = 1
+            target[target == -1] = 0
+            target = target.to(device)
+
+            output = model(features, inp, y=target)
+            predicts = output['output']
+
+            ap_meter.add(predicts.data, prev_target)
+
+        mAP, aps = ap_meter.value()
+        valid_writer.writerow([epoch, mAP.item()])
