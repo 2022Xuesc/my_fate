@@ -34,7 +34,7 @@
         "max_iter": 100,
         "batch_size": 2,
         "aggregate_every_n_epoch": 4,
-        "lr": 0.0001,
+        "lr": 0.001,
         "num_labels": 81,
         "pretrained": true,
         "dataset": "ms-nuswide",
@@ -121,7 +121,7 @@
         },
         "3": {
           "gcn_0": {
-            "device": "cuda:0",
+            "device": "cuda:1",
             "adj_file": "/data/projects/dataset/nuswide_clustered/client5/train/anno.json"
           },
           "reader_0": {
