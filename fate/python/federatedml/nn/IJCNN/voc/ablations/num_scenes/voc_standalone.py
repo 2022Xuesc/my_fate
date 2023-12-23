@@ -22,22 +22,73 @@ import random
 
 method = 'fc'
 
+object_categories = ['aeroplane', 'bicycle', 'bird', 'boat',
+                     'bottle', 'bus', 'car', 'cat', 'chair',
+                     'cow', 'diningtable', 'dog', 'horse',
+                     'motorbike', 'person', 'pottedplant',
+                     'sheep', 'sofa', 'train', 'tvmonitor']
 
-class MyWriter(object):
-    def __init__(self, dir_name, stats_name='stats'):
-        super(MyWriter, self).__init__()
-        self.stats_dir = os.path.join(dir_name, stats_name)
-        if not os.path.exists(self.stats_dir):
-            os.makedirs(self.stats_dir)
 
-    def get(self, file_name, buf_size=1, header=''):
-        # 根据文件路径和buffer_size创建文件对象
-        file = open(os.path.join(self.stats_dir, file_name), 'w', buffering=buf_size)
-        writer = csv.writer(file)
-        # 写入表头信息，如果有的话
-        if len(header) != 0:
-            writer.writerow(header)
-        return writer
+def read_object_labels_csv(file, header=True):
+    images = []
+    num_categories = 0
+    with open(file, 'r') as f:
+        reader = csv.reader(f)
+        rownum = 0
+        for row in reader:
+            if header and rownum == 0:
+                header = row
+            else:
+                if num_categories == 0:
+                    num_categories = len(row) - 1
+                name = row[0]
+                labels = (np.asarray(row[1:num_categories + 1])).astype(np.float32)
+                labels = torch.from_numpy(labels)
+                item = (name, labels)
+                images.append(item)
+            rownum += 1
+    return images
+
+
+# Todo: VOC还需要返回inp数据
+class Voc2007Classification(Dataset):
+    def __init__(self, root, set, transform=None, target_transform=None, config_dir=None, inp_name=None):
+        self.root = root
+        self.set = set
+        self.path_images = os.path.join(root, set)
+        self.transform = transform
+        self.target_transform = target_transform
+
+        path_csv = os.path.join(self.root, 'csvs')
+        file_csv = os.path.join(path_csv, 'classification_' + set + '.csv')
+
+        self.classes = object_categories
+        self.images = read_object_labels_csv(file_csv)
+
+        self.config_dir = config_dir
+
+        if inp_name is not None:
+            inp_file = os.path.join(self.config_dir, inp_name)
+            with open(inp_file, 'rb') as f:
+                self.inp = pickle.load(f)
+            self.inp_name = inp_name
+
+    def __getitem__(self, index):
+        path, target = self.images[index]
+        img = Image.open(os.path.join(self.path_images, path + '.jpg')).convert('RGB')
+        if self.transform is not None:
+            img = self.transform(img)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+        if self.inp is not None:
+            return (img, self.inp, index), target
+        return img, target
+
+    def __len__(self):
+        return len(self.images)
+
+    def get_number_classes(self):
+        return len(self.classes)
 
 
 # import util
@@ -206,73 +257,143 @@ class AveragePrecisionMeter(object):
         return OP, OR, OF1, CP, CR, CF1
 
 
-object_categories = ['aeroplane', 'bicycle', 'bird', 'boat',
-                     'bottle', 'bus', 'car', 'cat', 'chair',
-                     'cow', 'diningtable', 'dog', 'horse',
-                     'motorbike', 'person', 'pottedplant',
-                     'sheep', 'sofa', 'train', 'tvmonitor']
 
+class EntropyLoss(nn.Module):
+    def __init__(self, margin=0.0) -> None:
+        super().__init__()
+        self.margin = margin
 
-def read_object_labels_csv(file, header=True):
-    images = []
-    num_categories = 0
-    with open(file, 'r') as f:
-        reader = csv.reader(f)
-        rownum = 0
-        for row in reader:
-            if header and rownum == 0:
-                header = row
-            else:
-                if num_categories == 0:
-                    num_categories = len(row) - 1
-                name = row[0]
-                labels = (np.asarray(row[1:num_categories + 1])).astype(np.float32)
-                labels = torch.from_numpy(labels)
-                item = (name, labels)
-                images.append(item)
-            rownum += 1
-    return images
+    # 前向传播
+    # 计算概率向量的熵
+    def forward(self, x, eps=1e-7):
+        # 计算xlogx
+        x = x * torch.log(x + eps)
+        # 对每个批次进行求和，计算熵
+        en = -1 * torch.sum(x, dim=-1)
+        # 求均值，该batch的预测向量的熵的平均值
+        # 越小说明每张图像对场景的预测越准确，越好
+        en = torch.mean(en)
+        return en
 
+class MultiScaleCrop(object):
 
-# Todo: VOC还需要返回inp数据
-class Voc2007Classification(Dataset):
-    def __init__(self, root, set, transform=None, target_transform=None, config_dir=None, inp_name=None):
-        self.root = root
-        self.set = set
-        self.path_images = os.path.join(root, set)
-        self.transform = transform
-        self.target_transform = target_transform
+    def __init__(self, input_size, scales=None, max_distort=1, fix_crop=True, more_fix_crop=True):
+        self.scales = scales if scales is not None else [1, 875, .75, .66]
+        self.max_distort = max_distort
+        self.fix_crop = fix_crop
+        self.more_fix_crop = more_fix_crop
+        self.input_size = input_size if not isinstance(input_size, int) else [input_size, input_size]
+        self.interpolation = Image.BILINEAR
 
-        path_csv = os.path.join(self.root, 'csvs')
-        file_csv = os.path.join(path_csv, 'classification_' + set + '.csv')
+    def __call__(self, img):
+        im_size = img.size
+        crop_w, crop_h, offset_w, offset_h = self._sample_crop_size(im_size)
+        crop_img_group = img.crop((offset_w, offset_h, offset_w + crop_w, offset_h + crop_h))
+        ret_img_group = crop_img_group.resize((self.input_size[0], self.input_size[1]), self.interpolation)
+        return ret_img_group
 
-        self.classes = object_categories
-        self.images = read_object_labels_csv(file_csv)
+    def _sample_crop_size(self, im_size):
+        image_w, image_h = im_size[0], im_size[1]
 
-        self.config_dir = config_dir
+        # find a crop size
+        base_size = min(image_w, image_h)
+        crop_sizes = [int(base_size * x) for x in self.scales]
+        crop_h = [self.input_size[1] if abs(x - self.input_size[1]) < 3 else x for x in crop_sizes]
+        crop_w = [self.input_size[0] if abs(x - self.input_size[0]) < 3 else x for x in crop_sizes]
 
-        if inp_name is not None:
-            inp_file = os.path.join(self.config_dir, inp_name)
-            with open(inp_file, 'rb') as f:
-                self.inp = pickle.load(f)
-            self.inp_name = inp_name
+        pairs = []
+        for i, h in enumerate(crop_h):
+            for j, w in enumerate(crop_w):
+                if abs(i - j) <= self.max_distort:
+                    pairs.append((w, h))
 
-    def __getitem__(self, index):
-        path, target = self.images[index]
-        img = Image.open(os.path.join(self.path_images, path + '.jpg')).convert('RGB')
-        if self.transform is not None:
-            img = self.transform(img)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-        if self.inp is not None:
-            return (img, self.inp, index), target
-        return img, target
+        crop_pair = random.choice(pairs)
+        if not self.fix_crop:
+            w_offset = random.randint(0, image_w - crop_pair[0])
+            h_offset = random.randint(0, image_h - crop_pair[1])
+        else:
+            w_offset, h_offset = self._sample_fix_offset(image_w, image_h, crop_pair[0], crop_pair[1])
 
-    def __len__(self):
-        return len(self.images)
+        return crop_pair[0], crop_pair[1], w_offset, h_offset
 
-    def get_number_classes(self):
-        return len(self.classes)
+    def _sample_fix_offset(self, image_w, image_h, crop_w, crop_h):
+        offsets = self.fill_fix_offset(self.more_fix_crop, image_w, image_h, crop_w, crop_h)
+        return random.choice(offsets)
+
+    @staticmethod
+    def fill_fix_offset(more_fix_crop, image_w, image_h, crop_w, crop_h):
+        w_step = (image_w - crop_w) // 4
+        h_step = (image_h - crop_h) // 4
+
+        ret = list()
+        ret.append((0, 0))  # upper left
+        ret.append((4 * w_step, 0))  # upper right
+        ret.append((0, 4 * h_step))  # lower left
+        ret.append((4 * w_step, 4 * h_step))  # lower right
+        ret.append((2 * w_step, 2 * h_step))  # center
+
+        if more_fix_crop:
+            ret.append((0, 2 * h_step))  # center left
+            ret.append((4 * w_step, 2 * h_step))  # center right
+            ret.append((2 * w_step, 4 * h_step))  # lower center
+            ret.append((2 * w_step, 0 * h_step))  # upper center
+
+            ret.append((1 * w_step, 1 * h_step))  # upper left quarter
+            ret.append((3 * w_step, 1 * h_step))  # upper right quarter
+            ret.append((1 * w_step, 3 * h_step))  # lower left quarter
+            ret.append((3 * w_step, 3 * h_step))  # lower righ quarter
+
+        return ret
+
+    def __str__(self):
+        return self.__class__.__name__
+
+class MyWriter(object):
+    def __init__(self, dir_name, stats_name='stats'):
+        super(MyWriter, self).__init__()
+        self.stats_dir = os.path.join(dir_name, stats_name)
+        if not os.path.exists(self.stats_dir):
+            os.makedirs(self.stats_dir)
+
+    def get(self, file_name, buf_size=1, header=''):
+        # 根据文件路径和buffer_size创建文件对象
+        file = open(os.path.join(self.stats_dir, file_name), 'w', buffering=buf_size)
+        writer = csv.writer(file)
+        # 写入表头信息，如果有的话
+        if len(header) != 0:
+            writer.writerow(header)
+        return writer
+    
+class Element_Wise_Layer(nn.Module):
+    def __init__(self, in_features, out_features, bias=True):
+        super(Element_Wise_Layer, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = Parameter(torch.Tensor(in_features, out_features))
+        if bias:
+            self.bias = Parameter(torch.Tensor(in_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        stdv = 1. / math.sqrt(self.weight.size(1))
+        for i in range(self.in_features):
+            self.weight[i].data.uniform_(-stdv, stdv)
+        if self.bias is not None:
+            for i in range(self.in_features):
+                self.bias[i].data.uniform_(-stdv, stdv)
+
+    def forward(self, input):
+        x = input * self.weight
+        x = torch.sum(x, 2)
+        if self.bias is not None:
+            x = x + self.bias
+        return x
+
+    def extra_repr(self):
+        return 'in_features={}, out_features={}, bias={}'.format(
+            self.in_features, self.out_features, self.bias is not None)
 
 
 class LowRankBilinearAttention(nn.Module):
@@ -378,55 +499,6 @@ def gen_adjs(A):
         adjs[i] = adj
     return adjs
 
-
-class EntropyLoss(nn.Module):
-    def __init__(self, margin=0.0) -> None:
-        super().__init__()
-        self.margin = margin
-
-    # 前向传播
-    # 计算概率向量的熵
-    def forward(self, x, eps=1e-7):
-        # 计算xlogx
-        x = x * torch.log(x + eps)
-        # 对每个批次进行求和，计算熵
-        en = -1 * torch.sum(x, dim=-1)
-        # 求均值，该batch的预测向量的熵的平均值
-        # 越小说明每张图像对场景的预测越准确，越好
-        en = torch.mean(en)
-        return en
-
-
-class Element_Wise_Layer(nn.Module):
-    def __init__(self, in_features, out_features, bias=True):
-        super(Element_Wise_Layer, self).__init__()
-        self.in_features = in_features
-        self.out_features = out_features
-        self.weight = Parameter(torch.Tensor(in_features, out_features))
-        if bias:
-            self.bias = Parameter(torch.Tensor(in_features))
-        else:
-            self.register_parameter('bias', None)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        stdv = 1. / math.sqrt(self.weight.size(1))
-        for i in range(self.in_features):
-            self.weight[i].data.uniform_(-stdv, stdv)
-        if self.bias is not None:
-            for i in range(self.in_features):
-                self.bias[i].data.uniform_(-stdv, stdv)
-
-    def forward(self, input):
-        x = input * self.weight
-        x = torch.sum(x, 2)
-        if self.bias is not None:
-            x = x + self.bias
-        return x
-
-    def extra_repr(self):
-        return 'in_features={}, out_features={}, bias={}'.format(
-            self.in_features, self.out_features, self.bias is not None)
 
 
 class ResnetSalgl(nn.Module):
@@ -580,108 +652,6 @@ class ResnetSalgl(nn.Module):
         ]
 
 
-class MultiScaleCrop(object):
-
-    def __init__(self, input_size, scales=None, max_distort=1, fix_crop=True, more_fix_crop=True):
-        self.scales = scales if scales is not None else [1, 875, .75, .66]
-        self.max_distort = max_distort
-        self.fix_crop = fix_crop
-        self.more_fix_crop = more_fix_crop
-        self.input_size = input_size if not isinstance(input_size, int) else [input_size, input_size]
-        self.interpolation = Image.BILINEAR
-
-    def __call__(self, img):
-        im_size = img.size
-        crop_w, crop_h, offset_w, offset_h = self._sample_crop_size(im_size)
-        crop_img_group = img.crop((offset_w, offset_h, offset_w + crop_w, offset_h + crop_h))
-        ret_img_group = crop_img_group.resize((self.input_size[0], self.input_size[1]), self.interpolation)
-        return ret_img_group
-
-    def _sample_crop_size(self, im_size):
-        image_w, image_h = im_size[0], im_size[1]
-
-        # find a crop size
-        base_size = min(image_w, image_h)
-        crop_sizes = [int(base_size * x) for x in self.scales]
-        crop_h = [self.input_size[1] if abs(x - self.input_size[1]) < 3 else x for x in crop_sizes]
-        crop_w = [self.input_size[0] if abs(x - self.input_size[0]) < 3 else x for x in crop_sizes]
-
-        pairs = []
-        for i, h in enumerate(crop_h):
-            for j, w in enumerate(crop_w):
-                if abs(i - j) <= self.max_distort:
-                    pairs.append((w, h))
-
-        crop_pair = random.choice(pairs)
-        if not self.fix_crop:
-            w_offset = random.randint(0, image_w - crop_pair[0])
-            h_offset = random.randint(0, image_h - crop_pair[1])
-        else:
-            w_offset, h_offset = self._sample_fix_offset(image_w, image_h, crop_pair[0], crop_pair[1])
-
-        return crop_pair[0], crop_pair[1], w_offset, h_offset
-
-    def _sample_fix_offset(self, image_w, image_h, crop_w, crop_h):
-        offsets = self.fill_fix_offset(self.more_fix_crop, image_w, image_h, crop_w, crop_h)
-        return random.choice(offsets)
-
-    @staticmethod
-    def fill_fix_offset(more_fix_crop, image_w, image_h, crop_w, crop_h):
-        w_step = (image_w - crop_w) // 4
-        h_step = (image_h - crop_h) // 4
-
-        ret = list()
-        ret.append((0, 0))  # upper left
-        ret.append((4 * w_step, 0))  # upper right
-        ret.append((0, 4 * h_step))  # lower left
-        ret.append((4 * w_step, 4 * h_step))  # lower right
-        ret.append((2 * w_step, 2 * h_step))  # center
-
-        if more_fix_crop:
-            ret.append((0, 2 * h_step))  # center left
-            ret.append((4 * w_step, 2 * h_step))  # center right
-            ret.append((2 * w_step, 4 * h_step))  # lower center
-            ret.append((2 * w_step, 0 * h_step))  # upper center
-
-            ret.append((1 * w_step, 1 * h_step))  # upper left quarter
-            ret.append((3 * w_step, 1 * h_step))  # upper right quarter
-            ret.append((1 * w_step, 3 * h_step))  # lower left quarter
-            ret.append((3 * w_step, 3 * h_step))  # lower righ quarter
-
-        return ret
-
-    def __str__(self):
-        return self.__class__.__name__
-
-
-class Warp(object):
-    def __init__(self, size, interpolation=Image.BILINEAR):
-        self.size = int(size)
-        self.interpolation = interpolation
-
-    def __call__(self, img):
-        return img.resize((self.size, self.size), self.interpolation)
-
-    def __str__(self):
-        return self.__class__.__name__ + ' (size={size}, interpolation={interpolation})'.format(size=self.size,
-                                                                                                interpolation=self.interpolation)
-
-
-train_transforms = transforms.Compose([
-    transforms.Resize((512, 512)),
-    MultiScaleCrop(448, scales=(1.0, 0.875, 0.75, 0.66, 0.5), max_distort=2),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
-
-val_transforms = transforms.Compose([
-    Warp(448),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
-
-
 class AsymmetricLossOptimized(nn.Module):
 
     def __init__(self, gamma_neg=4, gamma_pos=1, clip=0.05, eps=1e-8, disable_torch_grad_focal_loss=False):
@@ -736,13 +706,39 @@ class AsymmetricLossOptimized(nn.Module):
         return -self.loss.sum()
 
 
-batch_size = 32
+class Warp(object):
+    def __init__(self, size, interpolation=Image.BILINEAR):
+        self.size = int(size)
+        self.interpolation = interpolation
+
+    def __call__(self, img):
+        return img.resize((self.size, self.size), self.interpolation)
+
+    def __str__(self):
+        return self.__class__.__name__ + ' (size={size}, interpolation={interpolation})'.format(size=self.size,
+                                                                                                interpolation=self.interpolation)
+
+
+train_transforms = transforms.Compose([
+    transforms.Resize((512, 512)),
+    MultiScaleCrop(448, scales=(1.0, 0.875, 0.75, 0.66, 0.5), max_distort=2),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+val_transforms = transforms.Compose([
+    Warp(448),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+batch_size = 16
 
 inp_name = 'voc_expanded_glove_word2vec.pkl'
 
 root_path = "/data/projects/dataset/voc_standalone"
 category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
-
 
 # root_path = "/home/klaus125/research/dataset/voc_standalone"
 # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
@@ -794,7 +790,7 @@ valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP', 'valid_loss'])
 train_aps_writer = my_writer.get("train_aps.csv")
 val_aps_writer = my_writer.get("val_aps.csv")
 
-model = torch_models.resnet101(pretrained=False, num_classes=1000)
+model = torch_models.resnet101(pretrained=True, num_classes=1000)
 
 # 使用salgl模型
 model = ResnetSalgl(model, num_scenes=num_scenes, num_classes=num_labels).to(device)
@@ -853,7 +849,6 @@ for epoch in range(epochs):
         overall_loss.backward()
         optimizer.step()
 
-
     if (epoch + 1) % 4 == 0:
         for param_group in optimizer.param_groups:
             param_group['lr'] *= 0.9
@@ -892,3 +887,4 @@ for epoch in range(epochs):
 
         mAP, aps = ap_meter.value()
         valid_writer.writerow([epoch, mAP.item()])
+        val_aps_writer.writerow(aps)

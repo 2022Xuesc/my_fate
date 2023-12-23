@@ -869,7 +869,7 @@ optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=lr, wei
 
 criterion = AsymmetricLossOptimized().to(device)
 
-ap_meter = AveragePrecisionMeter(difficult_examples=False)
+ap_meter = AveragePrecisionMeter(difficult_examples=True)
 
 sigmoid_func = torch.nn.Sigmoid()
 
@@ -951,3 +951,4 @@ for epoch in range(epochs):
 
         mAP, aps = ap_meter.value()
         valid_writer.writerow([epoch, mAP.item()])
+        val_aps_writer.writerow(aps)
