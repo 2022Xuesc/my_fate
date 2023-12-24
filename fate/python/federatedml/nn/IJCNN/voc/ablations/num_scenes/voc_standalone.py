@@ -876,6 +876,11 @@ for epoch in range(epochs):
             inp = inp.to(device)
 
             prev_target = target.clone()
+            # Todo: voc中标签特点
+            #  0  ： 存在但难以识别
+            #  -1 ： 不存在
+            #  1  :  存在
+            #  当前处理方法，将0设置为存在，并在计算指标时跳过对应的标签
             target[target == 0] = 1
             target[target == -1] = 0
             target = target.to(device)
