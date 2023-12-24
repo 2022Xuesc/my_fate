@@ -41,7 +41,8 @@ for type in types:
         with open(annotation_path, 'r') as file:
             for line in file:
                 image_id, val = line.split()
-                # 0表示只露出了一部分，也把它加到标签集合中
+                # Todo: 0表示只露出了一部分，也把它加到标签集合中
+                #  如果没有识别出该标签，则会影响精度，因此，应该跳过该标签
                 if val in {"1", "0"}:
                     images[image_id]["labels"].append(category_id)
                     images[image_id]["label_names"].append(category)
