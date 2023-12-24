@@ -1,7 +1,7 @@
 import json
 
 num_clients = 10
-base_path = "/data/projects/voc2007/clustered_voc_expanded"
+base_path = "/data/projects/dataset/voc2007/clustered_voc_expanded"
 for i in range(1, num_clients + 1):
     for phase in {'train', 'val'}:
         json_name = f'bind_client{i}_{phase}_path.json'
