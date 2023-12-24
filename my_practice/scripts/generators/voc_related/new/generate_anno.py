@@ -26,7 +26,8 @@ category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
 
 for i in range(client_nums):
     client_id = i + 1
+    print('generate anno for ',client_id)
     generate_anno(category_dir, os.path.join(image_dir, f'client{client_id}/train'), phase='train')
-    generate_anno(category_dir, os.path.join(image_dir, f'client{client_id}/val'), phase='train')
+    generate_anno(category_dir, os.path.join(image_dir, f'client{client_id}/val'), phase='val')
     
     # generate_anno(category_dir,image_dir,phase='train')
