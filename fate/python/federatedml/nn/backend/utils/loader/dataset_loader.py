@@ -1,4 +1,5 @@
 from federatedml.nn.backend.pytorch.data import COCO
+from federatedml.nn.backend.pytorch.data import VOC
 import torch
 import torchvision.transforms as transforms
 from federatedml.nn.backend.gcn.utils import *
@@ -64,16 +65,25 @@ class DatasetLoader(object):
 
     # 传resize_scale，一般是512或256
     # 传crop_scale，一般是448或224
-    def get_loaders(self, batch_size, resize_scale=512, crop_scale=448):
-        train_dataset = COCO(images_dir=self.train_path,
-                             config_dir=self.category_dir,
-                             transforms=train_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
-                             inp_name=self.inp_name)
-        valid_dataset = COCO(images_dir=self.valid_path,
-                             config_dir=self.category_dir,
-                             transforms=valid_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
-                             inp_name=self.inp_name)
-
+    def get_loaders(self, batch_size, resize_scale=512, crop_scale=448, dataset='COCO'):
+        if dataset == 'COCO':
+            train_dataset = COCO(images_dir=self.train_path,
+                                 config_dir=self.category_dir,
+                                 transforms=train_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
+                                 inp_name=self.inp_name)
+            valid_dataset = COCO(images_dir=self.valid_path,
+                                 config_dir=self.category_dir,
+                                 transforms=valid_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
+                                 inp_name=self.inp_name)
+        else:
+            train_dataset = VOC(images_dir=self.train_path,
+                                config_dir=self.category_dir,
+                                transforms=train_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
+                                inp_name=self.inp_name)
+            valid_dataset = VOC(images_dir=self.valid_path,
+                                config_dir=self.category_dir,
+                                transforms=valid_transforms(resize_scale, crop_scale, is_gcn=self.is_gcn),
+                                inp_name=self.inp_name)
         # 对batch_size进行修正
         batch_size = max(1, min(batch_size, len(train_dataset), len(valid_dataset)))
 

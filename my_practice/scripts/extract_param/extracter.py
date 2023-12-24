@@ -4,7 +4,7 @@ import shutil
 jobs_dir = '../../../fateflow/jobs'
 logs_dir = '../../../fateflow/logs'
 
-job_id = "202311181107259102710"
+job_id = "202312241531065134060"
 
 arbiter_path = "arbiter/10000/gcn_0"
 guest_path = "guest/9999/gcn_0"

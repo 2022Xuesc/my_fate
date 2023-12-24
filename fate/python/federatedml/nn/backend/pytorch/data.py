@@ -258,6 +258,58 @@ class MultiLabelDataSet(Dataset):
         return len(self.images)
 
 
+# 创建VOC数据集
+class VOC(Dataset):
+    def __init__(self, images_dir, config_dir, transforms=None, inp_name=None):
+        self.images_dir = images_dir
+        self.config_dir = config_dir
+        self.transforms = transforms
+        self.img_list = []
+        self.cat2idx = None
+        self.get_anno()
+
+        self.num_classes = len(self.cat2idx)
+        self.inp = None
+        if inp_name is not None:
+            inp_file = os.path.join(self.config_dir, inp_name)
+            with open(inp_file, 'rb') as f:
+                self.inp = pickle.load(f)
+            self.inp_name = inp_name
+
+    def get_anno(self):
+        list_path = os.path.join(self.images_dir, 'anno.json')
+        self.img_list = json.load(open(list_path, 'r'))
+        # Todo: 如何读取
+        #  1. 正常随机读取
+        #  2. 按照标签顺序读
+        # self.img_list.sort(key=lambda x: sorted(x['labels']))
+        category_path = os.path.join(self.config_dir, 'category.json')
+        self.cat2idx = json.load(open(category_path, 'r'))
+
+    def __len__(self):
+        return len(self.img_list)
+
+    def __getitem__(self, index):
+        item = self.img_list[index]
+        img, target = self.get(item)
+        # 如果self.inp不为空，说明是在GCN的配置环境下
+        if self.inp is not None:
+            return (img, self.inp), target
+        else:  # 否则使用的是常规的网络，直接返回img和target即可
+            return img, target
+
+    def get(self, item):
+        filename = item['file_name']
+        # Todo: 这里不能排序了
+        labels = item['labels']
+        # 读取图像数据
+        img = Image.open(os.path.join(self.images_dir, filename)).convert('RGB')
+        if self.transforms is not None:
+            img = self.transforms(img)
+        # Todo: 保留原来的标签
+        return img, torch.Tensor(labels)
+
+
 class COCO(Dataset):
     def __init__(self, images_dir, config_dir, transforms=None, inp_name=None):
         self.images_dir = images_dir
