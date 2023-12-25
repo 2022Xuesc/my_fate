@@ -22,7 +22,6 @@ from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 my_writer = MyWriter(dir_name=os.getcwd())
 
-
 client_header = ['epoch', 'mAP', 'loss']
 
 train_writer = my_writer.get("train.csv", header=client_header)
@@ -35,7 +34,6 @@ valid_aps_writer = my_writer.get("valid_aps.csv")
 agg_ap_writer = my_writer.get("agg_ap.csv")
 
 scene_cnts_writer = my_writer.get("total_scene_cnts.csv")
-
 
 
 class _FedBaseContext(object):
@@ -425,7 +423,7 @@ class GCNFitter(object):
         if self.context.should_aggregate_on_epoch(epoch):
             self.aggregate_model(epoch)
             status = self.context.do_convergence_check(
-                len(valid_loader.sampler), aps,mAP,loss
+                len(valid_loader.sampler), aps, mAP, loss
             )
             if status:
                 self.context.set_converged()
@@ -446,7 +444,7 @@ class GCNFitter(object):
                                    scheduler)
         train_writer.writerow([epoch, mAP, loss])
         train_aps_writer.writerow(ap)
-        return ap,mAP,loss
+        return ap, mAP, loss
 
     def validate_one_epoch(self, epoch, valid_loader, scheduler):
         self.ap_meter.reset()
@@ -477,7 +475,7 @@ class GCNFitter(object):
 
         # FedAvg聚合策略
         agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
-                                                              device=self.param.device)
+                                                  device=self.param.device)
 
         idx = 0
         for layer in self.model.modules():
@@ -515,7 +513,7 @@ class GCNFitter(object):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
             inp = inp.to(device)
-            
+
             prev_target = target.clone()
 
             target[target == 0] = 1
@@ -566,7 +564,6 @@ class GCNFitter(object):
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         return mAP.item(), ap, loss
 
-
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         total_samples = len(valid_loader.sampler)
         batch_size = valid_loader.batch_size
@@ -584,7 +581,7 @@ class GCNFitter(object):
             for validate_step, ((features, inp), target) in enumerate(valid_loader):
                 features = features.to(device)
                 inp = inp.to(device)
-                
+
                 prev_target = target.clone()
                 target[target == 0] = 1
                 target[target == -1] = 0
@@ -600,14 +597,10 @@ class GCNFitter(object):
 
                 losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
 
-        mAP, _ = self.ap_meter.value()
+        mAP, ap = self.ap_meter.value()
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
-        OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
-        OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
-        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item(), loss]
-        valid_writer.writerow([epoch] + metrics)
-        return metrics
+        return mAP.item(), ap, loss
 
 
 def _init_gcn_learner(param, device='cpu'):
@@ -618,7 +611,7 @@ def _init_gcn_learner(param, device='cpu'):
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
 
-    model = resnet_salgl(param.pretrained, device, num_scenes=num_scenes)
+    model = resnet_salgl(param.pretrained, device, num_scenes=num_scenes, num_classes=param.num_labels)
     gcn_optimizer = None
 
     # 使用AdamW优化器试试
