@@ -390,7 +390,7 @@ class GCNFitter(object):
         self._num_per_labels = [0] * self.param.num_labels
 
         # Todo: 初始化平均精度度量器
-        self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
+        self.ap_meter = AveragePrecisionMeter(difficult_examples=True)
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None

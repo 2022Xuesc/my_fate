@@ -276,15 +276,15 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     dataset = 'voc_expanded'
     inp_name = f'{dataset}_glove_word2vec.pkl'
 
-    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 1000
-    param.num_labels = 20
-    param.device = 'cuda:0'
-    param.lr = 0.0001
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -400,7 +400,7 @@ class GCNFitter(object):
         self._num_per_labels = [0] * self.param.num_labels
 
         # Todo: 初始化平均精度度量器
-        self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
+        self.ap_meter = AveragePrecisionMeter(difficult_examples=True)
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None

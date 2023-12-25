@@ -33,8 +33,6 @@ train_aps_writer = my_writer.get("train_aps.csv")
 valid_aps_writer = my_writer.get("valid_aps.csv")
 agg_ap_writer = my_writer.get("agg_ap.csv")
 
-scene_cnts_writer = my_writer.get("total_scene_cnts.csv")
-
 
 class _FedBaseContext(object):
     def __init__(self, max_num_aggregation, name):
@@ -101,11 +99,18 @@ class FedClientContext(_FedBaseContext):
 
     # Todo: 发送模型
     #  tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, weight):
+    def send_model(self, tensors, bn_data, weight, scene_info):
         tensor_arrs = self.tensor2arr(tensors)
         bn_arrs = self.tensor2arr(bn_data)
+        scene_info_arrs = []
+        for i in range(len(scene_info)):
+            info = scene_info[i]
+            if isinstance(info, torch.Tensor):
+                scene_info_arrs.append(self.tensor2arr(info))
+            else:
+                scene_info_arrs.append(info)
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, weight, scene_info_arrs), suffix=self._suffix()
         )
 
     # 接收模型
@@ -122,15 +127,15 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, weight, device):
+    def do_aggregation(self, bn_data, weight, scene_info, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, weight)
+        self.send_model(self._params, bn_data, weight, scene_info)
 
         LOGGER.warn(f"{self.aggregation_iteration}个模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data = recv_elements
+        global_model, bn_data, fixed_adjs = recv_elements
         # 使用接收的全局模型更新本地模型
         agg_tensors = []
         for arr in global_model:
@@ -144,7 +149,7 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors
+        return bn_tensors, fixed_adjs
 
     # 关于度量的向量
     def do_convergence_check(self, weight, ap, mAP, loss_value):
@@ -317,12 +322,17 @@ class GCNFedAggregator(object):
 
             degrees = [party_tuple[2] for party_tuple in recv_elements]
 
+            scene_infos = [party_tuple[3] for party_tuple in recv_elements]
+
+            # 返回的是多个客户端的，还要把分发给多个客户端
+            fixed_adjs = aggregate_scene_adjs(scene_infos)
+
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
 
             self.model = aggregate_whole_model(tensors, degrees)
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((self.model, self.bn_data))
+            self.context.send_model((self.model, self.bn_data, fixed_adjs))
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
             self.context.do_convergence_check()
@@ -390,7 +400,7 @@ class GCNFitter(object):
         self._num_per_labels = [0] * self.param.num_labels
 
         # Todo: 初始化平均精度度量器
-        self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
+        self.ap_meter = AveragePrecisionMeter(difficult_examples=True)
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None
@@ -471,12 +481,17 @@ class GCNFitter(object):
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
-        scene_cnts_writer.writerow([epoch] + self.model.total_scene_cnts)
+        # 包装一个scene_info，包括场景分类器和每个场景下的邻接矩阵
+        my_id = self.context.name._uuid
+        scene_info = (self.model.scene_linear.weight.data, self.model.comatrix, self.model.total_scene_cnts, my_id)
 
         # FedAvg聚合策略
-        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
-                                                  device=self.param.device)
-
+        agg_bn_data, fixed_adjs = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+                                                              scene_info=scene_info,
+                                                              device=self.param.device)
+        # Todo: 从fixed_adjs中找到指定的索引
+        client_ids = fixed_adjs[0]
+        self.model.comatrix.data.copy_(torch.from_numpy(fixed_adjs[1][client_ids.index(my_id)]))
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -611,9 +626,12 @@ def _init_gcn_learner(param, device='cpu'):
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
 
-    model = resnet_salgl(param.pretrained, device, num_scenes=num_scenes, num_classes=param.num_labels)
+    model = resnet_agg_salgl(param.pretrained, device, num_scenes=num_scenes,num_classes=param.num_labels)
     gcn_optimizer = None
-
+    # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
+    #                             lr=lr,
+    #                             momentum=0.9,
+    #                             weight_decay=1e-4)
     # 使用AdamW优化器试试
     optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
 
