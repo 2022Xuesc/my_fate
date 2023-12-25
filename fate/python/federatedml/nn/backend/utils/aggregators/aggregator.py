@@ -3,10 +3,11 @@ import numpy as np
 
 # 定义若干聚合方法
 
-def aggregate_bn_data(bn_tensors, degrees):
+def aggregate_bn_data(bn_tensors, degrees=None):
+    
     degrees = np.array(degrees)
     degrees_sum = degrees.sum(axis=0)
-
+    total_weight = degrees_sum if degrees.ndim == 1 else degrees_sum[-1]
     client_nums = len(bn_tensors)
     layer_nums = len(bn_tensors[0]) // 2
     bn_data = []
@@ -19,8 +20,9 @@ def aggregate_bn_data(bn_tensors, degrees):
         for idx in range(client_nums):
             # 该层在该客户端上的mean是bn_tensors[id][i * 2],方差是bn_tensors[id][i * 2 + 1]
             client_mean = bn_tensors[idx][mean_idx]
-            mean += client_mean * degrees[idx][-1]
-        mean /= degrees_sum[-1]
+            client_weight = degrees[idx] if degrees.ndim == 1 else degrees[idx][-1]
+            mean += client_mean * client_weight
+        mean /= total_weight
         bn_data.append(mean)
         # 计算完均值之后，开始计算方差
         var_idx = mean_idx + 1
@@ -28,8 +30,9 @@ def aggregate_bn_data(bn_tensors, degrees):
         for idx in range(client_nums):
             client_mean = bn_tensors[idx][mean_idx]
             client_var = bn_tensors[idx][var_idx]
-            var += (client_var + client_mean ** 2 - mean ** 2) * degrees[idx][-1]
-        var /= degrees_sum[-1]
+            client_weight = degrees[idx] if degrees.ndim == 1 else degrees[idx][-1]
+            var += (client_var + client_mean ** 2 - mean ** 2) * client_weight
+        var /= total_weight
         bn_data.append(var)
     return bn_data
 
@@ -70,10 +73,12 @@ def aggregate_by_labels(tensors, degrees):
 def aggregate_whole_model(tensors, degrees):
     degrees = np.array(degrees)
     degrees_sum = degrees.sum(axis=0)
+    total_weight = degrees_sum if degrees.ndim == 1 else degrees_sum[-1]
     for i in range(len(tensors)):
+        client_weight = degrees[i] if degrees.ndim == 1 else degrees[i][-1]
         for j, tensor in enumerate(tensors[i]):
-            tensor *= degrees[i][-1]
-            tensor /= degrees_sum[-1]
+            tensor *= client_weight
+            tensor /= total_weight
             if i != 0:
                 tensors[0][j] += tensor
     return tensors[0]
