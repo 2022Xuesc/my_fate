@@ -11,7 +11,7 @@ import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.gcn.models import resnet_c_gcn
+from federatedml.nn.backend.gcn.models import *
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -318,6 +318,9 @@ class GCNFedAggregator(object):
             #  没有分类层了，因此，无法使用FPSL了
 
             self.model = aggregate_whole_model(tensors, degrees)
+
+            # self.model = aggregate_by_labels(tensors, degrees)
+
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.context.send_model((self.model, self.bn_data, self.relation_matrix))
@@ -559,15 +562,29 @@ class GCNFitter(object):
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(output.data, prev_target)
 
-            loss = criterion(output, target)
+            # loss = criterion(sigmoid_func(output), target)
 
+            loss = criterion(output, target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
+            # self.gcn_optimizer.zero_grad()
 
             loss.backward()
 
+            # Todo: 移除掉较大的梯度
+            #  太容易受影响了吧
+            # torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=0.5)
             optimizer.step()
+
+            # LOGGER.warn(
+            #     f"[train] epoch={epoch}, step={train_step} / {steps_per_epoch},lr={optimizer.param_groups[1]['lr']},"
+            #     f"mAP={100 * self.ap_meter.value()[0].item()},loss={loss.item()}")
+
+            # self.gcn_optimizer.step()
+
+            # self.lr_scheduler.step()
+            # self.gcn_lr_scheduler.step()
 
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:
@@ -588,7 +605,6 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-
         model.eval()
         self.ap_meter.reset()
 
@@ -603,6 +619,7 @@ class GCNFitter(object):
                 target = target.to(device)
 
                 output = model(features, inp)
+
                 loss = criterion(output, target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
@@ -619,16 +636,11 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
     #  不同部分使用不同的学习率
 
-    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
-    model = resnet_c_gcn(param.pretrained, param.dataset, t=param.t, adjList=adjList,
-                         device=param.device, num_classes=param.num_labels, in_channel=in_channel)
+    in_channel = 2048
+    model = p_gcn_resnet101(param.pretrained, adjList=adjList,
+                            device=param.device, num_classes=param.num_labels, in_channel=in_channel)
     gcn_optimizer = None
-
-    # 注意，这里的lrp设置为0.1
     lr, lrp = param.lr, 0.1
-
-    # 使用AdamW优化器
-    # optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
     optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
                                 lr=lr,
                                 momentum=0.9,
