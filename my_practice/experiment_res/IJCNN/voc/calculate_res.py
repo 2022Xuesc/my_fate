@@ -11,7 +11,7 @@ def calculate_stats(float_list):
     return minimum, maximum, mean
 
 
-paths = ['agg_salgl', 'kmeans', 'salgl', 'c_gcn_with_agg', 'c_gcn_without_agg']
+paths = ['agg_salgl', 'kmeans', 'salgl', 'c_gcn_with_agg', 'c_gcn_without_agg', 'p_gcn_with_agg', 'p_gcn_without_agg']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):
