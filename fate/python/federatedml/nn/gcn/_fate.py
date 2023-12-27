@@ -253,16 +253,16 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    param.batch_size = 1
-    param.max_iter = 1000
-    param.num_labels = 20
-    param.device = 'cuda:0'
-    param.lr = 0.0001
-    param.aggregate_every_n_epoch = 1
+    # param.batch_size = 1
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -403,13 +403,7 @@ class MultiLabelFitter(object):
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         aps, mAP, loss = valid_metrics
         if self.context.should_aggregate_on_epoch(epoch):
-            # 计算聚合权重，模型聚合与损失平均时都要用到
-            weight = 0
-            alpha = 0.3
-            for num in self._num_per_labels:
-                weight += num ** alpha
-
-            self.aggregate_model(epoch, weight)
+            self.aggregate_model(epoch)
             # 同步模式下，需要发送loss和mAP
             status = self.context.do_convergence_check(
                 self._num_data_consumed, aps, mAP, loss
@@ -443,7 +437,7 @@ class MultiLabelFitter(object):
         # 并且返回验证集的ap
         return ap, mAP, loss
 
-    def aggregate_model(self, epoch, weight):
+    def aggregate_model(self, epoch, weight=None):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
 
@@ -454,12 +448,13 @@ class MultiLabelFitter(object):
                 bn_data.append(layer.running_var)
 
         # FedAvg聚合策略
-        # self.context.do_aggregation(weight=self._num_data_consumed, device=self.param.device)
+        agg_bn_data = self.context.do_aggregation(weight=self._num_data_consumed, bn_data=bn_data,
+                                                  device=self.param.device)
 
         # Flag聚合策略
         # Todo: 添加聚合参数
         # 这里计算weight
-        agg_bn_data = self.context.do_aggregation(weight=weight, bn_data=bn_data, device=self.param.device)
+        # agg_bn_data = self.context.do_aggregation(weight=weight, bn_data=bn_data, device=self.param.device)
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
