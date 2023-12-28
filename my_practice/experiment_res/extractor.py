@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202312260456532862490"
-job_id = "202312260456532862490"
+dir_id = "202312271412361215520"
+job_id = "202312271412361215520"
 module_name = 'gcn_0'
-target_dir = 'IJCNN/voc/p_gcn_without_agg'
+target_dir = 'IJCNN/voc/kmeans_without_agg'
 client_num = 10
 
 
@@ -45,6 +45,7 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
 
 
