@@ -18,7 +18,8 @@ class GCNParam(BaseParam):
                  lr: float = 0.005,
                  num_labels: int = 80,
                  t: float = 0.4,
-                 adj_file: str = ''
+                 adj_file: str = '',
+                 num_scenes: int = 4
                  ):
         super(GCNParam, self).__init__()
         self.aggregate_every_n_epoch = aggregate_every_n_epoch
@@ -35,6 +36,7 @@ class GCNParam(BaseParam):
         self.num_labels = num_labels
         self.t = t
         self.adj_file = adj_file
+        self.num_scenes = num_scenes
 
     def check(self):
         pass
@@ -58,6 +60,7 @@ class GCNParam(BaseParam):
         pb.lr = self.lr
         pb.t = self.t
         pb.adj_file = self.adj_file
+        pb.num_scenes = self.num_scenes
         return pb
 
     # Todo: protobuf
@@ -76,4 +79,5 @@ class GCNParam(BaseParam):
         self.num_labels = pb.num_labels
         self.t = pb.t
         self.adj_file = pb.adj_file
+        self.num_scenes = pb.num_scenes
         return pb

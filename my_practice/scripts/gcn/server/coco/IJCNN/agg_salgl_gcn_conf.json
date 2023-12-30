@@ -39,7 +39,8 @@
         "pretrained": true,
         "dataset": "ms-coco",
         "arch": "resnet",
-        "t": 0.4
+        "t": 0.4,
+        "num_scenes": 5
       }
     },
     "role": {
@@ -47,7 +48,8 @@
         "0": {
           "gcn_0": {
             "device": "cuda:4",
-            "batch_size" : 16,
+            "batch_size": 16,
+            "num_scenes": 15,
             "adj_file": "/data/projects/clustered_dataset/client1/train/anno.json"
           },
           "reader_0": {
