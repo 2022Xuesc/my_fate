@@ -32,14 +32,15 @@
     "common": {
       "gcn_0": {
         "max_iter": 100,
-        "batch_size": 2,
+        "batch_size": 4,
         "aggregate_every_n_epoch": 4,
         "lr": 0.0001,
         "num_labels": 80,
         "pretrained": true,
         "dataset": "ms-coco",
         "arch": "resnet",
-        "t": 0.4
+        "t": 0.4,
+        "num_scenes": 5
       }
     },
     "role": {
@@ -47,7 +48,8 @@
         "0": {
           "gcn_0": {
             "device": "cuda:2",
-            "batch_size" : 8,
+            "batch_size": 16,
+            "num_scenes": 15,
             "adj_file": "/data/projects/clustered_dataset/client1/train/anno.json"
           },
           "reader_0": {
