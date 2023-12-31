@@ -105,18 +105,11 @@ class FedClientContext(_FedBaseContext):
 
     # Todo: 发送模型
     #  tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, weight, scene_info):
+    def send_model(self, tensors, bn_data, weight):
         tensor_arrs = self.tensor2arr(tensors)
         bn_arrs = self.tensor2arr(bn_data)
-        scene_info_arrs = []
-        for i in range(len(scene_info)):
-            info = scene_info[i]
-            if isinstance(info, torch.Tensor):
-                scene_info_arrs.append(self.tensor2arr(info))
-            else:
-                scene_info_arrs.append(info)
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, weight, scene_info_arrs), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
         )
 
     # 接收模型
@@ -133,15 +126,15 @@ class FedClientContext(_FedBaseContext):
         )
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, weight, scene_info, device):
+    def do_aggregation(self, bn_data, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, weight, scene_info)
+        self.send_model(self._params, bn_data, weight)
 
         LOGGER.warn(f"{self.aggregation_iteration}个模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data, fixed_adjs = recv_elements
+        global_model, bn_data = recv_elements
         # 使用接收的全局模型更新本地模型
         agg_tensors = []
         for arr in global_model:
@@ -155,7 +148,7 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors, fixed_adjs
+        return bn_tensors
 
     # 关于度量的向量
     def do_convergence_check(self, weight, metrics):
@@ -170,7 +163,7 @@ class FedClientContext(_FedBaseContext):
             self._params = [
                 param
                 # 不是完全倒序，对于嵌套for循环，先声明的在前面
-                for param_group in optimizer.param_groups[0:7]  # 这里不考虑scene_linear的参数，因为关于场景的类别是不一致的
+                for param_group in optimizer.param_groups  # 这里不考虑scene_linear的参数，因为关于场景的类别是不一致的
                 for param in param_group["params"]
             ]
             return
@@ -308,18 +301,13 @@ class GCNFedAggregator(object):
 
             degrees = [party_tuple[2] for party_tuple in recv_elements]
 
-            scene_infos = [party_tuple[3] for party_tuple in recv_elements]
-
-            # 返回的是多个客户端的，还要把分发给多个客户端
-            fixed_adjs = aggregate_scene_adjs(scene_infos)
 
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
 
-            # self.model = aggregate_whole_model(tensors, degrees)
-            self.model = aggregate_by_labels(tensors, degrees)
+            self.model = aggregate_whole_model(tensors, degrees)
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((self.model, self.bn_data, fixed_adjs))
+            self.context.send_model((self.model, self.bn_data))
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
             self.context.do_convergence_check()
@@ -372,8 +360,6 @@ class GCNFitter(object):
 
         # 使用非对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
-
-        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
 
         self.start_epoch, self.end_epoch = 0, epochs
 
@@ -460,22 +446,12 @@ class GCNFitter(object):
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
-        # 包装一个scene_info，包括场景分类器和每个场景下的邻接矩阵
-        my_id = self.context.name._uuid
-
-        # 这里使用的不是scene_linear，而是centers
-        scene_info = (self.model.centers.data, self.model.comatrix, self.model.total_scene_cnts, my_id)
-
         # 记录scene_cnts信息
         scene_cnts_writer.writerow([epoch] + self.model.total_scene_cnts)
 
         # FedAvg聚合策略
-        agg_bn_data, fixed_adjs = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
-                                                              scene_info=scene_info,
+        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
                                                               device=self.param.device)
-        # Todo: 从fixed_adjs中找到指定的索引
-        client_ids = fixed_adjs[0]
-        self.model.comatrix.data.copy_(torch.from_numpy(fixed_adjs[1][client_ids.index(my_id)]))
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -494,6 +470,7 @@ class GCNFitter(object):
         return valid_metrics
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
+
         total_samples = len(train_loader.sampler)
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
         steps_per_epoch = math.ceil(total_samples / batch_size)
@@ -520,7 +497,6 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            # Todo: 这里还要传入target以计算熵函数
             output = model(features, inp, y=target)
 
             predicts = output['output']
@@ -553,6 +529,10 @@ class GCNFitter(object):
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         # 这里还统计其他数据
+
+        # Todo: 记录一下中心点的变化
+        # 使用torch保存
+        torch.save(self.model.centers, os.path.join(centers_dir, f'centers_{epoch}.pth'))
 
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
@@ -592,7 +572,7 @@ class GCNFitter(object):
 
                 losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
                 # Todo: 这里需要对target进行detach操作吗？
-                self.ap_meter.add(predicts.data, target)
+                # self.ap_meter.add(predicts.data, target)
 
         mAP, _ = self.ap_meter.value()
         mAP *= 100
@@ -608,12 +588,12 @@ def _init_gcn_learner(param, device='cpu'):
     # 使用SALGL模型
     # 每个客户端捕捉到的是不同的场景，因此，用不到adjList了
     # Todo: adjList在多场景条件下的适配
-    num_scenes = 4  # 先设置一个比较小的值
-    n_head = 4
+    num_scenes = param.num_scenes  # 先设置一个比较小的值
     # 基础学习率调大一点，lrp调小点
-    lr, lrp = param.lr, 1
+    lr, lrp = param.lr, 0.1
+    LOGGER.warn(f"场景数为 {num_scenes}")
 
-    model = vit_kmeans(param.pretrained, device, num_scenes=num_scenes, n_head=n_head)
+    model = resnet_kmeans(param.pretrained, device, num_scenes=num_scenes)
     gcn_optimizer = None
 
     # 使用AdamW优化器试试
