@@ -4,7 +4,6 @@ import numpy as np
 # 定义若干聚合方法
 
 def aggregate_bn_data(bn_tensors, degrees=None):
-    
     degrees = np.array(degrees)
     degrees_sum = degrees.sum(axis=0)
     total_weight = degrees_sum if degrees.ndim == 1 else degrees_sum[-1]
@@ -151,21 +150,24 @@ def aggregate_scene_adjs_with_cnts(scene_infos):
 # Todo: 这里不应该考虑scene_cnts
 def aggregate_scene_adjs(scene_infos):
     num_clients = len(scene_infos)
-    num_scenes = len(scene_infos[0][0])
+    # 这里的num_scenes应该是一个list，维护每个客户端的场景数量
+    num_scenes_list = [len(scene_infos[i][0]) for i in range(num_clients)]
     num_labels = len(scene_infos[0][1][0])
-    fixed_adjs = np.zeros((num_clients, num_scenes, num_labels, num_labels))
+    # Todo: 场景数的大小都不一样，聚合代码也要改
+    adj_list = [np.zeros((num_scenes, num_labels, num_labels)) for num_scenes in num_scenes_list]
     names = [scene_infos[i][3] for i in range(num_clients)]
     for i in range(num_clients):
         linear_i = scene_infos[i][0]
         for k, scene_k in enumerate(linear_i):
             # 记录每个权重和对应的场景
             coefficients = [None] * num_clients
-            cosine_similarities = np.zeros(num_scenes)
             # 遍历每个其他客户端j
             for j in range(num_clients):
                 if j == i:
                     continue
                 linear_j = scene_infos[j][0]
+                # 从其他客户端的每个场景中选出一个和当前场景最相似的
+                cosine_similarities = np.zeros(num_scenes_list[j])
                 for l, scene_l in enumerate(linear_j):
                     dot_product = np.dot(scene_k, scene_l)
                     norm_vector1 = np.linalg.norm(scene_k)
@@ -191,5 +193,5 @@ def aggregate_scene_adjs(scene_infos):
             agg_scene_adj += scene_infos[i][1][k]
             agg_scene_adj /= total_weight
             # 进行聚合
-            fixed_adjs[i][k] = agg_scene_adj
-    return names, fixed_adjs
+            adj_list[i][k] = agg_scene_adj
+    return names, adj_list
