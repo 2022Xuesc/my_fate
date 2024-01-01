@@ -23,7 +23,8 @@ def calculate_stats(float_list):
 # paths = ['gcn/base_fpsl', 'IJCNN/resnet_salgl', 'IJCNN/resnet_agg_salgl', 'IJCNN/resnet_kmeans_lrp_0.1', 'gcn/c_gcn',
 #          'gcn/p_gcn_fedavg']
 
-paths = ['IJCNN/nuswide_kmeans']
+# paths = ['IJCNN/nuswide_kmeans']
+paths = ['IJCNN/coco_fedavg']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):

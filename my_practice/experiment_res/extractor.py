@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202312271412361215520"
-job_id = "202312271412361215520"
+dir_id = "202312281339133004040"
+job_id = "202312281339133004040"
 module_name = 'gcn_0'
-target_dir = 'IJCNN/voc/kmeans_without_agg'
+target_dir = 'IJCNN/coco_fedavg'
 client_num = 10
 
 
