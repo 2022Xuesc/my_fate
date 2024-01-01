@@ -13,7 +13,7 @@ def get_sample_size(data_dir):
 
 client_nums = 10
 
-dataset = "VOC 2007"
+dataset = "MS-COCO"
 # client_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
 
 if dataset == 'MS-COCO':
@@ -47,7 +47,7 @@ log_samples = np.log10(samples)
 plt.bar(client_names, log_samples)
 
 for i, v in enumerate(log_samples):
-    plt.text(i, v + 0.01, str(samples[i]), ha='center')
+    plt.text(i, v + 0.03, str(samples[i]), ha='center')
 
 plt.title(f'Distribution of {dataset} datasets among clients')
 plt.ylabel('The size of the client dataset (log10)')
