@@ -14,14 +14,14 @@ def get_sample_size(data_dir):
 client_nums = 10
 
 # client_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
-server_path = '/data/projects/dataset/clustered_dataset'
+server_path = '/data/projects/dataset/voc2007/clustered_voc_expanded'
 
 save_dir = 'clusters_distribution'
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
-client_names = [f'client {i + 1}' for i in range(client_nums)]
+client_names = [f'c{i + 1}' for i in range(client_nums)]
 
 total_labels = []
 
@@ -51,3 +51,4 @@ plt.title('Distribution of MS-COCO datasets among clients')
 plt.ylabel('The size of the client dataset (log10)')
 
 plt.savefig(f'{save_dir}/dataset_distribution.svg', dpi=600, format='svg')
+
