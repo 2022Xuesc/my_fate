@@ -1,25 +1,27 @@
-import os
 import matplotlib.pyplot as plt
-import json
 import numpy as np
+
+import json
+import os
+
 
 def get_sample_size(data_dir):
     anno_path = os.path.join(data_dir, 'anno.json')
     anno = json.load(open(anno_path, 'r'))
     return len(anno)
 
+
 client_nums = 10
 
-# server_path = '/data/projects/clustered_dataset'
-
-server_path = 'anno_json_dir'
+# client_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
+server_path = '/data/projects/dataset/clustered_dataset'
 
 save_dir = 'clusters_distribution'
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
-client_names = [f'c{i + 1}' for i in range(client_nums)]
+client_names = [f'client {i + 1}' for i in range(client_nums)]
 
 total_labels = []
 
@@ -32,20 +34,9 @@ plt.figure(figsize=(12, 12))
 for i in range(client_nums):
     client_id = i + 1
     client_train_path = os.path.join(server_path, f'client{client_id}/train')
-    client_valid_path = os.path.join(server_path, f'client{client_id}/val')
-
-    # Todo: 作出分布直方图
-    # draw_hist(save_dir, [client_train_path, client_valid_path])
-
-    # labels = get_labels_cnts(client_train_path)
-
-    # total_labels.append(get_labels_feature(labels))
 
     # 只选取训练集大小
     samples.append(get_sample_size(client_train_path))
-
-# div_frame = calc_kl_divergence(client_names=client_names, label_tensors=torch.Tensor(total_labels))
-# draw_heatmap(save_dir, div_frame)
 
 plt.figure(figsize=(12, 12))
 # Todo: 作出关于samples的柱状图
