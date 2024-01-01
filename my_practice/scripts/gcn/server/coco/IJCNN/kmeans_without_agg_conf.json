@@ -177,7 +177,7 @@
         },
         "6": {
           "gcn_0": {
-            "device": "cuda:2",
+            "device": "cuda:1",
             "adj_file": "/data/projects/clustered_dataset/client8/train/anno.json"
           },
           "reader_0": {
