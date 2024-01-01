@@ -261,15 +261,15 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 
 def build_fitter(param: GCNParam, train_data, valid_data):
-    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
 
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 1000
-    param.num_labels = 80
-    param.device = 'cuda:0'
-    param.lr = 0.0001
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 80
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -609,7 +609,7 @@ def _init_gcn_learner(param, device='cpu'):
     # 使用SALGL模型
     # 每个客户端捕捉到的是不同的场景，因此，用不到adjList了
     # Todo: adjList在多场景条件下的适配
-    num_scenes = 4  # 先设置一个比较小的值
+    num_scenes = param.num_scenes  # 先设置一个比较小的值
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
 
