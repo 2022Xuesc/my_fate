@@ -602,7 +602,7 @@ def _init_gcn_learner(param, device='cpu'):
     # 使用SALGL模型
     # 每个客户端捕捉到的是不同的场景，因此，用不到adjList了
     # Todo: adjList在多场景条件下的适配
-    num_scenes = 4
+    num_scenes = param.num_scenes
     # 基础学习率调大一点，lrp调小点
     lr, lrp = param.lr, 0.1
 
