@@ -284,7 +284,7 @@ class GCNFedAggregator(object):
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
 
-            degrees = [party_tuple[3] for party_tuple in recv_elements]
+            degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
             # Todo: 这里需要再改改
             #  没有分类层了，因此，无法使用FPSL了
@@ -343,7 +343,7 @@ class GCNFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: [WARN]
-        # self.param.adj_file = "/home/klaus125/research/dataset/val2014/anno.json"
+        # self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
 
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
