@@ -8,6 +8,7 @@ import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
+from federatedml.nn.backend.communication.models.resnet101 import resnet101
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.multi_label.models import *
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
@@ -178,7 +179,6 @@ class FedServerContext(_FedBaseContext):
 
     # 发送模型
     def send_model(self, aggregated_arrs):
-
         self.aggregator.send_aggregated_model(aggregated_arrs, suffix=self._suffix())
 
     # 接收客户端模型
@@ -349,15 +349,23 @@ class MultiLabelFitter(object):
             label_mapping=None,
             context: FedClientContext = None
     ):
-        self.scheduler = ...
+        self.model = None
+        self.optimizer = None
+        self.scheduler = None
         self.param = copy.deepcopy(param)
         self._all_consumed_data_aggregated = True
         self.best_precision = 0
         self.context = context
         self.label_mapping = label_mapping
 
+        # Todo: progressive learning的相关设置
+        self.num_stages = 8
+        self.iters_per_stage = param.max_iter // self.num_stages
+        # Todo: [WARN]
+        # self.iters_per_stage = 1
+
         # Todo: 原始的ResNet101分类器
-        (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
+        self.whole_model = resnet101(self.num_stages, num_classes=param.num_labels)
 
         # Todo: 使用非对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
@@ -386,28 +394,83 @@ class MultiLabelFitter(object):
     # 执行拟合操作
     def fit(self, train_loader, valid_loader):
         for epoch in range(self.start_epoch, self.end_epoch):
-            self.on_fit_epoch_start(epoch, len(train_loader.sampler))
+            self.on_fit_epoch_start(epoch, len(train_loader.sampler), train_loader)
             valid_metrics = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
             self.on_fit_epoch_end(epoch, valid_loader, valid_metrics)
             if self.context.should_stop():
                 break
 
     # Todo: 聚合依赖数据的更新
-    def on_fit_epoch_start(self, epoch, num_samples):
+    # 使用train_loader来进行预热
+    def on_fit_epoch_start(self, epoch, num_samples, train_loader):
         if self._all_consumed_data_aggregated:
             self._num_data_consumed = num_samples
             self._all_consumed_data_aggregated = False
+
+            # Todo: 说明是一次新iteration
+            cur_iter = self.context.aggregation_iteration
+            if cur_iter % self.iters_per_stage == 0:
+                stage_id = cur_iter // self.iters_per_stage
+                self.model, self.optimizer = get_new_learner(self.whole_model, stage_id, self.model, self.param.lr,
+                                                             self.param.device)
+                # 在这里对模型的new layer进行一下预热
+                self.warmup(train_loader)
         else:
             self._num_data_consumed += num_samples
+
+    def warmup(self, train_loader):
+        # 预热数据集是train_loader
+        # 预热模型是self.model
+        # 损失函数是self.criterion
+        # 自己定义对应的优化器
+        # warmup所在的设备device
+
+        stage_id = self.whole_model.ind
+        if stage_id == 0:  # 如果是第一个子模型，则没有需要freeze的部分，直接返回
+            return
+
+        self.model.train()
+        # Todo: freeze的几个步骤
+        # 1. 固定住基本网络，将固定部分的requires_grad设置为False，避免没有必要的反向传播 # Todo: 同时验证这里的设定对之后的模型的影响
+        freezed_list = self.model.enc[:stage_id]
+        freezed_list.requires_grad_(False)
+        freezed_list.eval()
+
+        warmup_lr = 0.0001
+        warmup_epoch = 5
+        freeze_optimizer = torch.optim.SGD(params=self.model.latest_parameters(), lr=warmup_lr, momentum=0.9,
+                                           weight_decay=1e-4)
+
+        device = self.param.device
+
+        sigmoid_func = torch.nn.Sigmoid()
+
+        for i in range(warmup_epoch):
+            for train_step, (inputs, target) in enumerate(train_loader):
+                inputs = inputs.to(device)
+
+                target[target == 0] = 1
+                target[target == -1] = 0
+                target = target.to(device)
+
+                output = self.model(inputs)
+
+                loss = self.criterion(sigmoid_func(output), target)
+
+                freeze_optimizer.zero_grad()
+                loss.backward()
+                freeze_optimizer.step()
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         aps, mAP, loss = valid_metrics
         if self.context.should_aggregate_on_epoch(epoch):
             self.aggregate_model(epoch)
+            LOGGER.warn("模型接收完成，准备发送指标")
             # 同步模式下，需要发送loss和mAP
             status = self.context.do_convergence_check(
                 self._num_data_consumed, aps, mAP, loss
             )
+            LOGGER.warn("指标发送完成")
             if status:
                 self.context.set_converged()
             self._all_consumed_data_aggregated = True
@@ -443,7 +506,7 @@ class MultiLabelFitter(object):
 
         bn_data = []
         for layer in self.model.modules():
-            if isinstance(layer, torch.nn.BatchNorm2d):
+            if isinstance(layer, torch.nn.BatchNorm2d):  # Todo: group norm和batch norm的区别
                 bn_data.append(layer.running_mean)
                 bn_data.append(layer.running_var)
 
@@ -475,10 +538,10 @@ class MultiLabelFitter(object):
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         total_samples = len(train_loader.sampler)
         batch_size = 1 if total_samples < train_loader.batch_size else train_loader.batch_size
-        steps_per_epoch = math.ceil(total_samples / batch_size)
 
         self.ap_meter.reset()
         model.train()
+        model.requires_grad_(True)
 
         # 对Loss进行更新
         OVERALL_LOSS_KEY = 'Overall Loss'
@@ -517,7 +580,8 @@ class MultiLabelFitter(object):
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:
             for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.9
+                param_group['lr'] *= 0.8
+            LOGGER.warn("cur learning rate is ", optimizer.param_groups[0]['lr'])
 
         mAP, ap = self.ap_meter.value()
         mAP *= 100
@@ -563,11 +627,15 @@ class MultiLabelFitter(object):
         return mAP.item(), ap, loss
 
 
-def _init_learner(param, device='cpu'):
-    # 使用resnet101模型、Adam优化器、OneCycleLR
-    model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels)
-    # 使用Adam优化器
-    optimizer = torch.optim.Adam(model.parameters(), lr=param.lr, weight_decay=1e-4)
-    scheduler = None
-    # 配置自定义的调度器
-    return model, scheduler, optimizer
+# 传入迭代轮次
+# 每个阶段多少个迭代，来确认阶段id，从而确定子模型
+# 上一个迭代的模型
+# 设备
+
+
+# Todo: 现在单机环境下测试
+def get_new_learner(whole_model, stage_id, last_model, learning_rate=0.1, device='cpu'):
+    cur_model = whole_model.get_submodel(stage_id, last_model).to(device)
+    # Todo: 学习率重启，重新设置lr为初始lr
+    optimizer = torch.optim.Adam(cur_model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    return cur_model, optimizer
