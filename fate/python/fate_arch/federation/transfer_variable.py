@@ -68,7 +68,6 @@ class Variable(object):
         assert (
             len(name.split(".")) >= 3
         ), "incorrect name format, should be `module_name.class_name.variable_name`"
-        # 指明名称、源和目的地址
         self._name = name
         self._src = src
         self._dst = dst
@@ -112,7 +111,7 @@ class Variable(object):
         suffix: Union[typing.Any, typing.Tuple] = tuple(),
     ):
         """
-        将对象发送给指定的参与方
+        remote object to specified parties
 
         Parameters
         ----------
@@ -128,21 +127,19 @@ class Variable(object):
         None
         """
         from fate_arch.session import get_session
-        # 获取会话
+
         session = get_session()
         if isinstance(parties, Party):
             parties = [parties]
         if not isinstance(suffix, tuple):
             suffix = (suffix,)
-        tag = FederationTagNamespace.generate_tag(*suffix)# 这里将聚合轮次附着到了tag上
+        tag = FederationTagNamespace.generate_tag(*suffix)
 
-        # 验证是否能将对象发送给parties
         for party in parties:
             if party.role not in self._dst:
                 raise RuntimeError(
                     f"not allowed to remote object to {party} using {self._name}"
                 )
-        # 验证源是否符合要求
         local = session.parties.local_party.role
         if local not in self._src:
             raise RuntimeError(
@@ -152,8 +149,6 @@ class Variable(object):
         name = self._short_name if self._use_short_name else self._name
 
         timer = profile.federation_remote_timer(name, self._name, tag, local, parties)
-
-        # Todo: 将对象发送给parties，这里是实际的发送过程
         session.federation.remote(
             v=obj, name=name, tag=tag, parties=parties, gc=self._remote_gc
         )
@@ -164,11 +159,10 @@ class Variable(object):
     def get_parties(
         self,
         parties: Union[typing.List[Party], Party],
-        sync: bool = True,
         suffix: Union[typing.Any, typing.Tuple] = tuple(),
     ):
         """
-        Todo: 从指定的parties获取对象或表
+        get objects/tables from specified parties
 
         Parameters
         ----------
@@ -176,7 +170,7 @@ class Variable(object):
            parties to remote object/table to
         suffix: str or tuple of str
            suffix used to distinguish federation with in variable
-        sync: bool
+
         Returns
         -------
         list
@@ -190,7 +184,7 @@ class Variable(object):
             parties = [parties]
         if not isinstance(suffix, tuple):
             suffix = (suffix,)
-        tag = FederationTagNamespace.generate_tag(*suffix)# 这里tag有问题，因为每个客户端的聚合轮次不同
+        tag = FederationTagNamespace.generate_tag(*suffix)
 
         for party in parties:
             if party.role not in self._src:
@@ -205,10 +199,8 @@ class Variable(object):
 
         name = self._short_name if self._use_short_name else self._name
         timer = profile.federation_get_timer(name, self._name, tag, local, parties)
-        # 从federation中获取对象
-        # Todo: 具体的方法调用的是？
         rtn = session.federation.get(
-            name=name, tag=tag, parties=parties, gc=self._get_gc,sync=sync
+            name=name, tag=tag, parties=parties, gc=self._get_gc
         )
         timer.done(session.federation)
 
@@ -218,7 +210,7 @@ class Variable(object):
 
     def remote(self, obj, role=None, idx=-1, suffix=tuple()):
         """
-        将对象obj发送给其他参与方
+        send obj to other parties.
 
         Args:
             obj: object to be sent
@@ -234,7 +226,7 @@ class Variable(object):
         if idx >= 0 and role is None:
             raise ValueError("role cannot be None if idx specified")
 
-        # 在运行时配置中获取目的角色的子集
+        # get subset of dst roles in runtime conf
         if role is None:
             parties = party_info.roles_to_parties(self._dst, strict=False)
         else:
@@ -248,13 +240,11 @@ class Variable(object):
                     f"try to remote to {idx}th party while only {len(parties)} configurated: {parties}, check {self._name}"
                 )
             parties = parties[idx]
-        # 调用本地方法进行发送
         return self.remote_parties(obj=obj, parties=parties, suffix=suffix)
 
-    # 实际的获取方法
     def get(self, idx=-1, role=None, suffix=tuple()):
         """
-        从其他参与方接收对象obj
+        get obj from other parties.
 
         Args:
             idx: id of party to get from.
@@ -290,7 +280,6 @@ class Variable(object):
         return rtn
 
 
-# Todo: 基本传输变量
 class BaseTransferVariables(object):
     def __init__(self, *args):
         pass
@@ -301,11 +290,11 @@ class BaseTransferVariables(object):
     def __deepcopy__(self, memo):
         return self
 
-    # Todo: 设置流id，这里的流id指的是？
     @staticmethod
     def set_flowid(flowid):
         """
-        为联邦设置全局的命名空间
+        set global namespace for federations.
+
         Parameters
         ----------
         flowid: str
@@ -318,12 +307,9 @@ class BaseTransferVariables(object):
         """
         FederationTagNamespace.set_namespace(str(flowid))
 
-    # 创建变量
-    # 这里的src是源地址，dst是目的地址
     def _create_variable(
         self, name: str, src: typing.Iterable[str], dst: typing.Iterable[str]
     ) -> Variable:
-        # 获取全名称
         full_name = f"{self.__module__}.{self.__class__.__name__}.{name}"
         return Variable.get_or_create(
             full_name, lambda: Variable(name=full_name, src=tuple(src), dst=tuple(dst))
@@ -332,22 +318,22 @@ class BaseTransferVariables(object):
     @staticmethod
     def all_parties():
         """
-        获取所有的参与方
+        get all parties
 
         Returns
         -------
         list
-           参与方列表
+           list of parties
 
         """
         from fate_arch.session import get_parties
+
         return get_parties().all_parties
 
     @staticmethod
     def local_party():
         """
-        获取本地参与方
-        Todo: 本地参与方指的是当前参与方吗？
+        indicate local party
 
         Returns
         -------

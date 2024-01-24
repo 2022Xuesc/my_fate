@@ -38,6 +38,7 @@ from fate_arch.common import Party, file_utils
 from fate_arch.common.log import getLogger
 from fate_arch.federation import FederationDataType
 
+
 LOGGER = getLogger()
 
 serialize = c_pickle.dumps
@@ -50,12 +51,12 @@ DEFAULT_MESSAGE_MAX_SIZE = 1048576
 # noinspection PyPep8Naming
 class Table(object):
     def __init__(
-            self,
-            session: "Session",
-            namespace: str,
-            name: str,
-            partitions,
-            need_cleanup=True,
+        self,
+        session: "Session",
+        namespace: str,
+        name: str,
+        partitions,
+        need_cleanup=True,
     ):
         self._need_cleanup = need_cleanup
         self._namespace = namespace
@@ -384,7 +385,7 @@ class Session(object):
 
     # noinspection PyUnusedLocal
     def parallelize(
-            self, data: Iterable, partition: int, include_key: bool = False, **kwargs
+        self, data: Iterable, partition: int, include_key: bool = False, **kwargs
     ):
         if not include_key:
             data = enumerate(data)
@@ -440,7 +441,7 @@ class Session(object):
         return results
 
     def _submit_map_reduce_in_partition(
-            self, mapper, reducer, partitions, name, namespace
+        self, mapper, reducer, partitions, name, namespace
     ):
         task_info = _MapReduceTaskInfo(
             self.session_id,
@@ -460,7 +461,7 @@ class Session(object):
         return results
 
     def _submit_binary(
-            self, func, do_func, partitions, name, namespace, other_name, other_namespace
+        self, func, do_func, partitions, name, namespace, other_name, other_namespace
     ):
         task_info = _TaskInfo(
             self.session_id,
@@ -504,10 +505,6 @@ class Federation(object):
         self._even_loop = None
         self._federation_status_table_cache = None
         self._federation_object_table_cache = None
-
-        # Todo: 自己声明的变量
-        self.agg_iters = {}
-        self.sender_parties = []
 
     def destroy(self):
         self._session.cleanup(namespace=self._session_id, name="*")
@@ -596,7 +593,7 @@ class Federation(object):
     def _get_status(self, _tagged_key):
         return self._federation_status_table.get(_tagged_key)
 
-    # noinspection PyUnusedLocalTodo: 这里是实际的发送方法
+    # noinspection PyUnusedLocal
     def remote(self, v, name: str, tag: str, parties: typing.List[Party]):
         log_str = f"federation.standalone.remote.{name}.{tag}"
 
@@ -632,17 +629,8 @@ class Federation(object):
                 LOGGER.debug(f"[{log_str}]remote object with type: {type(v)}")
                 dtype = FederationDataType.OBJECT
 
-        send_agg_model = len(self.sender_parties) > 0
-        # Todo: 这里只对参与当前轮聚合的客户端发送
-        local_parties = self.sender_parties if send_agg_model else parties
-        for party in local_parties:
-            # 这里对tagged_key仍然进行修改
-            elements = tag.split('.')
-            if elements[-1].isdigit() and elements[-2] != 'convergence':
-                elements[-1] = str(self.agg_iters[party.party_id])
-                tag = '.'.join(elements)
-            _tagged_key = self._federation_object_key(name, tag, self._party, party)  # tagged_key中包含发送方和接收方
-
+        for party in parties:
+            _tagged_key = self._federation_object_key(name, tag, self._party, party)
             if isinstance(v, Table):
                 saved_name = str(uuid.uuid1())
                 LOGGER.debug(
@@ -652,66 +640,29 @@ class Federation(object):
                 _v = v.save_as(
                     name=saved_name, namespace=v.namespace, need_cleanup=False
                 )
-                self._put_status(party, _tagged_key, (_v.name, _v.namespace, dtype))  # 将表存储到消息“缓存”中
-                # 发送完聚合模型后再增加agg_iter
-                if send_agg_model:
-                    LOGGER.warn(
-                        f"[服务器-分发模型] 服务器将全局模型分发给客户端: {party.role}-{party.party_id}-{self.agg_iters[party.party_id]}.")
-                self.agg_iters[party.party_id] += 1
+                self._put_status(party, _tagged_key, (_v.name, _v.namespace, dtype))
             else:
                 self._put_object(party, _tagged_key, v)
                 self._put_status(party, _tagged_key, _tagged_key)
 
-    # noinspection PyProtectedMember Todo: 进行实际的读取操作
-    def get(self, name: str, tag: str, parties: typing.List[Party], sync=True) -> typing.List:
-        # 如果self.agg_iters还未进行初始化
-        if len(self.agg_iters) == 0:
-            for party in parties:
-                self.agg_iters[party.party_id] = 0
-
-        # get前清空sender_ids列表
-        self.sender_parties.clear()
-
+    # noinspection PyProtectedMember
+    def get(self, name: str, tag: str, parties: typing.List[Party]) -> typing.List:
         log_str = f"federation.standalone.get.{name}.{tag}"
         LOGGER.debug(f"[{log_str}]")
         tasks = []
 
-        get_func = _check_status_and_get_value if sync or self._party.role != 'arbiter' else _directly_get_value
-
-        # Todo: 这里，对于每个客户端，都会查询其发送过来的数据，因此会阻塞
-        # 以下为原代码
-        # for party in parties:
-        #     _tagged_key = self._federation_object_key(name, tag, party, self._party)
-        #     tasks.append(_check_status_and_get_value(self._get_status, _tagged_key))
-        # results = self._loop.run_until_complete(asyncio.gather(*tasks))
-
-        # 以下为异步代码
-
-        # 为服务器端设置聚合周期
         for party in parties:
-            # 这里对tag进行修改，主要是尝试检索最新的模型
-            elements = tag.split('.')
-            # 仅有服务器端需要维持修改tag
-            # Todo: 可是代码依然很臭-->设计模式
-            if elements[-1].isdigit() and self._party.role == 'arbiter':
-                elements[-1] = str(self.agg_iters[party.party_id])
-                tag = '.'.join(elements)
-            _tagged_key = self._federation_object_key(name, tag, party, self._party)  # 这里使用对应party_id的聚合轮次
-            tasks.append(get_func(self._get_status, _tagged_key, self.sender_parties, party=party))
+            _tagged_key = self._federation_object_key(name, tag, party, self._party)
+            tasks.append(_check_status_and_get_value(self._get_status, _tagged_key))
         results = self._loop.run_until_complete(asyncio.gather(*tasks))
 
         rtn = []
         for r in results:
-            # 这里r可能是None，跳过即可
-            if r is None:
-                continue
             if isinstance(r, tuple):
                 # noinspection PyTypeChecker
                 table: Table = _load_table(
                     session=self._session, name=r[0], namespace=r[1], need_cleanup=True
                 )
-                if table is None:
-                    continue
 
                 dtype = r[2]
                 LOGGER.debug(
@@ -740,48 +691,6 @@ class Federation(object):
 _meta_table: typing.Optional[Table] = None
 
 _SESSION = Session(uuid.uuid1().hex)
-
-
-# 不要求一定检索到键key
-async def _directly_get_value(get_func, key, sender_parties, session=None, party=None):
-    value = get_func(key)
-    # 说明成功检索到了最新的模型，此时将对应客户端的模型聚合轮次增加1
-    # 1. 根据key检索对应的party_id
-    #  key的形式为{prefix}-host-9997-arbiter-10000
-    # 2.
-    if value is not None:
-        # 此外，还需要将sender_id存储起来
-        LOGGER.warn(f"[服务器-接收模型] 服务器接收到客户端{party.role}-{party.party_id}发送的模型...")
-        table: Table = _load_table(
-            session=session, name=value[0], namespace=value[1], need_cleanup=False
-        )
-        if table is not None:
-            sender_parties.append(party)
-    return value
-
-
-async def _check_status_and_get_value(get_func, key, sender_parties=None, session=None, party=None):
-    value = get_func(key)
-    # 如果是空的话会重复调用
-    while True:
-        if value is not None:
-            # value是字符串，说明是建立连接的过程
-            if isinstance(value, str):
-                break
-            # 尝试加载表
-            table: Table = _load_table(
-                session=session, name=value[0], namespace=value[1], need_cleanup=False
-            )
-            if table is not None:
-                break
-        await asyncio.sleep(0.1)
-        value = get_func(key)
-    LOGGER.debug(
-        "[GET] Got {} type {}".format(
-            key, "Table" if isinstance(value, tuple) else "Object"
-        )
-    )
-    return value
 
 
 def _get_meta_table():
@@ -818,13 +727,26 @@ def _get_storage_dir(*args):
     return _data_dir.joinpath(*args)
 
 
+async def _check_status_and_get_value(get_func, key):
+    value = get_func(key)
+    while value is None:
+        await asyncio.sleep(0.1)
+        value = get_func(key)
+    LOGGER.debug(
+        "[GET] Got {} type {}".format(
+            key, "Table" if isinstance(value, tuple) else "Object"
+        )
+    )
+    return value
+
+
 def _create_table(
-        session: "Session",
-        name: str,
-        namespace: str,
-        partitions: int,
-        need_cleanup=True,
-        error_if_exist=False,
+    session: "Session",
+    name: str,
+    namespace: str,
+    partitions: int,
+    need_cleanup=True,
+    error_if_exist=False,
 ):
     if isinstance(namespace, int):
         raise ValueError(f"{namespace} {name}")
@@ -857,8 +779,7 @@ def _load_table(session, name, namespace, need_cleanup=False):
     _table_key = ".".join([namespace, name])
     partitions = _get_from_meta_table(_table_key)
     if partitions is None:
-        # raise RuntimeError(f"table not exist: name={name}, namespace={namespace}")
-        return None
+        raise RuntimeError(f"table not exist: name={name}, namespace={namespace}")
     return Table(
         session=session,
         namespace=namespace,

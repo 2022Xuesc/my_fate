@@ -28,16 +28,15 @@ class Federation(FederationABC):
         return self._session_id
 
     def remote(
-            self,
-            v,
-            name: str,
-            tag: str,
-            parties: typing.List[Party],
-            gc: GarbageCollectionABC,
+        self,
+        v,
+        name: str,
+        tag: str,
+        parties: typing.List[Party],
+        gc: GarbageCollectionABC,
     ):
-        # Todo: 取消验证，允许轮询相同的tag，此外，这里的tag并非是真实的tag，到了分发时还需要修改
-        # if not _remote_tag_not_duplicate(name, tag, parties):
-        #     raise ValueError(f"remote to {parties} with duplicate tag: {name}.{tag}")
+        if not _remote_tag_not_duplicate(name, tag, parties):
+            raise ValueError(f"remote to {parties} with duplicate tag: {name}.{tag}")
 
         if isinstance(v, Table):
             # noinspection PyProtectedMember
@@ -46,15 +45,13 @@ class Federation(FederationABC):
 
     # noinspection PyProtectedMember
     def get(
-            self, name: str, tag: str, parties: typing.List[Party], gc: GarbageCollectionABC,
-            sync: bool
+        self, name: str, tag: str, parties: typing.List[Party], gc: GarbageCollectionABC
     ) -> typing.List:
-        # for party in parties:
-        # 这里为什么会重复呢？
-        # if not _get_tag_not_duplicate(name, tag, party):
-        #     raise ValueError(f"get from {party} with duplicate tag: {name}.{tag}")
+        for party in parties:
+            if not _get_tag_not_duplicate(name, tag, party):
+                raise ValueError(f"get from {party} with duplicate tag: {name}.{tag}")
 
-        rtn = self._federation.get(name=name, tag=tag, parties=parties, sync=sync)
+        rtn = self._federation.get(name=name, tag=tag, parties=parties)
         return [Table(r) if isinstance(r, RawTable) else r for r in rtn]
 
     def destroy(self, parties):
@@ -68,7 +65,6 @@ def _remote_tag_not_duplicate(name, tag, parties):
     for party in parties:
         if (name, tag, party) in _remote_history:
             return False
-        # 这里有已经接收到交互历史
         _remote_history.add((name, tag, party))
     return True
 
