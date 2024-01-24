@@ -362,8 +362,6 @@ class MultiLabelFitter(object):
         # Todo: progressive learning的相关设置
         self.num_stages = 8
         self.iters_per_stage = param.max_iter // self.num_stages
-        # Todo: [WARN]
-        # self.iters_per_stage = 1
 
         # Todo: 原始的ResNet101分类器
         self.whole_model = resnet101(self.num_stages, num_classes=param.num_labels)
@@ -438,30 +436,27 @@ class MultiLabelFitter(object):
         freezed_list.requires_grad_(False)
         freezed_list.eval()
 
-        warmup_lr = 0.0001
-        warmup_epoch = 5
+        warmup_lr = 0.001
         freeze_optimizer = torch.optim.SGD(params=self.model.latest_parameters(), lr=warmup_lr, momentum=0.9,
                                            weight_decay=1e-4)
 
         device = self.param.device
 
         sigmoid_func = torch.nn.Sigmoid()
+        for train_step, (inputs, target) in enumerate(train_loader):
+            inputs = inputs.to(device)
 
-        for i in range(warmup_epoch):
-            for train_step, (inputs, target) in enumerate(train_loader):
-                inputs = inputs.to(device)
+            target[target == 0] = 1
+            target[target == -1] = 0
+            target = target.to(device)
 
-                target[target == 0] = 1
-                target[target == -1] = 0
-                target = target.to(device)
+            output = self.model(inputs)
 
-                output = self.model(inputs)
+            loss = self.criterion(sigmoid_func(output), target)
 
-                loss = self.criterion(sigmoid_func(output), target)
-
-                freeze_optimizer.zero_grad()
-                loss.backward()
-                freeze_optimizer.step()
+            freeze_optimizer.zero_grad()
+            loss.backward()
+            freeze_optimizer.step()
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         aps, mAP, loss = valid_metrics
@@ -580,8 +575,7 @@ class MultiLabelFitter(object):
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:
             for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.8
-            LOGGER.warn("cur learning rate is ", optimizer.param_groups[0]['lr'])
+                param_group['lr'] *= 0.9
 
         mAP, ap = self.ap_meter.value()
         mAP *= 100
