@@ -436,7 +436,7 @@ class MultiLabelFitter(object):
         freezed_list.requires_grad_(False)
         freezed_list.eval()
 
-        warmup_lr = 0.0001
+        warmup_lr = 0.00001
         warmup_epoch = 5
         freeze_optimizer = torch.optim.SGD(params=self.model.latest_parameters(), lr=warmup_lr, momentum=0.9,
                                            weight_decay=1e-4)
