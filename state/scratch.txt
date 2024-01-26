@@ -117,6 +117,23 @@ KMeans
 
 
 
+ResNet-101模型：conv1、conv2、conv3、conv4、conv5
+模型划分成8个阶段
+编码块：conv1 + conv/2, conv2 / 2, conv3 / 2, conv3 /2 ,conv4 / 2, conv4 / 2, conv5 / 2,conv5 / 2
+任务头：AdaptiveAvgPool2d + Linear
+
+
+实验设置
+        "max_iter": 80,
+        "batch_size": 4,
+        "aggregate_every_n_epoch": 4,
+        "lr": 0.001
+
+iters_per_stage = max_iter / num_stages
+引入新模型的时候 会固定住已经训练好的前半部分参数，对新加入的参数进行5个epoch的wamup，
+SGD，warmup_lr = 0.0001
+
+
 
 
 

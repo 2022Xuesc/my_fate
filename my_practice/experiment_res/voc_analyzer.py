@@ -187,7 +187,7 @@ def draw_train_and_valid(paths):
         epochs = valid_data['epoch']
         train_mAP = handle_tensor_mAP(train_data['mAP'])
         valid_mAP = handle_tensor_mAP(valid_data['mAP'])
-        losses = valid_data[f'valid_loss']
+        losses = valid_data[f'loss']
 
         fig = plt.figure(figsize=(8, 6))
 
@@ -221,7 +221,8 @@ def draw_train_and_valid(paths):
 
 # Todo: 各个客户端自身的结果分析
 
-paths = ["voc/voc_fixed_interactive","voc/voc_fpsl_plateau_200","voc/voc_fpsl_plateau_weight_decay"]
+# paths = ["voc/voc_fixed_interactive","voc/voc_fpsl_plateau_200","voc/voc_fpsl_plateau_weight_decay"]
+paths = ["communication/fedavg"]
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
 
