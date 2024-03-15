@@ -256,7 +256,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
     category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
-    # Todo: [WARN]
+    # Todo: [WARN]my_writer = MyWriter(dir_name=os.getcwd())
     # param.batch_size = 1
     # param.max_iter = 1000
     # param.num_labels = 20
