@@ -20,7 +20,7 @@ import pickle
 import random
 from collections import OrderedDict
 
-method = 'double-interactive'
+method = 'double-interactive-load-model'
 
 object_categories = ['aeroplane', 'bicycle', 'bird', 'boat',
                      'bottle', 'bus', 'car', 'cat', 'chair',
@@ -691,7 +691,9 @@ val_aps_writer = my_writer.get("val_aps.csv")
 # 使用resnet-101模型
 model = torch_models.resnet101(pretrained=True, num_classes=1000)
 model.fc = torch.nn.Sequential(torch.nn.Linear(2048, num_labels))
-torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
+
+model.load_state_dict(torch.load('resnet_16_0.0001_stats/final_model.path'))
+
 model = model.to(device)
 
 criterion = AsymmetricLossOptimized().to(device)

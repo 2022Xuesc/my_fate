@@ -617,8 +617,6 @@ parser.add_argument('--labmda_y', default='1.0', type=float)
 
 parser.add_argument('--env', default='client', type=str)
 
-parser.add_argument('--path', default='', type=str)
-
 args = parser.parse_args()
 
 env = args.env
@@ -663,7 +661,7 @@ val_loader = torch.utils.data.DataLoader(
     drop_last=drop_last, shuffle=False
 )
 
-stats_dir = f'{method}_{batch_size}_{k}_{lr}_{rlr}_{predict_gap}_{relation_gap}_{lambda_y}_*{args.path}_stats'
+stats_dir = f'{method}_{batch_size}_{k}_{lr}_{rlr}_{predict_gap}_{relation_gap}_{lambda_y}_stats'
 
 my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
 
@@ -676,12 +674,7 @@ val_aps_writer = my_writer.get("val_aps.csv")
 # 使用resnet-101模型
 model = torch_models.resnet101(pretrained=True, num_classes=1000)
 model.fc = torch.nn.Sequential(torch.nn.Linear(2048, num_labels))
-
-if args.path == '':
-    torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
-else:
-    model.load_state_dict(torch.load(args.path))
-    
+torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
 model = model.to(device)
 
 criterion = AsymmetricLossOptimized().to(device)
