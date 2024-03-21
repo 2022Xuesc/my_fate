@@ -614,6 +614,7 @@ def construct_relation_by_matrix(num_labels, matrix, negMatrix, device):
     # 返回邻接表、反向邻接表和待优化变量
     return adjList, negAdjList, variables
 
+
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -635,6 +636,8 @@ parser.add_argument('--labmda_y', default='1.0', type=float)
 
 parser.add_argument('--env', default='client', type=str)
 
+parser.add_argument('--path', default='', type=str)
+
 args = parser.parse_args()
 
 env = args.env
@@ -647,7 +650,6 @@ else:
     root_path = "/home/klaus125/research/dataset/voc_standalone"
     category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
     json_file = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
-
 
 num_labels = 20
 
@@ -691,7 +693,13 @@ val_aps_writer = my_writer.get("val_aps.csv")
 # 使用resnet-101模型
 model = torch_models.resnet101(pretrained=True, num_classes=1000)
 model.fc = torch.nn.Sequential(torch.nn.Linear(2048, num_labels))
-torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
+
+if args.path == '':
+    torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
+else:
+    print('加载模型: ', args.path)
+    model.load_state_dict(torch.load(args.path))
+
 model = model.to(device)
 
 criterion = AsymmetricLossOptimized().to(device)

@@ -617,6 +617,8 @@ parser.add_argument('--labmda_y', default='1.0', type=float)
 
 parser.add_argument('--env', default='client', type=str)
 
+parser.add_argument('--path', default='', type=str)
+
 args = parser.parse_args()
 
 env = args.env
@@ -674,7 +676,13 @@ val_aps_writer = my_writer.get("val_aps.csv")
 # 使用resnet-101模型
 model = torch_models.resnet101(pretrained=True, num_classes=1000)
 model.fc = torch.nn.Sequential(torch.nn.Linear(2048, num_labels))
-torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
+
+if args.path == '':
+    torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
+else:
+    model.load_state_dict(torch.load(args.path))
+    
+    
 model = model.to(device)
 
 criterion = AsymmetricLossOptimized().to(device)
