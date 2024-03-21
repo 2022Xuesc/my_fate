@@ -20,7 +20,7 @@ import pickle
 import random
 from collections import OrderedDict
 
-method = 'interactive'
+method = 'double-interactive'
 
 object_categories = ['aeroplane', 'bicycle', 'bird', 'boat',
                      'bottle', 'bus', 'car', 'cat', 'chair',
@@ -678,7 +678,7 @@ val_loader = torch.utils.data.DataLoader(
     drop_last=drop_last, shuffle=False
 )
 
-stats_dir = f'{method}_{batch_size}_{k}_{lr}_{rlr}stats'
+stats_dir = f'{method}_{batch_size}_{k}_{lr}_{rlr}_{predict_gap}_{relation_gap}_{lambda_y}_stats'
 
 my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
 
@@ -834,7 +834,6 @@ for epoch in range(epochs):
         losses[OVERALL_LOSS_KEY].add(loss.item())
         losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
         losses[RELATION_LOSS_KEY].add(relation_loss.item())
-        print(f'progress: {train_step} / {steps_per_epoch}')
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
