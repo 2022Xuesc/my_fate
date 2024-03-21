@@ -20,7 +20,7 @@ import pickle
 import random
 from collections import OrderedDict
 
-method = 'interactive'
+method = 'single_interactive'
 
 object_categories = ['aeroplane', 'bicycle', 'bird', 'boat',
                      'bottle', 'bus', 'car', 'cat', 'chair',
@@ -589,14 +589,6 @@ def construct_relation_by_matrix(num_labels, matrix, device):
     return adjList, variables
 
 
-# root_path = "/data/projects/dataset/voc_standalone"
-# category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
-# json_file = '/data/projects/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
-
-root_path = "/home/klaus125/research/dataset/voc_standalone"
-category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
-json_file = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
-
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -610,7 +602,27 @@ parser.add_argument('--lr', default='0.0001', type=float)
 
 parser.add_argument('--rlr', default='0.0001', type=float)
 
+parser.add_argument('--predict_gap', default='0', type=float)
+
+parser.add_argument('--relation_gap', default='0', type=float)
+
+parser.add_argument('--labmda_y', default='1.0', type=float)
+
+parser.add_argument('--env', default='client', type=str)
+
 args = parser.parse_args()
+
+env = args.env
+
+if env == 'server':
+    root_path = "/data/projects/dataset/voc_standalone"
+    category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
+    json_file = '/data/projects/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
+else:
+    root_path = "/home/klaus125/research/dataset/voc_standalone"
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    json_file = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
+
 
 num_labels = 20
 
