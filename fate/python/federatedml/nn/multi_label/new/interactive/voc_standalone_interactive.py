@@ -591,9 +591,11 @@ def construct_relation_by_matrix(num_labels, matrix, device):
 
 # root_path = "/data/projects/dataset/voc_standalone"
 # category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
+# json_file = '/data/projects/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
 
 root_path = "/home/klaus125/research/dataset/voc_standalone"
 category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+json_file = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
 
 import argparse
 
@@ -660,7 +662,6 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
 ap_meter = AveragePrecisionMeter(difficult_examples=True)
 
 # Todo: 从标签共现文件中计算出邻接矩阵
-json_file = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
 image_id2labels = json.load(open(json_file, 'r'))
 
 # 计算正向的标签共现概率矩阵和概率矩阵
@@ -769,7 +770,7 @@ for epoch in range(epochs):
         losses[OVERALL_LOSS_KEY].add(loss.item())
         losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
         losses[RELATION_LOSS_KEY].add(relation_loss.item())
-
+        print(f'progress: {train_step} / {steps_per_epoch}')
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
