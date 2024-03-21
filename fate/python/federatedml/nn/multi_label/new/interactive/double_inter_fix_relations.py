@@ -4,13 +4,12 @@ import numpy as np
 import torch
 import torch.nn
 import torch.nn as nn
+import torchnet.meter as tnt
 import torchvision.models as torch_models
 import torchvision.transforms as transforms
 from PIL import Image
 from torch.utils.data import Dataset
 from torch.utils.data import Dataset
-import torchnet.meter as tnt
-from collections import OrderedDict
 
 import csv
 import json
@@ -19,8 +18,9 @@ import os.path
 import os.path
 import pickle
 import random
+from collections import OrderedDict
 
-method = 'interactive'
+method = 'double-interactive-fixed-relation'
 
 object_categories = ['aeroplane', 'bicycle', 'bird', 'boat',
                      'bottle', 'bus', 'car', 'cat', 'chair',
@@ -66,7 +66,7 @@ class Voc2007Classification(Dataset):
         self.images = read_object_labels_csv(file_csv)
 
         self.config_dir = config_dir
-
+        self.inp = None
         if inp_name is not None:
             inp_file = os.path.join(self.config_dir, inp_name)
             with open(inp_file, 'rb') as f:
@@ -103,12 +103,14 @@ def findMaxIndex(arr, S, cur):
 
 
 # 计算正确的候选者
-def getCorrectedCandidates(predicts, adjList, neg_adjList, requires_grad):
-    threshold = 0.2
+def getCorrectedCandidates(predicts, adjList, negAdjList, label_prob_vec, predict_gap, relation_gap, requires_grad):
     device = predicts.device
     batch_size = len(predicts)
     _, label_dim = predicts.size()
     candidates = torch.zeros((batch_size, label_dim), dtype=torch.float64).to(device)
+
+    exists_lower_bound = 0.5 + predict_gap
+    miss_upper_bound = 0.5 - predict_gap
     # 遍历每个批次
     for b in range(batch_size):
         # 输入1*C，输出1*C
@@ -116,57 +118,57 @@ def getCorrectedCandidates(predicts, adjList, neg_adjList, requires_grad):
         # 需要推断的标签
         for lj in range(label_dim):
             relation_num = 0
+            incr_lower_bound = label_prob_vec[lj] + relation_gap
+            decr_upper_bound = label_prob_vec[lj] - relation_gap
             for li in range(label_dim):
-                # 如果li的预测置信度小于0.5，则不能使用该相关性，则应该使用另一种相关性
+                if li == lj:  # 是同一个标签，则1转移
+                    relation_num += 1
+                    candidates[b][lj] += predict_vec[li]
+                    continue
+                # 下面li和lj一定不相等
+                relation_num += 1
                 # Todo: 两种相关性之间计算一下
-                if predict_vec[li] < 0.5:
-                    # 如果相等，则直接跳过，因为必然为0
-                    if li == lj:
-                        continue
-                    # Todo: 如果不包含lj这个标签，
-                    relation_num += 1
+                if predict_vec[li] > exists_lower_bound:  # Todo: 不引入阈值了，这样既考虑促进情况，也考虑抑制的情况
                     if requires_grad:
-                        a = neg_adjList[li][lj]
+                        a = adjList[li][lj]
                     else:
-                        a = neg_adjList[li][lj].item()
-                    # 如果是促进作用
-                    # if a >= label_prob_vec[lj]:
-                    # 目前认为总是起促进作用，如果不为
-                    if a >= threshold:
-                        candidates[b][lj] += (1 - predict_vec[li]) * a
-                    # else:
-                    #     candidates[b][lj] += 1 - (1 - predict_vec[li]) * (1 - a)
-                else:
-                    relation_num += 1
-                    if li == lj:  # 是同一个标签，则1转移
-                        candidates[b][lj] += predict_vec[li]
-                    else:  # 不是同一个标签，使用相关性值转移
-                        if requires_grad:
-                            a = adjList[li][lj]
-                        else:
-                            a = adjList[li][lj].item()
+                        a = adjList[li][lj].item()
+                    # 标签li对标签lj起促进作用，直接相乘即可
+                    if a > incr_lower_bound:
                         # 仅当起促进作用时，才累加
-                        if a >= threshold:
-                            candidates[b][lj] += predict_vec[li] * a
-            # 按照转移的标签数量进行平均，促进与抑制综合判定
-            # Todo: 这里relation_num可能是0导致无法转移，因此，引入另外一种矩阵
+                        candidates[b][lj] += predict_vec[li] * a
+                    elif a < decr_upper_bound:  # 标签li对lj起抑制作用
+                        candidates[b][lj] += 1 - predict_vec[li] * (1 - a)
+                elif predict_vec[li] < miss_upper_bound:
+                    if requires_grad:
+                        a = negAdjList[li][lj]
+                    else:
+                        a = negAdjList[li][lj].item()
+                    # 对相关性进行判断，起促进or抑制作用
+                    # li的不出现对lj起促进作用
+                    if a > incr_lower_bound:
+                        candidates[b][lj] += (1 - predict_vec[li]) * a
+                    elif a < decr_upper_bound:  # li的不出现对lj起抑制作用
+                        candidates[b][lj] += 1 - (1 - predict_vec[li]) * (1 - a)
+            # 按照转移的标签数量进行平均
+            # 里边既有促进作用的部分，也有抑制作用的部分
             candidates[b][lj] /= relation_num
     return candidates
 
 
-def LabelOMP(predicts, adjList, neg_adjList=None):
+def LabelOMP(predicts, adjList, negAdjList, label_prob_vec, k=2):
     device = predicts.device
     batch_size = len(predicts)
     _, label_dim = predicts.size()
     # 每张图片，找和它最相似的k张图片
-    k = batch_size // 2
 
     # 最终输出的是图像之间的特征相似度矩阵和语义相似度矩阵
     predict_similarities = torch.zeros(batch_size, batch_size, dtype=torch.float64).to(device)
-    # Todo: candidates重复计算了啊
+
     # candidates表示从一个标签预测向量中根据标签相关性推断出来的新预测向量
 
-    candidates = getCorrectedCandidates(predicts, adjList, neg_adjList, requires_grad=False)
+    candidates = getCorrectedCandidates(predicts, adjList, negAdjList, label_prob_vec, predict_gap, relation_gap,
+                                        requires_grad=False)
     # 对第1维计算范数
     candidate_norms = torch.norm(candidates, dim=1)
 
@@ -220,13 +222,14 @@ class LabelSmoothLoss(nn.Module):
     # 1. 预测概率y：b * 80
     # 2. 图像语义相似度: b * b
     # 3. 标签相关性: 80 * 80
-    def forward(self, predicts, similarities, adjList, neg_adjList=None):
+    def forward(self, predicts, similarities, adjList, negAdjList, label_prob_vec=None, predict_gap=0, relation_gap=0):
         device = predicts.device
         batch_size = len(predicts)
         # Todo: 对于每个样本，如果没有相似的图像，则不考虑这个图像的标签平滑损失
         total_loss = 0
         cnt = 0
-        candidates = getCorrectedCandidates(predicts, adjList, neg_adjList, self.relation_need_grad)
+        candidates = getCorrectedCandidates(predicts, adjList, negAdjList, label_prob_vec,
+                                            predict_gap, relation_gap, self.relation_need_grad)
         for i in range(batch_size):
             if torch.sum(similarities[i]) == 0:
                 continue
@@ -234,6 +237,7 @@ class LabelSmoothLoss(nn.Module):
             total_loss += torch.norm(predicts[i] - torch.matmul(similarities[i], candidates), p=2)
         # Todo: 这里究竟是什么？
         return torch.tensor(0).to(device) if cnt == 0 else total_loss / cnt
+
 
 # import util
 # from util import *
@@ -591,33 +595,52 @@ def construct_relation_by_matrix(num_labels, matrix, negMatrix, device):
     adjList = [dict() for _ in range(num_labels)]
     negAdjList = [dict() for _ in range(num_labels)]
     variables = []
-    # Todo: 这里的值到底怎么确定？
-    th = 0.2
+    # 考虑所有的相关性变量
     for i in range(num_labels):
         for j in range(num_labels):
             # 自相关性如何处理？额外进行处理
-            if i == j or matrix[i][j] < th:
+            if i == j:
                 continue
             variable = torch.tensor(matrix[i][j]).to(device)
-            variable.requires_grad_()
             negVariable = torch.tensor(negMatrix[i][j]).to(device)
-            negVariable.requires_grad_()
 
             variables.append(variable)
             variables.append(negVariable)
             # 直接维护对应的优化变量即可
             adjList[i][j] = variable
             negAdjList[i][j] = negVariable
-    relation_optimizer = torch.optim.SGD(variables, lr=0.1)
-    return adjList, negAdjList, variables, relation_optimizer
+    # 返回邻接表、反向邻接表和待优化变量
+    return adjList, negAdjList, variables
+
 
 # root_path = "/data/projects/dataset/voc_standalone"
 # category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
+# json_file = '/data/projects/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
 
-
-batch_size = 16
 root_path = "/home/klaus125/research/dataset/voc_standalone"
 category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+json_file = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
+
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--device', default='cuda:0', type=str)
+
+parser.add_argument('--batch', default='4', type=int)
+
+parser.add_argument('--k', default='2', type=int)
+# 输入不同的学习率
+parser.add_argument('--lr', default='0.0001', type=float)
+
+parser.add_argument('--rlr', default='0.0001', type=float)
+
+parser.add_argument('--predict_gap', default='0', type=float)
+
+parser.add_argument('--relation_gap', default='0', type=float)
+
+parser.add_argument('--labmda_y', default='1.0', type=float)
+
+args = parser.parse_args()
 
 num_labels = 20
 
@@ -625,6 +648,14 @@ num_labels = 20
 num_workers = 4
 drop_last = True
 
+device = args.device
+lr = args.lr
+rlr = args.rlr
+k = args.k
+batch_size = args.batch
+predict_gap = args.predict_gap
+relation_gap = args.relation_gap
+lambda_y = args.labmda_y
 # Todo: 设置设备id？
 
 train_dataset = Voc2007Classification(root_path, "trainval", config_dir=category_dir)
@@ -641,24 +672,13 @@ val_loader = torch.utils.data.DataLoader(
     drop_last=drop_last, shuffle=False
 )
 
-import argparse
+stats_dir = f'{method}_{batch_size}_{k}_{lr}_{rlr}_{predict_gap}_{relation_gap}_{lambda_y}_stats'
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--device', default='cuda:0', type=str)
-# 输入不同的学习率
-parser.add_argument('--lr', default='0.0001', type=float)
-
-args = parser.parse_args()
-
-device = args.device
-lr = args.lr
-
-stats_dir = f'{method}_stats'
 
 my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
 
-train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'train_loss'])
-valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP', 'valid_loss'])
+train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'entropy_loss', 'relation_loss', 'overall_loss'])
+valid_writer = my_writer.get("valid.csv", header=['epoch', 'mAP'])
 
 train_aps_writer = my_writer.get("train_aps.csv")
 val_aps_writer = my_writer.get("val_aps.csv")
@@ -676,10 +696,9 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
 ap_meter = AveragePrecisionMeter(difficult_examples=True)
 
 # Todo: 从标签共现文件中计算出邻接矩阵
-json_file = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded/old_image_ids/train_image_id.json'
 image_id2labels = json.load(open(json_file, 'r'))
 
-# 计算正向的标签共现概率矩阵
+# 计算正向的标签共现概率矩阵和概率矩阵
 adjMatrix = np.zeros((num_labels, num_labels))
 nums = np.zeros(num_labels)
 for image_info in image_id2labels:
@@ -693,6 +712,7 @@ for image_info in image_id2labels:
             y = labels[j]
             adjMatrix[x][y] += 1
             adjMatrix[y][x] += 1
+label_prob_vec = nums / len(image_id2labels)
 nums = nums[:, np.newaxis]
 # 遍历每一行
 for i in range(num_labels):
@@ -702,7 +722,7 @@ for i in range(num_labels):
 for i in range(num_labels):
     adjMatrix[i][i] = 1
 
-# 计算标签未出现时的概率矩阵
+# Todo: 计算标签未出现时的概率矩阵
 negAdjMatrix = np.zeros((num_labels, num_labels))
 not_occurred_nums = np.zeros(num_labels)
 for image_info in image_id2labels:
@@ -713,18 +733,20 @@ for image_info in image_id2labels:
             not_occurred_nums[i] += 1
             for j in labels:
                 negAdjMatrix[i][j] += 1
+
 not_occurred_nums = not_occurred_nums[:, np.newaxis]
 for i in range(num_labels):
     if not_occurred_nums[i] != 0:
         negAdjMatrix[i] = negAdjMatrix[i] / not_occurred_nums[i]
 
 # variables中既包含了正向变量，也包含负向变量
-adjList, negAdjList, variables, relation_optimizer = construct_relation_by_matrix(num_labels, adjMatrix, negAdjMatrix,
-                                                          device)
+adjList, negAdjList, variables = construct_relation_by_matrix(num_labels, adjMatrix, negAdjMatrix, device)
+
 
 # Todo: 更改，40或者20
 epochs = 200
-threshold = 0.2
+# threshold = 0.2
+
 
 # 开始训练
 for epoch in range(epochs):
@@ -756,46 +778,27 @@ for epoch in range(epochs):
         target = target.to(device)
 
         output = model(features)
-        
+
         predicts = torch.sigmoid(output).to(torch.float64)
 
         ap_meter.add(predicts.data, prev_target)
 
-        # 这里只考虑标签平滑损失
-        predicts = torch.sigmoid(output).to(torch.float64)
-
-        predict_similarities = LabelOMP(predicts.detach(), adjList,negAdjList)
-
-        label_loss = LabelSmoothLoss(relation_need_grad=True, corrected=True)(predicts.detach(),
-                                                                              predict_similarities,
-                                                                              adjList,
-                                                                              negAdjList,
-                                                                              )
-
-        # 需要先对label_loss进行反向传播，梯度下降更新标签相关性
-        # 如果标签平滑损失不为0，才进行优化
-        if label_loss != 0:
-            relation_optimizer.zero_grad()
-            label_loss.backward()
-            relation_optimizer.step()
-        # 确保标签相关性在0到1之间
-
-        # 遍历每个优化变量，对其值进行约束，限定在[0,1]之内
-        for variable in variables:
-            variable.data = torch.clamp(variable.data, min=0.0, max=1.0)
+        predict_similarities = LabelOMP(predicts.detach(), adjList, negAdjList, label_prob_vec, k)
 
         # 总损失 = 交叉熵损失 + 标签相关性损失
         # 优化CNN参数时，need_grad设置为True，表示需要梯度
 
         entropy_loss = criterion(predicts, target)
 
-        lambda_y = 1
-
         relation_loss = lambda_y * \
                         LabelSmoothLoss(relation_need_grad=False, corrected=True)(predicts,
                                                                                   predict_similarities,
                                                                                   adjList,
-                                                                                  negAdjList)
+                                                                                  negAdjList,
+                                                                                  label_prob_vec,
+                                                                                  predict_gap,
+                                                                                  relation_gap
+                                                                                  )
 
         # 初始化标签相关性，先计算标签平滑损失，对相关性进行梯度下降
         loss = entropy_loss + relation_loss
@@ -803,11 +806,11 @@ for epoch in range(epochs):
         losses[OVERALL_LOSS_KEY].add(loss.item())
         losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
         losses[RELATION_LOSS_KEY].add(relation_loss.item())
-
+        print(f'progress: {train_step} / {steps_per_epoch}')
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    
+
     # Todo: 模型参数的学习率下降
     if (epoch + 1) % 4 == 0:
         for param_group in optimizer.param_groups:
@@ -815,9 +818,10 @@ for epoch in range(epochs):
 
     mAP, aps = ap_meter.value()
 
-    train_writer.writerow([epoch, mAP.item()])
+    train_writer.writerow(
+        [epoch, mAP.item(), losses[ENTROPY_LOSS_KEY].mean, losses[RELATION_LOSS_KEY].mean,
+         losses[OVERALL_LOSS_KEY].mean])
     train_aps_writer.writerow(aps)
-
 
     # 验证阶段
     model.eval()
