@@ -627,7 +627,7 @@ parser.add_argument('--lr', default='0.0001', type=float)
 
 parser.add_argument('--rlr', default='0.0001', type=float)
 
-parser.add_argument('--predict_gap', default='0', type=float)
+parser.add_argument('--predict_gap', default='0.5', type=float)
 
 parser.add_argument('--relation_gap', default='0', type=float)
 
