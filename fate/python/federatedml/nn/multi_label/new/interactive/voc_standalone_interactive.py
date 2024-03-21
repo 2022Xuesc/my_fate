@@ -663,7 +663,7 @@ val_loader = torch.utils.data.DataLoader(
     drop_last=drop_last, shuffle=False
 )
 
-stats_dir = f'{method}_{batch_size}_{k}_{lr}_{rlr}_{predict_gap}_{relation_gap}_{lambda_y}_stats'
+stats_dir = f'{method}_{batch_size}_{k}_{lr}_{rlr}_{predict_gap}_{relation_gap}_{lambda_y}_*{args.path}_stats'
 
 my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
 
@@ -681,7 +681,6 @@ if args.path == '':
     torch.nn.init.kaiming_normal_(model.fc[0].weight.data)
 else:
     model.load_state_dict(torch.load(args.path))
-    
     
 model = model.to(device)
 

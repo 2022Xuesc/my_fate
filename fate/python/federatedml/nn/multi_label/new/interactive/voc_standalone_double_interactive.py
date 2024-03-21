@@ -680,8 +680,7 @@ val_loader = torch.utils.data.DataLoader(
     drop_last=drop_last, shuffle=False
 )
 
-stats_dir = f'{method}_{batch_size}_{k}_{lr}_{rlr}_{predict_gap}_{relation_gap}_{lambda_y}_stats'
-
+stats_dir = f'{method}_{batch_size}_{k}_{lr}_{rlr}_{predict_gap}_{relation_gap}_{lambda_y}_*{args.path}_stats'
 my_writer = MyWriter(dir_name=os.getcwd(), stats_name=stats_dir)
 
 train_writer = my_writer.get("train.csv", header=['epoch', 'mAP', 'entropy_loss', 'relation_loss', 'overall_loss'])
