@@ -810,7 +810,6 @@ for epoch in range(epochs):
         losses[OVERALL_LOSS_KEY].add(loss.item())
         losses[ENTROPY_LOSS_KEY].add(entropy_loss.item())
         losses[RELATION_LOSS_KEY].add(relation_loss.item())
-        print(f'progress: {train_step} / {steps_per_epoch}')
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
