@@ -1,8 +1,0 @@
-double-interactive-fixed-relation_16_2_0.0001_0.0001_0.0_0.0_1.0_stats: 89.8545913696289
-double-interactive-load-model_16_2_0.0001_0.0001_0.0_0.0_1.0_stats: 86.58977508544922
-double-interactive_16_2_0.0001_0.0001_0.0_0.0_1.0_stats: 89.8133544921875
-double-interactive_16_2_0.0001_0.0001_0.2_0.1_1.0_stats: 89.87886047363281
-resnet_16_0.0001_stats: 89.54681396484375
-single_interactive_16_2_0.0001_0.0001_0.0_0.0_1.0_stats: 89.58209991455078
-single_interactive_16_2_0.0001_0.0001_0.2_0.1_1.0_stats: 89.98213195800781
-single_interactive_load_model_16_2_0.0001_0.0001_0.0_0.0_1.0_stats: 88.02301025390625
