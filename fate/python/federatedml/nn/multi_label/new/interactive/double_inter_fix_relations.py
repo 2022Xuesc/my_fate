@@ -172,7 +172,7 @@ def getCorrectedCandidates(predicts, adjList, negAdjList, label_prob_vec, predic
     return candidates
 
 
-def LabelOMP(predicts, adjList, label_prob_vec, k=2):
+def LabelOMP(predicts, adjList, negAdjList, label_prob_vec, k=2):
     device = predicts.device
     batch_size = len(predicts)
     _, label_dim = predicts.size()
@@ -183,7 +183,7 @@ def LabelOMP(predicts, adjList, label_prob_vec, k=2):
     # Todo: candidates重复计算了啊
     # candidates表示从一个标签预测向量中根据标签相关性推断出来的新预测向量
 
-    candidates = getCorrectedCandidates(predicts, adjList, label_prob_vec,
+    candidates = getCorrectedCandidates(predicts, adjList, negAdjList, label_prob_vec, predict_gap, relation_gap,
                                         requires_grad=False)
     # 对第1维计算范数
     candidate_norms = torch.norm(candidates, dim=1)
