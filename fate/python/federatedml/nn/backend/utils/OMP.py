@@ -1,6 +1,24 @@
-import torch
 import numpy as np
+from scipy.optimize import shgo
+
 from federatedml.nn.backend.utils.relations.candidater import *
+
+
+def my_general_linear_model_func(A1, b1):
+    num_x = np.shape(A1)[1]
+
+    def my_func(x):
+        ls = 0.5 * (b1 - np.dot(A1, x)) ** 2
+        result = np.sum(ls)
+        return result
+
+    bnds = [(0, None)]
+    for i in range(num_x - 1):
+        bnds.append((0, None))
+    res1 = shgo(my_func,
+                bounds=bnds)
+
+    return res1.x
 
 
 # 导出为工具包
@@ -20,23 +38,19 @@ def findMaxIndex(arr, S, cur):
     # predicts是该批次的预测值
 
 
-# predicts：该批次样本b的预测向量，维度是b*C
-# adjList：维护与每个标签相关的标签以及对应的值
-def LabelOMP(predicts, adjList, neg_adjList=None, label_prob_vec=None, corrected=False):
+def LabelOMP(predicts, adjList, label_prob_vec, k=2):
     device = predicts.device
     batch_size = len(predicts)
     _, label_dim = predicts.size()
     # 每张图片，找和它最相似的k张图片
-    k = batch_size // 2
 
     # 最终输出的是图像之间的特征相似度矩阵和语义相似度矩阵
     predict_similarities = torch.zeros(batch_size, batch_size, dtype=torch.float64).to(device)
     # Todo: candidates重复计算了啊
     # candidates表示从一个标签预测向量中根据标签相关性推断出来的新预测向量
-    if not corrected:
-        candidates = getCandidates(predicts, adjList, requires_grad=False)
-    else:
-        candidates = getCorrectedCandidates(predicts, adjList, neg_adjList, label_prob_vec, requires_grad=False)
+
+    candidates = getCorrectedCandidates(predicts, adjList, label_prob_vec,
+                                        requires_grad=False)
     # 对第1维计算范数
     candidate_norms = torch.norm(candidates, dim=1)
 
@@ -44,7 +58,6 @@ def LabelOMP(predicts, adjList, neg_adjList=None, label_prob_vec=None, corrected
     for i in range(batch_size):
         # 需要拟合的残差
         predict = predicts[i]
-
         # 进行k次迭代
         # Todo: 维护相似集合，以及相似图像的特征向量和预测向量
         S = set()
@@ -52,33 +65,38 @@ def LabelOMP(predicts, adjList, neg_adjList=None, label_prob_vec=None, corrected
         candidateX = torch.empty(0, label_dim, dtype=torch.float64).to(device)
 
         # 现在可以计算内积了
-        candidate_inner_products = torch.matmul(candidates, predict)
-
-        predict_scores = candidate_inner_products / candidate_norms
+        residual = predict
+        predictOnCpu = predict.cpu().numpy()
         for j in range(k):
+            candidate_inner_products = torch.matmul(candidates, residual)
+            predict_scores = candidate_inner_products / candidate_norms
+
             # 找到最相似的图像i‘
             # 从中选出相似性最高的图像，加到相似集中
             index = findMaxIndex(predict_scores, S, i)
             # 判断是否满足内积大于等于0的条件
             # 如果不满足，说明找不到相似图片，直接退出即可
-            if torch.matmul(predicts[index], predict) <= 0:
+            if torch.matmul(predicts[index], residual) <= 0:
                 break
             S.add(index)
             indexes.append(index)
 
             candidateX = torch.cat((candidateX, candidates[index].unsqueeze(0)), dim=0)
-
             # Todo: 这里不应该预测值拟合，而应该是预测值经相关性的拟合？
-            predict_coefficients = torch.linalg.lstsq(torch.transpose(candidateX, 0, 1), predict)[0]
+            predict_coefficients = my_general_linear_model_func(torch.transpose(candidateX, 0, 1).cpu().numpy(),
+                                                                predictOnCpu)
             # 更新相似性矩阵
             # 不是对称的，因此，更新第i行
             for m in range(len(indexes)):
                 neighbor = indexes[m]
                 # Todo: 验证引入的约束操作对与原解的修改情况
-                predict_similarities[i][neighbor] = max(0, predict_coefficients[m])  # 确保相似性大于0
+                predict_similarities[i][neighbor] = predict_coefficients[m]  # 确保相似性大于0
+                # 更新残差
+                residual = predict - torch.matmul(predict_similarities[i], candidates)
     return predict_similarities.detach()  # 对于无需通过pytorch计算图优化的变量，将其detach
 
 
+# Todo: 可能有错误
 def OMP(features, predicts, A):
     # 获取设备
     device = features.device

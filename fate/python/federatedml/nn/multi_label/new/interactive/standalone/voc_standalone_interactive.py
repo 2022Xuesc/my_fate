@@ -721,6 +721,7 @@ for image_info in image_id2labels:
             y = labels[j]
             adjMatrix[x][y] += 1
             adjMatrix[y][x] += 1
+            
 label_prob_vec = nums / len(image_id2labels)
 nums = nums[:, np.newaxis]
 # 遍历每一行

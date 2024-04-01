@@ -58,30 +58,43 @@ def getCorrectedCandidates(predicts, adjList, neg_adjList, label_prob_vec, requi
 
 
 # 给定该批次的样本的预测向量，从每个预测向量根据标签相关性重构出其他的标签向量
-def getCandidates(predicts, adjList, requires_grad):
+def getCorrectedCandidates(predicts, adjList, label_prob_vec, requires_grad, predict_gap=0, relation_gap=0):
     device = predicts.device
     batch_size = len(predicts)
     _, label_dim = predicts.size()
     candidates = torch.zeros((batch_size, label_dim), dtype=torch.float64).to(device)
-    # Todo: 将以下部分封装成一个函数，从其他标签的向量出发得到
+
+    exists_lower_bound = 0.5 + predict_gap
+
+    # 遍历每个批次
     for b in range(batch_size):
-        predict_vec = predicts[b]  # 1 * C维度
-        # 遍历每一个推断出来的标签
+        # 输入1*C，输出1*C
+        predict_vec = predicts[b]
+        # 需要推断的标签
         for lj in range(label_dim):
             relation_num = 0
+
+            incr_lower_bound = label_prob_vec[lj] + relation_gap
+            decr_upper_bound = label_prob_vec[lj] - relation_gap
             for li in range(label_dim):
-                # 判断从li是否能推断出lj
-                if lj in adjList[li]:
-                    # a表示从li到lj的相关性，不是计算损失，无需使用带有梯度的相关性值
+                if li == lj:  # 是同一个标签，则1转移
+                    relation_num += 1
+                    candidates[b][lj] += predict_vec[li]
+                    continue
+                # Todo: 两种相关性之间计算一下
+                if predict_vec[li] > exists_lower_bound:  # Todo: 不引入阈值了，这样既考虑促进情况，也考虑抑制的情况
                     if requires_grad:
                         a = adjList[li][lj]
                     else:
                         a = adjList[li][lj].item()
-                    # 需要进行归一化，归一化系数为len(adjList[li])
-                    candidates[b][lj] += predict_vec[li] * a
                     relation_num += 1
-                elif li == lj:
-                    candidates[b][lj] += predict_vec[li]
-                    relation_num += 1
+                    # 标签li对标签lj起促进作用，直接相乘即可
+                    if a > incr_lower_bound:
+                        # 仅当起促进作用时，才累加
+                        candidates[b][lj] += predict_vec[li] * a
+                    elif a < decr_upper_bound:  # 标签li对lj起抑制作用
+                        candidates[b][lj] += 1 - predict_vec[li] * (1 - a)
+            # 按照转移的标签数量进行平均
+            # 里边既有促进作用的部分，也有抑制作用的部分
             candidates[b][lj] /= relation_num
     return candidates
