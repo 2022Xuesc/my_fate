@@ -16,8 +16,8 @@
         ]
       }
     },
-    "multi_label_0": {
-      "module": "MultiLabel",
+    "gcn_0": {
+      "module": "GCN",
       "input": {
         "data": {
           "train_data": [

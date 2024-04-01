@@ -388,9 +388,9 @@ class MultiLabelFitter(object):
         self.adjList = []
         self.variables = []
         self.label_prob_vec = []
-        self.k = 2
+        self.k = 4
 
-        self.lambda_y = 5
+        self.lambda_y = 1
         self.relation_lr = 0.1
         self.relation_optimizer = None
 

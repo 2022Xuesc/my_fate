@@ -30,24 +30,25 @@
   },
   "component_parameters": {
     "common": {
-      "multi_label_0": {
-        "max_iter": 10,
-        "batch_size": 2,
+      "gcn_0": {
+        "max_iter": 100,
+        "batch_size": 16,
         "aggregate_every_n_epoch": 4,
         "lr": 0.0001,
         "num_labels": 20,
         "pretrained": true,
-        "dataset": "voc2007",
-        "arch": "resnet"
+        "dataset": "voc",
+        "arch": "resnet",
+        "t": 0.4
       }
     },
     "role": {
       "guest": {
         "0": {
-          "multi_label_0": {
-            "device": "cuda:3",
-            "batch_size": 8,
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client1/train/anno.json"
+          "gcn_0": {
+            "device": "cuda:1",
+            "batch_size" : 16,
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client1/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -65,9 +66,9 @@
       },
       "host": {
         "0": {
-          "multi_label_0": {
-            "device": "cuda:0",
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client2/train/anno.json"
+          "gcn_0": {
+            "device": "cuda:1",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client2/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -83,9 +84,9 @@
           }
         },
         "1": {
-          "multi_label_0": {
-            "device": "cuda:3",
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client3/train/anno.json"
+          "gcn_0": {
+            "device": "cuda:2",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client3/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -101,9 +102,9 @@
           }
         },
         "2": {
-          "multi_label_0": {
-            "device": "cuda:1",
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client4/train/anno.json"
+          "gcn_0": {
+            "device": "cuda:2",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client4/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -119,9 +120,9 @@
           }
         },
         "3": {
-          "multi_label_0": {
-            "device": "cuda:2",
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client5/train/anno.json"
+          "gcn_0": {
+            "device": "cuda:3",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client5/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -137,9 +138,9 @@
           }
         },
         "4": {
-          "multi_label_0": {
-            "device": "cuda:4",
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client6/train/anno.json"
+          "gcn_0": {
+            "device": "cuda:3",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client6/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -155,9 +156,9 @@
           }
         },
         "5": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:4",
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client7/train/anno.json"
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client7/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -173,9 +174,9 @@
           }
         },
         "6": {
-          "multi_label_0": {
-            "device": "cuda:5",
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client8/train/anno.json"
+          "gcn_0": {
+            "device": "cuda:4",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client8/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -191,9 +192,9 @@
           }
         },
         "7": {
-          "multi_label_0": {
+          "gcn_0": {
             "device": "cuda:5",
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client9/train/anno.json"
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client9/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -209,9 +210,9 @@
           }
         },
         "8": {
-          "multi_label_0": {
-            "device": "cuda:4",
-            "json_file": "/data/projects/voc2007/clustered_voc_expanded/client10/train/anno.json"
+          "gcn_0": {
+            "device": "cuda:5",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client10/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -230,4 +231,3 @@
     }
   }
 }
-
