@@ -1,15 +1,25 @@
 import torchvision.models as torch_models
 
-from federatedml.nn.backend.gcn.models.IJCNN.SALGL.resnet_salgl import ResnetSalgl
-from federatedml.nn.backend.gcn.models.full_salgl import FullSALGL
-from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
-from federatedml.nn.backend.gcn.models.salgl import SALGL
-from federatedml.nn.backend.gcn.models.salgl_with_knn import SALGL_KNN
-from federatedml.nn.backend.gcn.models.IJCNN.KMeans.resnet_kmeans import ResnetKmeans
-from federatedml.nn.backend.gcn.models.IJCNN.KMeans.vit_kmeans import VitKMeans
 from federatedml.nn.backend.gcn.models.IJCNN.Agg_SALGL.resnet_agg_salgl import ResnetAggSalgl
 from federatedml.nn.backend.gcn.models.IJCNN.GCN.c_gcn import ResnetCGCN
 from federatedml.nn.backend.gcn.models.IJCNN.GCN.p_gcn import ResnetPGCN
+from federatedml.nn.backend.gcn.models.IJCNN.KMeans.resnet_kmeans import ResnetKmeans
+from federatedml.nn.backend.gcn.models.IJCNN.KMeans.vit_kmeans import VitKMeans
+from federatedml.nn.backend.gcn.models.IJCNN.SALGL.resnet_salgl import ResnetSalgl
+from federatedml.nn.backend.gcn.models.full_salgl import FullSALGL
+from federatedml.nn.backend.gcn.models.gin.ml_gin import GINResnet
+from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
+from federatedml.nn.backend.gcn.models.salgl import SALGL
+from federatedml.nn.backend.gcn.models.salgl_with_knn import SALGL_KNN
+
+
+def gin_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=300,
+                  out_channels=1024):
+    model = torch_models.resnet101(pretrained)
+    model = GINResnet(model=model, num_classes=num_classes, in_channels=in_channels,
+                      out_channels=out_channels, adjList=adjList)
+    return model.to(device)
+
 
 def gcn_resnet101(pretrained, dataset, t, adjList=None, device='cpu', num_classes=80, in_channel=300):
     model = torch_models.resnet101(pretrained=pretrained)
