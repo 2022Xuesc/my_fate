@@ -279,7 +279,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size,dataset="VOC")
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC")
 
     fitter = GCNFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
@@ -299,7 +299,6 @@ class GCNFedAggregator(object):
             LOGGER.warn(f'收到{len(recv_elements)}个客户端发送过来的模型')
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
-
 
             degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
@@ -403,7 +402,7 @@ class GCNFitter(object):
         self._num_per_labels = [0] * self.param.num_labels
 
         # Todo: 初始化平均精度度量器
-        self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
+        self.ap_meter = AveragePrecisionMeter(difficult_examples=True)
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None
@@ -483,7 +482,7 @@ class GCNFitter(object):
 
         # FedAvg聚合策略
         agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
-                                                           device=self.param.device)
+                                                  device=self.param.device)
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -491,7 +490,6 @@ class GCNFitter(object):
                 idx += 1
                 layer.running_var.data.copy_(agg_bn_data[idx])
                 idx += 1
-
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         self.train_one_epoch(epoch, train_loader, scheduler)

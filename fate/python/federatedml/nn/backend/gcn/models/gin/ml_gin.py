@@ -5,8 +5,8 @@ from federatedml.nn.backend.gcn.utils import *
 
 
 class GINResnet(nn.Module):
-    def __init__(self, model, num_classes, in_channels=300, out_channels=2048,
-                 latent_dim=1024, adjList=None):
+    def __init__(self, model, num_classes, in_channels=300, out_channels=1024,
+                 latent_dim=512, adjList=None):
         super(GINResnet, self).__init__()
         self.A = adjList
         # 定义特征提取部分的网络
@@ -26,15 +26,16 @@ class GINResnet(nn.Module):
         self.pooling = nn.MaxPool2d(14, 14)
 
         # 定义图同构层
-        self.gin1 = GINLayer(in_channels, 1024)
-        self.gin2 = GINLayer(1024, out_channels)
+        self.gin1 = GINLayer(in_channels, out_channels)
+        # Todo: 为了建立残差连接，将两个gin层的输出维度调成一样的
+        self.gin2 = GINLayer(out_channels, out_channels)
 
         # 定义重要性向量层
         self.imp_layer = nn.Linear(out_channels, latent_dim, True)
         self.latent_layer = nn.Linear(2048, latent_dim, True)
         self.map_layer = nn.Linear(latent_dim, latent_dim, True)
 
-        self.relu = nn.LeakyReLU(0.2)
+        self.relu = nn.LeakyReLU(0.1)
         self.sigmoid = nn.Sigmoid()
 
         # 最后全连接分类器层
@@ -51,9 +52,15 @@ class GINResnet(nn.Module):
         feature = self.features(feature)
         feature = self.pooling(feature)
         feature = feature.view(feature.size(0), -1)
+
         inp = inp[0]  # 从数据集中获取初始标签嵌入
         x = self.gin1(inp, self.A)
+        x = self.relu(x)
+
+        identity = x                # 添加残差连接
         x = self.gin2(x, self.A)
+
+        x = self.relu(x + identity)
 
         # Todo: 根据self.A和x计算pairwise_loss
         m = x / torch.norm(x, dim=-1, keepdim=True)  # 方差归一化，即除以各自的模

@@ -17,7 +17,7 @@ class AveragePrecisionMeter(object):
     #  可能存在难以识别的目标（模糊、被遮挡、部分消失），往往需要更加复杂的特征进行识别
     #  为了更加有效评估目标检测算法的性能，一般会对这些目标单独处理
     #  标记为difficult的目标物体可能不会作为正样本、也不会作为负样本，而是作为“无效”样本，不会对评价指标产生影响
-    def __init__(self, difficult_examples=False):
+    def __init__(self, difficult_examples=True):
         super(AveragePrecisionMeter, self).__init__()
         self.reset()
         self.difficult_examples = difficult_examples
