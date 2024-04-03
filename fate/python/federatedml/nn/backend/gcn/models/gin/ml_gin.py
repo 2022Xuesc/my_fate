@@ -8,7 +8,7 @@ class GINResnet(nn.Module):
     def __init__(self, model, num_classes, in_channels=300, out_channels=1024,
                  latent_dim=512, adjList=None):
         super(GINResnet, self).__init__()
-        self.A = adjList
+        self.A = self.generateA(adjList)
         # 定义特征提取部分的网络
         self.features = nn.Sequential(
             model.conv1,
@@ -42,7 +42,7 @@ class GINResnet(nn.Module):
         self.classifier = nn.Linear(latent_dim, 1, True)
 
     def generateA(self, adjList):
-        return Parameter(torch.from_numpy(adjList).float())
+        return Parameter(torch.from_numpy(adjList.astype(np.float32)))
 
     def updateA(self, adjList):
         self.A.data.copy_(torch.from_numpy(adjList).float())

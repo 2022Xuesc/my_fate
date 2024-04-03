@@ -1,36 +1,24 @@
 # 服务器与客户端的通用逻辑
-import copy
-import json
-from collections import OrderedDict
-
-import numpy as np
-import typing
-import torchvision.transforms as transforms
-import torchnet.meter as tnt
 import math
-import os
-import logging
-import csv
-
 import torch
 import torch.nn
+import torchnet.meter as tnt
 
-from federatedml.nn.backend.gcn.config import config_scheduler
-from federatedml.nn.backend.gcn.models import gcn_resnet101
-from federatedml.nn.backend.pytorch.data import COCO
-from federatedml.nn.homo_nn import _consts
-from federatedml.param.gcn_param import GCNParam
-from federatedml.util import LOGGER
+import copy
+import json
+import os
+import typing
+from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.gcn.models import gcn_resnet101
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
-from federatedml.nn.backend.gcn.utils import MultiScaleCrop, Warp
-from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
-
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
+from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
+from federatedml.param.gcn_param import GCNParam
+from federatedml.util import LOGGER
+from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 my_writer = MyWriter(dir_name=os.getcwd())
 
