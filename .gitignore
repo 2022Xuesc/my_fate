@@ -137,6 +137,7 @@ fateboard/
 fateflow/
 logs/
 fate_sqlite.db
+fate_sqlite.db-journal
 fate.env
 README.md
 RELEASE.md
