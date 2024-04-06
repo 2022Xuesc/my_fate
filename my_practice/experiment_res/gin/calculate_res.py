@@ -12,11 +12,11 @@ def calculate_stats(float_list):
 
 
 # paths = ['agg_salgl', 'kmeans', 'salgl', 'c_gcn_with_agg', 'c_gcn_without_agg', 'p_gcn_with_agg', 'p_gcn_without_agg']
-all_paths = os.listdir('old_stats')
+all_paths = os.listdir('new_stats')
 paths = []
 for path in all_paths:
-    if os.path.isdir(f'old_stats/{path}') and not path.startswith('compare'):
-        paths.append(f'old_stats/{path}')
+    if os.path.isdir(f'new_stats/{path}') and not path.startswith('compare'):
+        paths.append(f'new_stats/{path}')
 
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]

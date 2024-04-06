@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202404060404511720430"
-job_id = "202404060404511720430"
+dir_id = "202404061313486719490"
+job_id = "202404061313486719490"
 module_name = 'gcn_0'
-target_dir = 'gin/fixed_not_agg'
+target_dir = 'gin/new_stats/interactive_drop_last_not_agg'
 client_num = 10
 
 
