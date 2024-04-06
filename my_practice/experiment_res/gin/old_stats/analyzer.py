@@ -119,7 +119,7 @@ def compare_layer_ratio_method(paths, file):
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
-        plt.legend(['fixed_not_agg', 'fixed_agg', 'interactive', 'fedavg', 'kmeans_salgl'])
+        plt.legend(['gin w/o occur', 'gin', 'interactive', 'fedavg', 'kmeans_salgl'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
