@@ -381,7 +381,7 @@ class GCNFitter(object):
         # 这样不就对称了吗？
         adjList = (adjList + adjList.T) / 2
 
-        self.adjList = torch.from_numpy(adjList.astype(np.float32)).to(self.param.device)
+        self.adjList = adjList
 
         # Todo: 现有的gcn分类器
         self.model, self.scheduler, self.optimizer, self.gcn_optimizer = _init_gcn_learner(self.param,

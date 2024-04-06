@@ -12,39 +12,37 @@ def calculate_stats(float_list):
 
 
 # paths = ['agg_salgl', 'kmeans', 'salgl', 'c_gcn_with_agg', 'c_gcn_without_agg', 'p_gcn_with_agg', 'p_gcn_without_agg']
-all_paths = os.listdir()
+all_paths = os.listdir('old_stats')
 paths = []
 for path in all_paths:
-    if os.path.isdir(path) and not path.startswith('compare'):
-        paths.append(path)
+    if os.path.isdir(f'old_stats/{path}') and not path.startswith('compare'):
+        paths.append(f'old_stats/{path}')
+
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):
         clients_path.append(os.path.join(path, f'host/{i}'))
     # 读取每个路径下的valid.csv文件，取出最大值，添加到列表中
     mAPs = []
-
+    mAP_indices = []
     for i in range(len(clients_path)):
         with open(os.path.join(clients_path[i], 'valid.csv'), 'r') as csv_file:
-            reader = csv.DictReader(csv_file)
+            reader_list = list(csv.DictReader(csv_file))
             mAP = 0
-            for row in reader:
-                mAP = max(mAP, float(row.get('mAP')))
+            idx = -1
+            for j in range(len(reader_list)):
+                cur_mAP = float(reader_list[j].get('mAP'))
+                if cur_mAP > mAP:
+                    mAP = cur_mAP
+                    idx = j
             mAPs.append(mAP)
+            mAP_indices.append(idx)
     # 计算列表中的最小值、最大值、均值和方差
     WmAP, BmAP, AmAP = calculate_stats(mAPs)
     print(path)
-    print(mAPs)
     print(f"mAP: AmAP, WmAP, BmAP = {AmAP:.1f}, {WmAP:.1f}, {BmAP:.1f}")
-    
-    print('————————————————————————————————————')
 
-# 计算每个标签的平均精度
-num_labels = 20
-for path in paths:
-    clients_path = [os.path.join(path, 'guest/10')]
-    for i in range(1, 10):
-        clients_path.append(os.path.join(path, f'host/{i}'))
+    num_labels = 20
     # 维护ap值之和
     ap_list = [0 for _ in range(num_labels)]
     # 维护ap值的数目
@@ -52,16 +50,14 @@ for path in paths:
     for i in range(len(clients_path)):
         # 读取valid_aps.csv文件
         with open(os.path.join(clients_path[i], 'valid_aps.csv'), 'r') as csv_file:
-            reader = csv.reader(csv_file)
-            max_ap = [-1 for _ in range(num_labels)]  # 统计各个epoch的最大值
-            for row in reader:
-                for label_id in range(num_labels):
-                    max_ap[label_id] = max(max_ap[label_id], float(row[label_id]))
+            reader_list = list(csv.reader(csv_file))
+            max_ap = reader_list[mAP_indices[i]]
             for label_id in range(num_labels):
                 # 说明ap值有效
-                if max_ap[label_id] != -1:
-                    ap_list[label_id] += max_ap[label_id]
+                if float(max_ap[label_id]) != -1:
+                    ap_list[label_id] += float(max_ap[label_id])
                     ap_cnt[label_id] += 1
     avg_ap_list = [round((ap_list[i] / ap_cnt[i]) * 100, 1) for i in range(num_labels)]
-    print(f'{path}', avg_ap_list)
-    print(f'avg: {sum(avg_ap_list) / len(avg_ap_list)}')
+    print(f'ap_list: {avg_ap_list}')
+
+    print('————————————————————————————————————')

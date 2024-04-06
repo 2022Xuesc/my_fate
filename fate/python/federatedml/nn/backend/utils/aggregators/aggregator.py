@@ -93,6 +93,17 @@ def aggregate_relation_matrix(relation_matrices, degrees):
     return relation_matrix
 
 
+def aggregate_relation_variables(relation_params, degrees):
+    degrees = np.array(degrees)
+    degrees_sum = degrees.sum(axis=0)
+    client_nums = len(relation_params)
+    relation_variables = np.zeros_like(relation_params[0])
+    for i in range(client_nums):
+        relation_variables += np.array(relation_params[i]) * degrees[i] / degrees_sum
+    # 就是380维的list求平均
+    return relation_variables
+
+
 def aggregate_scene_adjs_with_cnts(scene_infos):
     num_clients = len(scene_infos)
     num_scenes = len(scene_infos[0][0])

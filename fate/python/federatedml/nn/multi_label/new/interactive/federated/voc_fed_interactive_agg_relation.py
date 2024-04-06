@@ -92,7 +92,7 @@ class FedClientContext(_FedBaseContext):
 
     # 发送模型
     # 这里tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, weight):
+    def send_model(self, tensors, bn_data, relation_data, weight):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
@@ -101,8 +101,13 @@ class FedClientContext(_FedBaseContext):
         for bn_item in bn_data:
             bn_arr = bn_item.data.cpu().numpy()
             bn_arrs.append(bn_arr)
+
+        relation_arrs = []
+        for relation_item in relation_data:
+            relation_arrs.append(relation_item.data.cpu().item())
+
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, relation_arrs, weight), suffix=self._suffix()
         )
 
     def recv_model(self):
@@ -113,14 +118,14 @@ class FedClientContext(_FedBaseContext):
         self.aggregator.send_model((ap, mAP, loss, weight), suffix=self._suffix(group="metrics"))
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, weight, device):
+    def do_aggregation(self, bn_data, relation_data, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, weight)
+        self.send_model(self._params, bn_data, relation_data, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data = recv_elements
+        global_model, bn_data, relation_data = recv_elements
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
@@ -133,7 +138,7 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors
+        return bn_tensors, relation_data
 
     def do_convergence_check(self, weight, ap, mAP, loss_value):
         self.send_metrics(ap, mAP, loss_value, weight)
@@ -257,16 +262,16 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    param.batch_size = 1
-    param.max_iter = 1000
-    param.num_labels = 20
-    param.device = 'cuda:0'
-    param.lr = 0.0001
-    param.aggregate_every_n_epoch = 1
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -281,7 +286,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset='VOC')
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset='VOC', drop_last=False)
 
     fitter = MultiLabelFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
@@ -292,6 +297,7 @@ class SyncAggregator(object):
         self.context = context
         self.model = None
         self.bn_data = None
+        self.relation_data = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -306,15 +312,19 @@ class SyncAggregator(object):
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
             # Todo: 对BN层的统计数据进行处理
             # 抽取出
-            degrees = [party_tuple[2] for party_tuple in recv_elements]
+            relation_tensors = [party_tuple[2] for party_tuple in recv_elements]
+            degrees = [party_tuple[3] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
+
+            self.relation_data = aggregate_relation_variables(relation_tensors, degrees)
+
             # 聚合整个模型，flag论文也是这种聚合方式，只是degrees的生成方式变化
             aggregate_whole_model(tensors, degrees)
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.model = tensors[0]
-            self.context.send_model((self.model, self.bn_data))
+            self.context.send_model((self.model, self.bn_data, self.relation_data))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
@@ -514,11 +524,18 @@ class MultiLabelFitter(object):
             if isinstance(layer, torch.nn.BatchNorm2d):
                 bn_data.append(layer.running_mean)
                 bn_data.append(layer.running_var)
-
+        relation_params = [
+            param
+            # 不是完全倒序，对于嵌套for循环，先声明的在前面
+            for param_group in self.relation_optimizer.param_groups
+            for param in param_group["params"]
+        ]
         # FedAvg聚合策略
-        agg_bn_data = self.context.do_aggregation(weight=self._num_data_consumed, bn_data=bn_data,
-                                                  device=self.param.device)
-
+        agg_bn_data, relation_data = self.context.do_aggregation(weight=self._num_data_consumed, bn_data=bn_data,
+                                                                 relation_data=relation_params,
+                                                                 device=self.param.device)
+        for param_item, relation_item in zip(self.relation_optimizer.param_groups[0]['params'], relation_data):
+            param_item.data.copy_(relation_item)
         # Flag聚合策略
         # Todo: 添加聚合参数
         # 这里计算weight

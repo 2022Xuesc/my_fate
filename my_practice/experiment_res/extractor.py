@@ -13,8 +13,8 @@
 import os
 import shutil
 
-dir_id = "202404040214104042600"
-job_id = "202404040214104042600"
+dir_id = "202404060910454588280"
+job_id = "202404060910454588280"
 module_name = 'gcn_0'
 target_dir = 'gin/fixed_agg'
 client_num = 10
