@@ -1,8 +1,8 @@
+import torchvision.transforms as transforms
+
+from federatedml.nn.backend.gcn.utils import *
 from federatedml.nn.backend.pytorch.data import COCO
 from federatedml.nn.backend.pytorch.data import VOC
-import torch
-import torchvision.transforms as transforms
-from federatedml.nn.backend.gcn.utils import *
 
 
 def gcn_train_transforms(resize_scale, crop_scale):
@@ -65,7 +65,7 @@ class DatasetLoader(object):
 
     # 传resize_scale，一般是512或256
     # 传crop_scale，一般是448或224
-    def get_loaders(self, batch_size, resize_scale=512, crop_scale=448, dataset='COCO'):
+    def get_loaders(self, batch_size, resize_scale=512, crop_scale=448, dataset='COCO', shuffle=True, drop_last=True):
         if dataset == 'COCO':
             train_dataset = COCO(images_dir=self.train_path,
                                  config_dir=self.category_dir,
@@ -87,8 +87,6 @@ class DatasetLoader(object):
         # 对batch_size进行修正
         batch_size = max(1, min(batch_size, len(train_dataset), len(valid_dataset)))
 
-        shuffle = True
-        drop_last = True
         num_workers = 32
 
         train_loader = torch.utils.data.DataLoader(
@@ -97,6 +95,6 @@ class DatasetLoader(object):
         )
         valid_loader = torch.utils.data.DataLoader(
             dataset=valid_dataset, batch_size=batch_size, num_workers=num_workers,
-            drop_last=drop_last, shuffle=shuffle
+            drop_last=drop_last, shuffle=False
         )
         return train_loader, valid_loader
