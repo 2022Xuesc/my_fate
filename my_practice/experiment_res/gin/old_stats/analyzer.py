@@ -73,7 +73,7 @@ def do_draw(path, file):
     plt.close()
 
 
-paths = ['agg_salgl', 'kmeans', 'salgl', 'c_gcn_with_agg', 'c_gcn_without_agg']
+paths = ['agg_kmeans', 'kmeans', 'kmeans', 'c_gcn_with_agg', 'c_gcn_without_agg']
 
 
 def compare_layer_ratio_method(paths, file):
@@ -86,28 +86,40 @@ def compare_layer_ratio_method(paths, file):
         else:
             file = 'valid.csv'
             x_axis = 'epoch'
+
+        fed_avg_path = os.path.join('fedavg', os.path.join(path, file))
+        fed_avg_data = pd.read_csv(fed_avg_path)
+
         fixed_not_agg_path = os.path.join('fixed_not_agg', os.path.join(path, file))
         fixed_not_agg_path_data = pd.read_csv(fixed_not_agg_path)
 
         fixed_agg_path = os.path.join('fixed_agg', os.path.join(path, file))
         fixed_agg_data = pd.read_csv(fixed_agg_path)
 
-        # salgl_path = os.path.join('salgl', os.path.join(path, file))
-        # salgl_data = pd.read_csv(salgl_path)
+        interactive_path = os.path.join('interactive', os.path.join(path, file))
+        interactive_data = pd.read_csv(interactive_path)
 
-        show_epochs = 60
+        kmeans_path = os.path.join('kmeans', os.path.join(path, file))
+        kmeans_data = pd.read_csv(kmeans_path)
+
+        show_epochs = 15 if is_arbiter else 60
 
         fixed_not_agg_mAP = fixed_not_agg_path_data['mAP']
         fixed_agg_mAP = fixed_agg_data['mAP']
-        # salgl_mAP = salgl_data['mAP']
+        interactive_mAP = interactive_data['mAP']
+        fed_avg_mAP = fed_avg_data['mAP']
+        kmeans_mAP = kmeans_data['mAP']
 
         plt.plot(fixed_not_agg_path_data[x_axis][:show_epochs], fixed_not_agg_mAP[:show_epochs], 'g')
-        plt.plot(fixed_agg_data[x_axis][:show_epochs], fixed_agg_mAP[:show_epochs], 'b')
-        # plt.plot(salgl_data[x_axis][:show_epochs], salgl_mAP[:show_epochs], 'r')
+        plt.plot(fixed_agg_data[x_axis][:show_epochs], fixed_agg_mAP[:show_epochs], 'purple')
+        plt.plot(interactive_data[x_axis][:show_epochs], interactive_mAP[:show_epochs], 'r')
+        plt.plot(fed_avg_data[x_axis][:show_epochs], fed_avg_mAP[:show_epochs], 'b')
+        plt.plot(kmeans_data[x_axis][:show_epochs], kmeans_mAP[:show_epochs], 'orange')
+
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
-        plt.legend(['fixed_not_agg', 'fixed_agg'])
+        plt.legend(['fixed_not_agg', 'fixed_agg', 'interactive', 'fedavg', 'kmeans_salgl'])
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -223,7 +235,7 @@ def draw_train_and_valid(paths):
 
 # Todo: 各个客户端自身的结果分析
 
-# paths = ['agg_salgl', 'kmeans', 'salgl', 'c_gcn_with_agg', 'c_gcn_without_agg']
+# paths = ['agg_kmeans', 'kmeans', 'kmeans', 'c_gcn_with_agg', 'c_gcn_without_agg']
 # for path in paths:
 #     clients_path = [os.path.join(path, 'guest/10')]
 # 
@@ -237,7 +249,7 @@ def draw_train_and_valid(paths):
 #     draw(arbiter_path, loss_file='avgloss.csv')
 
 # Todo: 画一下损失成分
-# paths = ['agg_salgl', 'kmeans', 'salgl', 'c_gcn_with_agg', 'c_gcn_without_agg']
+# paths = ['agg_kmeans', 'kmeans', 'kmeans', 'c_gcn_with_agg', 'c_gcn_without_agg']
 # for path in paths:
 #     clients_path = [os.path.join(path, 'guest/10')]
 #

@@ -110,6 +110,7 @@ def compare_layer_ratio_method(paths, file):
         plt.plot(fixed_agg_data[x_axis][:show_epochs], fixed_agg_mAP[:show_epochs], 'b')
         plt.plot(interactive_data[x_axis][:show_epochs], interactive_mAP[:show_epochs], 'r')
         plt.plot(interactive_drop_data[x_axis][:show_epochs], interactive_drop_mAP[:show_epochs], 'r')
+        
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
 
