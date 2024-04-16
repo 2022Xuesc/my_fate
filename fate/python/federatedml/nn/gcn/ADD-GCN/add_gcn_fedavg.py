@@ -254,16 +254,16 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 20
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 20
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -472,7 +472,7 @@ class GCNFitter(object):
         # bn_data添加
         bn_data = []
         for layer in self.model.modules():
-            if isinstance(layer, torch.nn.BatchNorm2d) or isinstance(layer, torch.nn.BatchNorm1d):
+            if isinstance(layer, torch.nn.BatchNorm2d):
                 bn_data.append(layer.running_mean)
                 bn_data.append(layer.running_var)
 
@@ -485,7 +485,7 @@ class GCNFitter(object):
                                                   device=self.param.device)
         idx = 0
         for layer in self.model.modules():
-            if isinstance(layer, torch.nn.BatchNorm2d) or isinstance(layer, torch.nn.BatchNorm1d):
+            if isinstance(layer, torch.nn.BatchNorm2d):
                 layer.running_mean.data.copy_(agg_bn_data[idx])
                 idx += 1
                 layer.running_var.data.copy_(agg_bn_data[idx])
@@ -502,7 +502,7 @@ class GCNFitter(object):
 
     def train(self, train_loader, model, criterion, optimizer, epoch, device, scheduler):
         self.ap_meter.reset()
-        model.train() 
+        model.train()
         # Todo: 记录损失的相关信息
         OVERALL_LOSS_KEY = 'Overall Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
@@ -512,7 +512,7 @@ class GCNFitter(object):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
 
-            # inp = inp.to(device)
+            inp = inp.to(device)
 
             prev_target = target.clone()
 
@@ -526,8 +526,7 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            # Todo: 对于add_gcn来说，不需要inp
-            cnn_predicts, gcn_predicts = model(features)
+            cnn_predicts, gcn_predicts = model(features, inp)
             predicts = (cnn_predicts + gcn_predicts) / 2  # 求平均
 
             # Todo: 将计算结果添加到ap_meter中
@@ -566,15 +565,15 @@ class GCNFitter(object):
         with torch.no_grad():
             for validate_step, ((features, inp), target) in enumerate(valid_loader):
                 features = features.to(device)
-                # inp = inp.to(device)
+                inp = inp.to(device)
 
                 prev_target = target.clone()
                 target[target == 0] = 1
                 target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features)
-                predicts = (cnn_predicts + gcn_predicts) / 2
+                cnn_predicts, gcn_predicts = model(features, inp)
+                predicts = (cnn_predicts + gcn_predicts) / 2;
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, prev_target)
 

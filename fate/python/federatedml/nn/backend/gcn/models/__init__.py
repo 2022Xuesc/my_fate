@@ -8,6 +8,7 @@ from federatedml.nn.backend.gcn.models.IJCNN.KMeans.vit_kmeans import VitKMeans
 from federatedml.nn.backend.gcn.models.IJCNN.SALGL.resnet_salgl import ResnetSalgl
 from federatedml.nn.backend.gcn.models.full_salgl import FullSALGL
 from federatedml.nn.backend.gcn.models.gin.ml_gin import GINResnet
+from federatedml.nn.backend.gcn.models.instance_gcn.add_gcn import ADD_GCN
 from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
 from federatedml.nn.backend.gcn.models.salgl import SALGL
 from federatedml.nn.backend.gcn.models.salgl_with_knn import SALGL_KNN
@@ -18,6 +19,18 @@ def gin_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels
     model = torch_models.resnet101(pretrained)
     model = GINResnet(model=model, num_classes=num_classes, in_channels=in_channels,
                       out_channels=out_channels, adjList=adjList)
+    return model.to(device)
+
+
+# 使用add_gcn模型
+def add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                      out_channels=1024):
+    model = torch_models.resnet101(pretrained)
+    # Todo: 扩展点
+    #  1. static-adj固定不变，这样就需要参与聚合
+    #  2. static-adj使用概率矩阵初始化
+    #  3. static-adj随机初始化
+    model = ADD_GCN(model, num_classes, in_channels, out_channels)
     return model.to(device)
 
 
