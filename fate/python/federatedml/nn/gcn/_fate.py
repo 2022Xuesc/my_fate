@@ -536,7 +536,7 @@ class GCNFitter(object):
 
             # 非对称损失需要经过sigmoid
 
-            lambda_dynamic = 2
+            lambda_dynamic = 1
             asym_loss = criterion(sigmoid_func(predicts), target)
             overall_loss = asym_loss + \
                            lambda_dynamic * dynamic_adj_loss

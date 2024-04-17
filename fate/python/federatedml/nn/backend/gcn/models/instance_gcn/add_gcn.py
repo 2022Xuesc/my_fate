@@ -69,7 +69,7 @@ class DynamicGraphConvolution(nn.Module):
         # 计算dynamic_adj在out1上经过一次作用后对out1的改变情况，使用余弦相似度作为度量
         # out1的维度 batch_size * num_classes， dynamic_adj的维度 batch_size * num_classes * num_classes
         transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
-        dynamic_adj_loss = torch.mean(torch.cosine_similarity(out1, transformed_out1, dim=1))
+        dynamic_adj_loss = 1 - torch.mean(torch.cosine_similarity(out1, transformed_out1, dim=1))
         x = self.forward_dynamic_gcn(x, dynamic_adj)
         return x, dynamic_adj_loss
 
