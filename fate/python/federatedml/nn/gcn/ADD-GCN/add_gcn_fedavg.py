@@ -512,8 +512,6 @@ class GCNFitter(object):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
 
-            inp = inp.to(device)
-
             prev_target = target.clone()
 
             target[target == 0] = 1
@@ -526,7 +524,7 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts = model(features, inp)
+            cnn_predicts, gcn_predicts = model(features)
             predicts = (cnn_predicts + gcn_predicts) / 2  # 求平均
 
             # Todo: 将计算结果添加到ap_meter中
@@ -565,15 +563,14 @@ class GCNFitter(object):
         with torch.no_grad():
             for validate_step, ((features, inp), target) in enumerate(valid_loader):
                 features = features.to(device)
-                inp = inp.to(device)
 
                 prev_target = target.clone()
                 target[target == 0] = 1
                 target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features, inp)
-                predicts = (cnn_predicts + gcn_predicts) / 2;
+                cnn_predicts, gcn_predicts = model(features, )
+                predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, prev_target)
 

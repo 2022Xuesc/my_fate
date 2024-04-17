@@ -6,13 +6,16 @@ import torch.nn as nn
 class DynamicGraphConvolution(nn.Module):
     # 节点的输入特征
     # 节点的输出特征
-    def __init__(self, in_features, out_features, num_nodes):
+    def __init__(self, in_features, out_features, num_nodes, adjList=None, needOptimize=True):
         super(DynamicGraphConvolution, self).__init__()
-
-        self.static_adj = nn.Sequential(      # Todo: 静态相关性矩阵随机初始化得到
-            nn.Conv1d(num_nodes, num_nodes, 1, bias=False),
-            nn.LeakyReLU(0.2))
-        
+        # Todo: 静态相关性矩阵随机初始化得到
+        if adjList is not None:
+            self.static_adj = nn.Conv1d(num_nodes, num_nodes, 1, bias=False)
+            self.static_adj.weight.data.copy_(torch.from_numpy(adjList).unsqueeze(-1))
+        else:
+            # Todo: weight是一个c * c * 1的tensor，使用adjList进行转换
+            self.static_adj = nn.Conv1d(num_nodes, num_nodes, 1, bias=False)
+        self.static_adj.requires_grad_(needOptimize)
         self.static_weight = nn.Sequential(  # 静态图卷积的变换矩阵，将in_features变换到out_features
             nn.Conv1d(in_features, out_features, 1),
             nn.LeakyReLU(0.2))
@@ -27,6 +30,8 @@ class DynamicGraphConvolution(nn.Module):
 
     def forward_static_gcn(self, x):
         x = self.static_adj(x.transpose(1, 2))
+        # 将static_adj和relu拆分开来
+        x = self.relu(x)
         x = self.static_weight(x.transpose(1, 2))
         return x
 
@@ -66,7 +71,7 @@ class DynamicGraphConvolution(nn.Module):
 
 
 class ADD_GCN(nn.Module):
-    def __init__(self, model, num_classes, in_features=1024, out_features=1024):
+    def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None,needOptimize=True):
         super(ADD_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
@@ -87,11 +92,10 @@ class ADD_GCN(nn.Module):
         self.conv_transform = nn.Conv2d(2048, in_features, (1, 1))
         self.relu = nn.LeakyReLU(0.2)
 
-        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes)
+        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList,needOptimize)
 
         self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())  # 单位矩阵，自相关性
         self.last_linear = nn.Conv1d(out_features, self.num_classes, 1)  # 最终的分类层
-
 
     def forward_feature(self, x):
         x = self.features(x)

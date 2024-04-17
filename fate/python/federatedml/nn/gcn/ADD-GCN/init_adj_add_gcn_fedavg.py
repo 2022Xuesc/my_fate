@@ -511,6 +511,8 @@ class GCNFitter(object):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
 
+            # inp = inp.to(device)
+
             prev_target = target.clone()
 
             target[target == 0] = 1
@@ -587,9 +589,10 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     #  对于初始化的，使用300即可
     in_channel = 1024
+    # 仅仅使用初始化权重，仍要进行学习
     model = add_gcn_resnet101(param.pretrained, adjList,
                               device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                              needOptimize=False)
+                              needOptimize=True)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

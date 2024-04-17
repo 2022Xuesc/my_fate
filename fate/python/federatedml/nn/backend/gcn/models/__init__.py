@@ -24,13 +24,13 @@ def gin_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels
 
 # 使用add_gcn模型
 def add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                      out_channels=1024):
+                      out_channels=1024, needOptimize=True):
     model = torch_models.resnet101(pretrained)
     # Todo: 扩展点
     #  1. static-adj固定不变，这样就需要参与聚合
     #  2. static-adj使用概率矩阵初始化
     #  3. static-adj随机初始化
-    model = ADD_GCN(model, num_classes, in_channels, out_channels)
+    model = ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
     return model.to(device)
 
 

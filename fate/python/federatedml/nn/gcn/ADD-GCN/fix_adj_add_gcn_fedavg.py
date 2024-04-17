@@ -511,6 +511,8 @@ class GCNFitter(object):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
 
+            # inp = inp.to(device)
+
             prev_target = target.clone()
 
             target[target == 0] = 1
