@@ -22,7 +22,7 @@ from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 my_writer = MyWriter(dir_name=os.getcwd())
-train_header = ['epoch', 'mAP', 'overall_loss']
+train_header = ['epoch', 'mAP', 'asym_loss', 'dynamic_adj_loss', 'overall_loss']
 valid_header = ['epoch', 'mAP', 'loss']
 
 train_writer = my_writer.get("train.csv", header=train_header)
@@ -448,10 +448,10 @@ class GCNFitter(object):
         # 度量重置
         self.ap_meter.reset()
         # Todo: 调整学习率的部分放到scheduler中执行
-        mAP, ap, overall_loss = self.train(train_loader, self.model, self.criterion,
-                                           self.optimizer, epoch, self.param.device,
-                                           scheduler)
-        train_writer.writerow([epoch, mAP, overall_loss])
+        mAP, ap, asym_loss, dynamic_adj_loss, overall_loss = self.train(train_loader, self.model, self.criterion,
+                                                                        self.optimizer, epoch, self.param.device,
+                                                                        scheduler)
+        train_writer.writerow([epoch, mAP, asym_loss, dynamic_adj_loss, overall_loss])
         train_aps_writer.writerow(ap)
         return overall_loss
 
@@ -503,8 +503,13 @@ class GCNFitter(object):
         self.ap_meter.reset()
         model.train()
         # Todo: 记录损失的相关信息
+        ASYM_LOSS = 'Asym Loss'
+        DYNAMIC_ADJ_LOSS = 'Dynamic Adj Loss'
         OVERALL_LOSS_KEY = 'Overall Loss'
-        losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
+        losses = OrderedDict([(ASYM_LOSS, tnt.AverageValueMeter()),
+                              (DYNAMIC_ADJ_LOSS, tnt.AverageValueMeter()),
+                              (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
+
         sigmoid_func = torch.nn.Sigmoid()
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
@@ -523,17 +528,22 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts = model(features)
-            predicts = (cnn_predicts + gcn_predicts) / 2  # 求平均
+            predicts, dynamic_adj_loss = model(features)
+            # 求平均
 
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, prev_target)
 
             # 非对称损失需要经过sigmoid
-            overall_loss = criterion(sigmoid_func(predicts), target)
+
+            lambda_dynamic = 2
+            asym_loss = criterion(sigmoid_func(predicts), target)
+            overall_loss = asym_loss + \
+                           lambda_dynamic * dynamic_adj_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
-
+            losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
+            losses[ASYM_LOSS].add(asym_loss.item())
             optimizer.zero_grad()
 
             overall_loss.backward()
@@ -548,7 +558,9 @@ class GCNFitter(object):
         mAP, ap = self.ap_meter.value()
         mAP *= 100
         overall_loss = losses[OVERALL_LOSS_KEY].mean
-        return mAP.item(), ap, overall_loss
+        dynamic_adj_loss = losses[DYNAMIC_ADJ_LOSS].mean
+        asym_loss = losses[ASYM_LOSS].mean
+        return mAP.item(), ap, asym_loss, dynamic_adj_loss, overall_loss
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         OVERALL_LOSS_KEY = 'Overall Loss'
@@ -568,8 +580,7 @@ class GCNFitter(object):
                 target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features)
-                predicts = (cnn_predicts + gcn_predicts) / 2;
+                predicts, _ = model(features)
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, prev_target)
 
