@@ -1,4 +1,3 @@
-# 服务器与客户端的通用逻辑
 import math
 import torch
 import torch.nn
@@ -611,3 +610,4 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
+
