@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202404061313486719490"
-job_id = "202404061313486719490"
+dir_id = "202404180436249702240"
+job_id = "202404180436249702240"
 module_name = 'gcn_0'
-target_dir = 'gin/new_stats/interactive_drop_last_not_agg'
+target_dir = 'add_gcn/dynamic_adj_loss'
 client_num = 10
 
 
@@ -45,6 +45,7 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
 
 
