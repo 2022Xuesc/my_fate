@@ -527,19 +527,19 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            predicts, dynamic_adj_loss = model(features)
+            out1, out2, dynamic_adj_loss = model(features)
             # 求平均
+            predicts = (out1 + out2) / 2
 
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, prev_target)
 
             # 非对称损失需要经过sigmoid
 
-            lambda_dynamic = 1
+            lambda_dynamic = 5
             asym_loss = criterion(sigmoid_func(predicts), target)
-            overall_loss = asym_loss
-            # overall_loss = asym_loss + \
-            #                lambda_dynamic * dynamic_adj_loss
+            overall_loss = asym_loss + \
+                           lambda_dynamic * dynamic_adj_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
@@ -580,8 +580,9 @@ class GCNFitter(object):
                 target[target == -1] = 0
                 target = target.to(device)
 
-                predicts, _ = model(features)
+                out1, out2, _ = model(features)
                 # Todo: 将计算结果添加到ap_meter中
+                predicts = (out1 + out2) / 2
                 self.ap_meter.add(predicts.data, prev_target)
 
                 objective_loss = criterion(sigmoid_func(predicts), target)
@@ -610,4 +611,3 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
-

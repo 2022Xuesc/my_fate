@@ -149,8 +149,8 @@ class ADD_GCN(nn.Module):
 
         out2 = self.last_linear(z)  # B*1*num_classes
         mask_mat = self.mask_mat.detach()
-        out = (out2 * mask_mat).sum(-1)
-        return out, dynamic_adj_loss
+        out2 = (out2 * mask_mat).sum(-1)
+        return out1, out2, dynamic_adj_loss
 
     def get_config_optim(self, lr, lrp):
         # 与GCN类似
