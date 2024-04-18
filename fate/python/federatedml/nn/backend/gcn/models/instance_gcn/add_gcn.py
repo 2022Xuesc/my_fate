@@ -73,8 +73,9 @@ class DynamicGraphConvolution(nn.Module):
         # Todo: 余弦相似度不可取
         # dynamic_adj_loss = 1 - torch.mean(torch.cosine_similarity(out1, transformed_out1, dim=1))
 
-        # Todo: 使用平方损失？
-        dynamic_adj_loss = torch.mean(torch.norm(out1 - transformed_out1, dim=1))
+        # Todo: 使用平方损失？不该求平均的，因为asym_loss就是未平均的
+        # dynamic_adj_loss = torch.mean(torch.norm(out1 - transformed_out1, dim=1))
+        dynamic_adj_loss = torch.norm(out1 - transformed_out1, dim=1)
         x = self.forward_dynamic_gcn(x, dynamic_adj)
         return x, dynamic_adj_loss
 
