@@ -97,6 +97,7 @@ def compare_layer_ratio_method(paths, file):
             ind += 1
 
         plt.xlabel(x_axis)
+        plt.ylim(60,95)
         plt.ylabel('valid mAP')
 
         plt.legend(method_paths)
