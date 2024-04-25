@@ -540,8 +540,9 @@ class GCNFitter(object):
 
             lambda_dynamic = 0.5
             asym_loss = criterion(sigmoid_func(predicts), target)
-            overall_loss = asym_loss + \
-                           lambda_dynamic * dynamic_adj_loss
+            # overall_loss = asym_loss + \
+            #                lambda_dynamic * dynamic_adj_loss
+            overall_loss = asym_loss  # Todo: 不考虑动态adj的损失
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
@@ -613,3 +614,4 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
+
