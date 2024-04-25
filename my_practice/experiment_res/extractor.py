@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202404180436249702240"
-job_id = "202404180436249702240"
+dir_id = "202404251018477884200"
+job_id = "202404251018477884200"
 module_name = 'gcn_0'
-target_dir = 'add_gcn/dynamic_adj_loss'
+target_dir = 'norm_add_gcn/corrected_add_gcn/add_gcn'
 client_num = 10
 
 
@@ -45,17 +45,3 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
