@@ -10,7 +10,7 @@ import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.gcn.models import add_gcn_resnet101
+from federatedml.nn.backend.gcn.models import *
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
@@ -253,16 +253,16 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 20
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 20
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -378,7 +378,10 @@ class GCNFitter(object):
                 adjList[i] = adjList[i] / nums[i]
 
         # 使用非对称的
-
+        # 将adjList主对角线上的数字设置为1
+        for i in range(num_labels):
+            adjList[i][i] = 1
+            
         self.adjList = adjList
 
         # Todo: 现有的gcn分类器
@@ -536,7 +539,7 @@ class GCNFitter(object):
 
             # 非对称损失需要经过sigmoid
 
-            lambda_dynamic = 0.5
+            lambda_dynamic = 1
             asym_loss = criterion(sigmoid_func(predicts), target)
             overall_loss = asym_loss + \
                            lambda_dynamic * dynamic_adj_loss
@@ -599,9 +602,9 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     #  对于初始化的，使用300即可
     in_channel = 1024
-    model = add_gcn_resnet101(param.pretrained, adjList,
-                              device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                              needOptimize=True)
+    model = norm_add_gcn_resnet101(param.pretrained, adjList,
+                                   device=param.device, num_classes=param.num_labels, in_channels=in_channel,
+                                   needOptimize=True)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

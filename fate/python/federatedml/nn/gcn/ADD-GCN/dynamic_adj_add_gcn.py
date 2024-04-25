@@ -1,4 +1,3 @@
-# 服务器与客户端的通用逻辑
 import math
 import torch
 import torch.nn
@@ -22,7 +21,7 @@ from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 my_writer = MyWriter(dir_name=os.getcwd())
-train_header = ['epoch', 'mAP', 'overall_loss']
+train_header = ['epoch', 'mAP', 'asym_loss', 'dynamic_adj_loss', 'overall_loss']
 valid_header = ['epoch', 'mAP', 'loss']
 
 train_writer = my_writer.get("train.csv", header=train_header)
@@ -254,16 +253,16 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 1000
-    param.num_labels = 20
-    param.device = 'cuda:0'
-    param.lr = 0.0001
-    param.aggregate_every_n_epoch = 1
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -378,11 +377,11 @@ class GCNFitter(object):
             if nums[i] != 0:
                 adjList[i] = adjList[i] / nums[i]
 
-        # 这样不就对称了吗？
-        adjList = (adjList + adjList.T) / 2
+        # 使用非对称的
+        for i in range(num_labels):
+            adjList[i][i] = 1
 
-        # self.adjList = adjList
-        self.adjList = None
+        self.adjList = adjList
 
         # Todo: 现有的gcn分类器
         self.model, self.scheduler, self.optimizer, self.gcn_optimizer = _init_gcn_learner(self.param,
@@ -450,10 +449,10 @@ class GCNFitter(object):
         # 度量重置
         self.ap_meter.reset()
         # Todo: 调整学习率的部分放到scheduler中执行
-        mAP, ap, overall_loss = self.train(train_loader, self.model, self.criterion,
-                                           self.optimizer, epoch, self.param.device,
-                                           scheduler)
-        train_writer.writerow([epoch, mAP, overall_loss])
+        mAP, ap, asym_loss, dynamic_adj_loss, overall_loss = self.train(train_loader, self.model, self.criterion,
+                                                                        self.optimizer, epoch, self.param.device,
+                                                                        scheduler)
+        train_writer.writerow([epoch, mAP, asym_loss, dynamic_adj_loss, overall_loss])
         train_aps_writer.writerow(ap)
         return overall_loss
 
@@ -505,8 +504,13 @@ class GCNFitter(object):
         self.ap_meter.reset()
         model.train()
         # Todo: 记录损失的相关信息
+        ASYM_LOSS = 'Asym Loss'
+        DYNAMIC_ADJ_LOSS = 'Dynamic Adj Loss'
         OVERALL_LOSS_KEY = 'Overall Loss'
-        losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
+        losses = OrderedDict([(ASYM_LOSS, tnt.AverageValueMeter()),
+                              (DYNAMIC_ADJ_LOSS, tnt.AverageValueMeter()),
+                              (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
+
         sigmoid_func = torch.nn.Sigmoid()
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
@@ -525,17 +529,23 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts = model(features)
-            predicts = (cnn_predicts + gcn_predicts) / 2  # 求平均
+            out1, out2, dynamic_adj_loss = model(features)
+            # 求平均
+            predicts = (out1 + out2) / 2
 
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, prev_target)
 
             # 非对称损失需要经过sigmoid
-            overall_loss = criterion(sigmoid_func(predicts), target)
+
+            lambda_dynamic = 0.5
+            asym_loss = criterion(sigmoid_func(predicts), target)
+            overall_loss = asym_loss + \
+                           lambda_dynamic * dynamic_adj_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
-
+            losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
+            losses[ASYM_LOSS].add(asym_loss.item())
             optimizer.zero_grad()
 
             overall_loss.backward()
@@ -550,7 +560,9 @@ class GCNFitter(object):
         mAP, ap = self.ap_meter.value()
         mAP *= 100
         overall_loss = losses[OVERALL_LOSS_KEY].mean
-        return mAP.item(), ap, overall_loss
+        dynamic_adj_loss = losses[DYNAMIC_ADJ_LOSS].mean
+        asym_loss = losses[ASYM_LOSS].mean
+        return mAP.item(), ap, asym_loss, dynamic_adj_loss, overall_loss
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         OVERALL_LOSS_KEY = 'Overall Loss'
@@ -570,9 +582,9 @@ class GCNFitter(object):
                 target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features, )
-                predicts = (cnn_predicts + gcn_predicts) / 2
+                out1, out2, _ = model(features)
                 # Todo: 将计算结果添加到ap_meter中
+                predicts = (out1 + out2) / 2
                 self.ap_meter.add(predicts.data, prev_target)
 
                 objective_loss = criterion(sigmoid_func(predicts), target)
@@ -584,14 +596,14 @@ class GCNFitter(object):
         return mAP.item(), ap, loss
 
 
-# Todo: 相关性矩阵完全随机初始化
 def _init_gcn_learner(param, device='cpu', adjList=None):
     # in_channel是标签嵌入向量的初始（输入）维度
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     #  对于初始化的，使用300即可
     in_channel = 1024
     model = add_gcn_resnet101(param.pretrained, adjList,
-                              device=param.device, num_classes=param.num_labels, in_channels=in_channel)
+                              device=param.device, num_classes=param.num_labels, in_channels=in_channel,
+                              needOptimize=True)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

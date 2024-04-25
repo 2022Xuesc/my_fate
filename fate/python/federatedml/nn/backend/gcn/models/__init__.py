@@ -10,6 +10,8 @@ from federatedml.nn.backend.gcn.models.full_salgl import FullSALGL
 from federatedml.nn.backend.gcn.models.gin.ml_gin import GINResnet
 from federatedml.nn.backend.gcn.models.instance_gcn.add_gcn import ADD_GCN
 from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
+from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gcn import NORM_ADD_GCN
+from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gin import NORM_ADD_GIN
 from federatedml.nn.backend.gcn.models.salgl import SALGL
 from federatedml.nn.backend.gcn.models.salgl_with_knn import SALGL_KNN
 
@@ -26,11 +28,23 @@ def gin_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels
 def add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
                       out_channels=1024, needOptimize=True):
     model = torch_models.resnet101(pretrained)
-    # Todo: 扩展点
-    #  1. static-adj固定不变，这样就需要参与聚合
-    #  2. static-adj使用概率矩阵初始化
-    #  3. static-adj随机初始化
     model = ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
+    return model.to(device)
+
+
+# Todo: 对A进行约束 + 使用标准gcn
+def norm_add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                           out_channels=1024, needOptimize=True):
+    model = torch_models.resnet101(pretrained)
+    model = NORM_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
+    return model.to(device)
+
+
+# Todo: 对A进行约束 + 使用标准gin
+def norm_add_gin_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                           out_channels=1024, needOptimize=True):
+    model = torch_models.resnet101(pretrained)
+    model = NORM_ADD_GIN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
     return model.to(device)
 
 

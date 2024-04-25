@@ -379,7 +379,8 @@ class GCNFitter(object):
                 adjList[i] = adjList[i] / nums[i]
 
         # 使用非对称的
-
+        for i in range(num_labels):
+            adjList[i][i] = 1
         self.adjList = adjList
 
         # Todo: 现有的gcn分类器
@@ -584,6 +585,7 @@ class GCNFitter(object):
         return mAP.item(), ap, loss
 
 
+# Todo: 相关性矩阵初始化 + 优化
 def _init_gcn_learner(param, device='cpu', adjList=None):
     # in_channel是标签嵌入向量的初始（输入）维度
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024

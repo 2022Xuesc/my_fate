@@ -6,7 +6,7 @@ from federatedml.nn.backend.gcn.utils import *
 
 class GINResnet(nn.Module):
     def __init__(self, model, num_classes, in_channels=300, out_channels=1024,
-                 latent_dim=512, adjList=None):
+                 latent_dim=512, adjList=None,inp=None):
         super(GINResnet, self).__init__()
         self.A = self.generateA(adjList)
         # 定义特征提取部分的网络
@@ -29,7 +29,7 @@ class GINResnet(nn.Module):
         self.gin1 = GINLayer(in_channels, out_channels)
         # Todo: 为了建立残差连接，将两个gin层的输出维度调成一样的
         self.gin2 = GINLayer(out_channels, out_channels)
-
+        self.inp = inp
         # 定义重要性向量层
         self.imp_layer = nn.Linear(out_channels, latent_dim, True)
         self.latent_layer = nn.Linear(2048, latent_dim, True)
@@ -53,7 +53,7 @@ class GINResnet(nn.Module):
         feature = self.pooling(feature)
         feature = feature.view(feature.size(0), -1)
 
-        inp = inp[0]  # 从数据集中获取初始标签嵌入
+        inp = inp[0] if self.inp is None else self.inp # 从数据集中获取初始标签嵌入
         x = self.gin1(inp, self.A)
         x = self.relu(x)
 

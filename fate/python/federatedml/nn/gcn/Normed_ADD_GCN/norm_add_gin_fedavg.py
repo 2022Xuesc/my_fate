@@ -254,16 +254,16 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 1000
-    param.num_labels = 20
-    param.device = 'cuda:0'
-    param.lr = 0.0001
-    param.aggregate_every_n_epoch = 1
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -378,11 +378,9 @@ class GCNFitter(object):
             if nums[i] != 0:
                 adjList[i] = adjList[i] / nums[i]
 
-        # 这样不就对称了吗？
-        adjList = (adjList + adjList.T) / 2
+        # 使用非对称的
 
-        # self.adjList = adjList
-        self.adjList = None
+        self.adjList = adjList
 
         # Todo: 现有的gcn分类器
         self.model, self.scheduler, self.optimizer, self.gcn_optimizer = _init_gcn_learner(self.param,
@@ -513,6 +511,8 @@ class GCNFitter(object):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
 
+            # inp = inp.to(device)
+
             prev_target = target.clone()
 
             target[target == 0] = 1
@@ -570,8 +570,8 @@ class GCNFitter(object):
                 target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features, )
-                predicts = (cnn_predicts + gcn_predicts) / 2
+                cnn_predicts, gcn_predicts = model(features)
+                predicts = (cnn_predicts + gcn_predicts) / 2;
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, prev_target)
 
@@ -584,14 +584,16 @@ class GCNFitter(object):
         return mAP.item(), ap, loss
 
 
-# Todo: 相关性矩阵完全随机初始化
+# Todo: 相关性矩阵初始化 + 优化
 def _init_gcn_learner(param, device='cpu', adjList=None):
     # in_channel是标签嵌入向量的初始（输入）维度
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     #  对于初始化的，使用300即可
     in_channel = 1024
+    # 仅仅使用初始化权重，仍要进行学习
     model = add_gcn_resnet101(param.pretrained, adjList,
-                              device=param.device, num_classes=param.num_labels, in_channels=in_channel)
+                              device=param.device, num_classes=param.num_labels, in_channels=in_channel,
+                              needOptimize=True)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
