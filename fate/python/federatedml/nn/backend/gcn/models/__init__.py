@@ -9,6 +9,7 @@ from federatedml.nn.backend.gcn.models.IJCNN.SALGL.resnet_salgl import ResnetSal
 from federatedml.nn.backend.gcn.models.full_salgl import FullSALGL
 from federatedml.nn.backend.gcn.models.gin.ml_gin import GINResnet
 from federatedml.nn.backend.gcn.models.instance_gcn.add_gcn import ADD_GCN
+from federatedml.nn.backend.gcn.models.instance_gcn.dynamic_add_gcn import DYNAMIC_ADD_GCN
 from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
 from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gcn import NORM_ADD_GCN
 from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gin import NORM_ADD_GIN
@@ -29,6 +30,13 @@ def add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_chan
                       out_channels=1024, needOptimize=True):
     model = torch_models.resnet101(pretrained)
     model = ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
+    return model.to(device)
+
+
+def dynamic_add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                              out_channels=1024, needOptimize=True):
+    model = torch_models.resnet101(pretrained)
+    model = DYNAMIC_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
     return model.to(device)
 
 

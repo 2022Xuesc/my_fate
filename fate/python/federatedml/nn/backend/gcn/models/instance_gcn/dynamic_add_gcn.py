@@ -65,16 +65,27 @@ class DynamicGraphConvolution(nn.Module):
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
         out_static = self.forward_static_gcn(x)
-        x = x + out_static  # Todo: 其实就是自己本身的特征向量不变
+        x = x + out_static
         dynamic_adj = self.forward_construct_dynamic_graph(x)
-        
+        # 计算dynamic_adj在out1上经过一次作用后对out1的改变情况，使用余弦相似度作为度量
+        # out1的维度 batch_size * num_classes， dynamic_adj的维度 batch_size * num_classes * num_classes
+        transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
+
+        # Todo: 这里是否需要求平均？
+        transformed_out1 /= transformed_out1.size(1)
+        dynamic_adj_loss = torch.sum(torch.norm(out1 - transformed_out1, dim=1))
+
+        # Todo: 是否需要加和静态adj的损失？
+        # diff = dynamic_adj - self.static_adj
+        # dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1))
+
         x = self.forward_dynamic_gcn(x, dynamic_adj)
-        return x
+        return x, dynamic_adj_loss
 
 
-class ADD_GCN(nn.Module):
+class DYNAMIC_ADD_GCN(nn.Module):
     def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None, needOptimize=True):
-        super(ADD_GCN, self).__init__()
+        super(DYNAMIC_ADD_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
             model.bn1,
@@ -133,8 +144,8 @@ class ADD_GCN(nn.Module):
         return x
 
     def forward_dgcn(self, x, out1):
-        x = self.gcn(x, out1)
-        return x
+        x, dynamic_adj_loss = self.gcn(x, out1)
+        return x, dynamic_adj_loss
 
     def forward(self, x):
         x = self.forward_feature(x)
@@ -142,13 +153,13 @@ class ADD_GCN(nn.Module):
         out1 = self.forward_classification_sm(x)  # 计算初始分类器的预测向量
 
         v = self.forward_sam(x)  # B*1024*num_classes，每个类别的注意力向量
-        z = self.forward_dgcn(v, out1)
+        z, dynamic_adj_loss = self.forward_dgcn(v, out1)
         z = v + z
 
         out2 = self.last_linear(z)  # B*1*num_classes
         mask_mat = self.mask_mat.detach()
         out2 = (out2 * mask_mat).sum(-1)
-        return out1, out2
+        return out1, out2, dynamic_adj_loss
 
     def get_config_optim(self, lr, lrp):
         # 与GCN类似

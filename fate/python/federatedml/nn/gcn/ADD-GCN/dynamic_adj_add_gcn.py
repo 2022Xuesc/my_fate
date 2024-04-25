@@ -10,7 +10,7 @@ import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.gcn.models import add_gcn_resnet101
+from federatedml.nn.backend.gcn.models import *
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
@@ -601,9 +601,9 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     #  对于初始化的，使用300即可
     in_channel = 1024
-    model = add_gcn_resnet101(param.pretrained, adjList,
-                              device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                              needOptimize=True)
+    model = dynamic_add_gcn_resnet101(param.pretrained, adjList,
+                                      device=param.device, num_classes=param.num_labels, in_channels=in_channel,
+                                      needOptimize=True)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
