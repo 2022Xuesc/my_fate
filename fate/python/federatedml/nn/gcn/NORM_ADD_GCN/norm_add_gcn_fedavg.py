@@ -379,9 +379,8 @@ class GCNFitter(object):
 
         # 使用非对称的
         # 将adjList主对角线上的数字设置为1
-        # Todo: 对于GIN来说，这里就不能设置为1了
-        # for i in range(num_labels):
-        #     adjList[i][i] = 1
+        for i in range(num_labels):
+            adjList[i][i] = 1
 
         self.adjList = adjList
 
@@ -603,7 +602,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     #  对于初始化的，使用300即可
     in_channel = 1024
-    model = norm_add_gin_resnet101(param.pretrained, adjList,
+    model = norm_add_gcn_resnet101(param.pretrained, adjList,
                                    device=param.device, num_classes=param.num_labels, in_channels=in_channel,
                                    needOptimize=True)
     gcn_optimizer = None
