@@ -6,9 +6,8 @@ from torch.nn import Parameter
 
 
 # Todo: 主体部分已经完成
-#  relu的添加;
+#  BN层
 #  bias的设置;
-#  BN层/LN层的添加
 # 动态图卷积层
 
 
@@ -99,6 +98,7 @@ class DynamicGraphConvolution(nn.Module):
         # adj_param = self.adj_param
         adj = self.gen_adj(static_adj)
         label_vecs = self.forward_gcn(x, self.static_weight, adj)
+        # Todo: 需要进行BatchNorm吗？
         label_vecs = self.relu(label_vecs)
         return label_vecs, static_adj
 

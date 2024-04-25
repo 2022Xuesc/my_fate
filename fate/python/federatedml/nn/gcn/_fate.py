@@ -253,16 +253,16 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 20
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 20
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -379,9 +379,10 @@ class GCNFitter(object):
 
         # 使用非对称的
         # 将adjList主对角线上的数字设置为1
-        for i in range(num_labels):
-            adjList[i][i] = 1
-            
+        # Todo: 对于GIN来说，这里就不能设置为1了
+        # for i in range(num_labels):
+        #     adjList[i][i] = 1
+
         self.adjList = adjList
 
         # Todo: 现有的gcn分类器
@@ -602,7 +603,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     #  对于初始化的，使用300即可
     in_channel = 1024
-    model = norm_add_gcn_resnet101(param.pretrained, adjList,
+    model = norm_add_gin_resnet101(param.pretrained, adjList,
                                    device=param.device, num_classes=param.num_labels, in_channels=in_channel,
                                    needOptimize=True)
     gcn_optimizer = None

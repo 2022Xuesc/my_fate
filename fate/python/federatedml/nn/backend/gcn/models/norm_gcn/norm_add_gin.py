@@ -26,7 +26,11 @@ class GINLayer(nn.Module):
         x = (1 + self.epsilon) * x + torch.matmul(adj, x)
         x = self.fc1(x)
         x = self.fc2(x)
-        # x = self.bn(x)
+        # Todo: 这个bn怎么添加？
+        batch_size, num_classes, feature_dim = x.size()
+        x_reshaped = x.view(-1, feature_dim)
+        x_reshaped = self.bn(x_reshaped)
+        x = x_reshaped.view(batch_size, num_classes, feature_dim)
         return torch.transpose(x, 1, 2)
 
 
@@ -35,11 +39,15 @@ class GINLayer(nn.Module):
 class DynamicGraphConvolution(nn.Module):
     # 节点的输入特征
     # 节点的输出特征
-    def __init__(self, in_features, out_features, num_nodes, adjList=None, needOptimize=True):
+    def __init__(self, in_features, out_features, num_nodes, adjList=None, needOptimize=True, norm_method="standard"):
         super(DynamicGraphConvolution, self).__init__()
         # Todo: 静态相关性矩阵随机初始化得到
         self.adj_param = Parameter(torch.Tensor(num_nodes, num_nodes))
-        self.adj_param.data.copy_(self.un_sigmoid(torch.from_numpy(adjList)))
+
+        if norm_method == 'sigmoid':
+            self.adj_param.data.copy_(self.un_sigmoid(torch.from_numpy(adjList)))
+        else:
+            self.adj_param.data.copy_(torch.from_numpy(adjList))
 
         self.gap = nn.AdaptiveAvgPool1d(1)
         self.conv_global = nn.Conv1d(in_features, in_features, 1)
@@ -55,6 +63,15 @@ class DynamicGraphConvolution(nn.Module):
         # 两个gin，之间建立残差连接
         self.dynamic_gin1 = GINLayer(in_features, in_features)
         self.dynamic_gin2 = GINLayer(in_features, in_features)
+
+        self.normalizations = {'standard': self.standard_normalization,
+                               'sigmoid': torch.sigmoid}
+        self.norm_method = norm_method
+
+    def standard_normalization(self, x):
+        # x是一个20*20的矩阵
+        x = (x - torch.min(x)) / (torch.max(x) - torch.min(x))
+        return x
 
     def un_sigmoid(self, adjList):
         un_adjList = -np.log(1 / (adjList + np.exp(-8)) - 1)
@@ -75,13 +92,13 @@ class DynamicGraphConvolution(nn.Module):
         return adjs
 
     def forward_static_gcn(self, x):
-        adj_param = torch.sigmoid(self.adj_param)
-        x = self.static_gin1(x, adj_param)
+        static_adj = self.normalizations[self.norm_method](self.adj_param)
+        x = self.static_gin1(x, static_adj)
         x = self.relu(x)
         identity = x
-        x = self.static_gin2(x, adj_param)
+        x = self.static_gin2(x, static_adj)
         x = self.relu(x + identity)
-        return x
+        return x, static_adj
 
     def forward_construct_dynamic_graph(self, x):
         ### Model global representations ###
@@ -94,7 +111,7 @@ class DynamicGraphConvolution(nn.Module):
         ### Construct the dynamic correlation matrix ###
         x = torch.cat((x_glb, x), dim=1)
         dynamic_adj = self.conv_create_co_mat(x)
-        dynamic_adj = torch.sigmoid(dynamic_adj)
+        dynamic_adj = self.normalizations[self.norm_method](dynamic_adj)
         return dynamic_adj
 
     def forward_dynamic_gcn(self, x, dynamic_adjs):
@@ -112,19 +129,18 @@ class DynamicGraphConvolution(nn.Module):
         - Input: (B, C_in, N) # C_in: 1024, N: num_classes
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
-        out_static = self.forward_static_gcn(x)
-        x = x + out_static  # Todo: 其实就是自己本身的特征向量不变
+        out_static, static_adj = self.forward_static_gcn(x)
+        x = x + out_static
         dynamic_adj = self.forward_construct_dynamic_graph(x)
         # 计算dynamic_adj在out1上经过一次作用后对out1的改变情况，使用余弦相似度作为度量
         # out1的维度 batch_size * num_classes， dynamic_adj的维度 batch_size * num_classes * num_classes
         transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
+        transformed_out1 /= transformed_out1.size(1)
 
-        # Todo: 余弦相似度不可取
-        # dynamic_adj_loss = 1 - torch.mean(torch.cosine_similarity(out1, transformed_out1, dim=1))
-
-        # Todo: 使用平方损失？不该求平均的，因为asym_loss就是未平均的
-        # dynamic_adj_loss = torch.mean(torch.norm(out1 - transformed_out1, dim=1))
         dynamic_adj_loss = torch.sum(torch.norm(out1 - transformed_out1, dim=1))
+
+        diff = dynamic_adj - static_adj
+        dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1))
         x = self.forward_dynamic_gcn(x, dynamic_adj)
         return x, dynamic_adj_loss
 
