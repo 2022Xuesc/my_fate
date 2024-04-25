@@ -76,7 +76,7 @@ class DynamicGraphConvolution(nn.Module):
         dynamic_adj_loss = torch.sum(torch.norm(out1 - transformed_out1, dim=1))
 
         # Todo: 是否需要加和静态adj的损失？
-        diff = dynamic_adj - self.static_adj
+        diff = dynamic_adj - self.static_adj.weight.data.squeeze(-1)
         dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1))
 
         x = self.forward_dynamic_gcn(x, dynamic_adj)
