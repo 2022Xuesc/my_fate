@@ -75,6 +75,7 @@ def do_draw(path, file):
 
 method_paths = ['add_gcn',
                 'add_gcn_dynamic_prob',
+                'add_gcn_dynamic_all',
                 'gin',
                 'norm_gcn_dynamic_all',
                 'norm_gin_dynamic_all',
@@ -93,9 +94,9 @@ def compare_layer_ratio_method(paths, file):
             file = 'valid.csv'
             x_axis = 'epoch'
 
-        colors = ['g', 'purple', 'r', 'b', 'orange']
+        colors = ['g', 'purple', 'r', 'b', 'orange','black']
         ind = 0
-        show_epochs = 8 if is_arbiter else 30
+        show_epochs = 8 if is_arbiter else 45
         for method_path in method_paths:
             data = pd.read_csv(os.path.join(method_path, os.path.join(path, file)))
             mAP = data['mAP']
