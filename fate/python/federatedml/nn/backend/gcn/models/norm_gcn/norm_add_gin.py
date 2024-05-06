@@ -5,7 +5,7 @@ from torch.nn import Parameter
 
 
 class GINLayer(nn.Module):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=False):
         super(GINLayer, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -41,7 +41,6 @@ class DynamicGraphConvolution(nn.Module):
     # 节点的输出特征
     def __init__(self, in_features, out_features, num_nodes, adjList=None, needOptimize=True, norm_method="standard"):
         super(DynamicGraphConvolution, self).__init__()
-        # Todo: 静态相关性矩阵随机初始化得到
         self.adj_param = Parameter(torch.Tensor(num_nodes, num_nodes))
 
         if norm_method == 'sigmoid':
@@ -139,14 +138,15 @@ class DynamicGraphConvolution(nn.Module):
 
         dynamic_adj_loss = torch.sum(torch.norm(out1 - transformed_out1, dim=1))
 
-        diff = dynamic_adj - static_adj
-        dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1))
+        # diff = dynamic_adj - static_adj
+        # dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1))
         x = self.forward_dynamic_gcn(x, dynamic_adj)
         return x, dynamic_adj_loss
 
 
 class NORM_ADD_GIN(nn.Module):
-    def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None, needOptimize=True):
+    def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None, needOptimize=True,
+                 norm_method="sigmoid"):
         super(NORM_ADD_GIN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
@@ -167,7 +167,8 @@ class NORM_ADD_GIN(nn.Module):
         self.conv_transform = nn.Conv2d(2048, in_features, (1, 1))
         self.relu = nn.LeakyReLU(0.2)
 
-        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList, needOptimize)
+        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList, needOptimize,
+                                           norm_method)
 
         self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())  # 单位矩阵，自相关性
         self.last_linear = nn.Conv1d(out_features, self.num_classes, 1)  # 最终的分类层

@@ -34,9 +34,9 @@ def add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_chan
 
 
 def dynamic_add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                              out_channels=1024, needOptimize=True):
+                              out_channels=1024, needOptimize=True,constraint=False):
     model = torch_models.resnet101(pretrained)
-    model = DYNAMIC_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
+    model = DYNAMIC_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize,constraint)
     return model.to(device)
 
 
