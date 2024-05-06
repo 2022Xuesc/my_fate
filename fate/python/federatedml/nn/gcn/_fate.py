@@ -540,8 +540,9 @@ class GCNFitter(object):
 
             lambda_dynamic = 0.5
             asym_loss = criterion(sigmoid_func(predicts), target)
-            overall_loss = asym_loss + \
-                           lambda_dynamic * dynamic_adj_loss
+            overall_loss = asym_loss
+            # overall_loss = asym_loss + \
+                           # lambda_dynamic * dynamic_adj_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
