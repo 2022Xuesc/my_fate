@@ -1,21 +1,23 @@
 import torch
 import torch.nn as nn
-
+from torch.nn import Parameter
+import numpy as np
 
 # 动态图卷积层
 class DynamicGraphConvolution(nn.Module):
     # 节点的输入特征
     # 节点的输出特征
-    def __init__(self, in_features, out_features, num_nodes, adjList=None, needOptimize=True):
+    def __init__(self, in_features, out_features, num_nodes, adjList=None, needOptimize=True,constraint=False):
         super(DynamicGraphConvolution, self).__init__()
         # Todo: 静态相关性矩阵随机初始化得到
         if adjList is not None:
-            self.static_adj = nn.Conv1d(num_nodes, num_nodes, 1, bias=False)
-            self.static_adj.weight.data.copy_(torch.from_numpy(adjList).unsqueeze(-1))
-        else:
-            # Todo: weight是一个c * c * 1的tensor，使用adjList进行转换
-            self.static_adj = nn.Conv1d(num_nodes, num_nodes, 1, bias=False)
-        self.static_adj.requires_grad_(needOptimize)
+            self.static_adj = Parameter(torch.Tensor(num_nodes, num_nodes))
+            # Todo: 注意这里需要进行转置
+            adj = torch.transpose(torch.from_numpy(adjList), 0, 1)
+            if constraint:
+                adj = self.un_sigmoid(adj)
+            self.static_adj.data.copy_(adj)
+
         self.static_weight = nn.Sequential(  # 静态图卷积的变换矩阵，将in_features变换到out_features
             nn.Conv1d(in_features, out_features, 1),
             nn.LeakyReLU(0.2))
@@ -28,8 +30,18 @@ class DynamicGraphConvolution(nn.Module):
         self.conv_create_co_mat = nn.Conv1d(in_features * 2, num_nodes, 1)  # 生成动态图的卷积层
         self.dynamic_weight = nn.Conv1d(in_features, out_features, 1)  # 动态图卷积的变换矩阵
 
+    def un_sigmoid(self, adjList):
+        un_adjList = -np.log(1 / (adjList + np.exp(-8)) - 1)
+        # un_adjList中可能出现nan，则替换成100即可
+        un_adjList[np.isnan(un_adjList)] = 100
+        return un_adjList
+
     def forward_static_gcn(self, x):
-        x = self.static_adj(x.transpose(1, 2))
+        if self.constraint:
+            adj = torch.sigmoid(self.static_adj)
+        else:
+            adj = self.static_adj
+        x = torch.matmul(adj, x.transpose(1, 2))  # Todo: 注意这里的static_adj是原先概率矩阵的转置
         # 将static_adj和relu拆分开来
         x = self.relu(x)
         x = self.static_weight(x.transpose(1, 2))
@@ -76,15 +88,15 @@ class DynamicGraphConvolution(nn.Module):
         dynamic_adj_loss = torch.sum(torch.norm(out1 - transformed_out1, dim=1))
 
         # Todo: 是否需要加和静态adj的损失？
-        diff = dynamic_adj - self.static_adj.weight.data.squeeze(-1)
-        dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1))
+        # diff = dynamic_adj - self.static_adj.weight.data.squeeze(-1)
+        # dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1))
 
         x = self.forward_dynamic_gcn(x, dynamic_adj)
         return x, dynamic_adj_loss
 
 
 class DYNAMIC_ADD_GCN(nn.Module):
-    def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None, needOptimize=True):
+    def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None, needOptimize=True,constraint=False):
         super(DYNAMIC_ADD_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
@@ -105,7 +117,7 @@ class DYNAMIC_ADD_GCN(nn.Module):
         self.conv_transform = nn.Conv2d(2048, in_features, (1, 1))
         self.relu = nn.LeakyReLU(0.2)
 
-        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList, needOptimize)
+        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList, needOptimize,constraint)
 
         self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())  # 单位矩阵，自相关性
         self.last_linear = nn.Conv1d(out_features, self.num_classes, 1)  # 最终的分类层
