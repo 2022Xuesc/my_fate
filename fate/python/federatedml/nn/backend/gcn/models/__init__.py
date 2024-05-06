@@ -42,9 +42,9 @@ def dynamic_add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80,
 
 # Todo: 对A进行约束 + 使用标准gcn
 def norm_add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                           out_channels=1024, needOptimize=True):
+                           out_channels=1024, needOptimize=True, norm_method='sigmoid'):
     model = torch_models.resnet101(pretrained)
-    model = NORM_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
+    model = NORM_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize, norm_method)
     return model.to(device)
 
 

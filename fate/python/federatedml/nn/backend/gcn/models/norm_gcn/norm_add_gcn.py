@@ -88,9 +88,12 @@ class DynamicGraphConvolution(nn.Module):
         return adjs
 
     def forward_gcn(self, input, weight, adj):
-        support = torch.matmul(torch.transpose(input, 1, 2),
-                               weight)  # batch * feat * num_classes ; weight = num_classes * num_classes
-        output = torch.matmul(adj, support)
+        # support = torch.matmul(torch.transpose(input, 1, 2),
+        #                        weight)  # batch * feat * num_classes ; weight = num_classes * num_classes
+        # output = torch.matmul(adj, support)
+        output = torch.matmul(adj, torch.transpose(input, 1, 2))
+        output = self.relu(output)
+        output = torch.matmul(output, weight)
         return torch.transpose(output, 1, 2)  # 再次进行转置
 
     def forward_static_gcn(self, x):
@@ -101,13 +104,13 @@ class DynamicGraphConvolution(nn.Module):
         adj = self.gen_adj(static_adj)
         x = self.forward_gcn(x, self.static_weight, adj)
         # Todo: 需要进行BatchNorm吗？
-        x = torch.transpose(x, 1, 2)
-        batch_size, num_classes, feature_dim = x.size()
-        x_reshaped = x.view(-1, feature_dim)
-        x_reshaped = self.bn(x_reshaped)
-        x = x_reshaped.view(batch_size, num_classes, feature_dim)
-        x = self.relu(x)
-        x = torch.transpose(x, 1, 2)
+        # x = torch.transpose(x, 1, 2)
+        # batch_size, num_classes, feature_dim = x.size()
+        # x_reshaped = x.view(-1, feature_dim)
+        # x_reshaped = self.bn(x_reshaped)
+        # x = x_reshaped.view(batch_size, num_classes, feature_dim)
+        # x = self.relu(x)
+        # x = torch.transpose(x, 1, 2)
         return x, static_adj
 
     def forward_construct_dynamic_graph(self, x):
@@ -128,7 +131,6 @@ class DynamicGraphConvolution(nn.Module):
         # 对于动态图来说，每张图像都有一个图
         transformed_adjs = self.gen_adjs(dynamic_adjs)
         x = self.forward_gcn(x, self.dynamic_weight, transformed_adjs)
-
 
         x = torch.transpose(x, 1, 2)
         batch_size, num_classes, feature_dim = x.size()
@@ -163,9 +165,9 @@ class DynamicGraphConvolution(nn.Module):
         #  需要对变换的标签值进行平均，直接除以num_classes即可
         transformed_out1 /= transformed_out1.size(1)
         dynamic_adj_loss = torch.sum(torch.norm(out1 - transformed_out1, dim=1))
-        diff = dynamic_adj - static_adj
-
-        dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1))
+        # diff = dynamic_adj - static_adj
+        # 
+        # dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1))
         # Todo: 归一化后求2范数？
         x = self.forward_dynamic_gcn(x, dynamic_adj)
 
@@ -175,7 +177,8 @@ class DynamicGraphConvolution(nn.Module):
 
 
 class NORM_ADD_GCN(nn.Module):
-    def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None, needOptimize=True):
+    def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None, needOptimize=True,
+                 norm_method="sigmoid"):
         super(NORM_ADD_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
@@ -196,7 +199,8 @@ class NORM_ADD_GCN(nn.Module):
         self.conv_transform = nn.Conv2d(2048, in_features, (1, 1))
         self.relu = nn.LeakyReLU(0.2)
 
-        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList, needOptimize)
+        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList, needOptimize,
+                                           norm_method)
 
         self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())  # 单位矩阵，自相关性
         self.last_linear = nn.Conv1d(out_features, self.num_classes, 1)  # 最终的分类层
