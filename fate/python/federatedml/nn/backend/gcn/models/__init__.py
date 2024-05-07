@@ -13,6 +13,7 @@ from federatedml.nn.backend.gcn.models.instance_gcn.dynamic_add_gcn import DYNAM
 from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
 from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gcn import NORM_ADD_GCN
 from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gin import NORM_ADD_GIN
+from federatedml.nn.backend.gcn.models.pruned_add_gcn.pruned_add_gcn import PRUNED_ADD_GCN
 from federatedml.nn.backend.gcn.models.salgl import SALGL
 from federatedml.nn.backend.gcn.models.salgl_with_knn import SALGL_KNN
 
@@ -25,6 +26,13 @@ def gin_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels
     return model.to(device)
 
 
+def pruned_add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                             out_channels=2048, needOptimize=True, constraint=False):
+    model = torch_models.resnet101(pretrained)
+    model = PRUNED_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize, constraint)
+    return model.to(device)
+
+
 # 使用add_gcn模型
 def add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
                       out_channels=1024, needOptimize=True):
@@ -34,9 +42,9 @@ def add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_chan
 
 
 def dynamic_add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                              out_channels=1024, needOptimize=True,constraint=False):
+                              out_channels=1024, needOptimize=True, constraint=False):
     model = torch_models.resnet101(pretrained)
-    model = DYNAMIC_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize,constraint)
+    model = DYNAMIC_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize, constraint)
     return model.to(device)
 
 
