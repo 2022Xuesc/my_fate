@@ -54,7 +54,6 @@ class DynamicGraphConvolution(nn.Module):
                 adj = self.un_sigmoid(adj)
             self.static_adj.data.copy_(adj)
 
-
         self.static_weight = nn.Sequential(  # 静态图卷积的变换矩阵，将in_features变换到out_features
             nn.Conv1d(in_features, in_features, 1),  # 残差连接要求维度相同
             nn.LeakyReLU(0.2))
@@ -140,6 +139,8 @@ class PRUNED_ADD_GCN(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList, needOptimize,
                                            constraint)
+        # 这里的fc是1000维的，改成num_classes维
+        self.fc = torch.nn.Linear(in_features=2048, out_features=num_classes, bias=True)
         # self.fc = nn.Sequential(
         #     nn.Linear(out_features * 2, out_features),
         #     nn.Tanh()
@@ -158,18 +159,22 @@ class PRUNED_ADD_GCN(nn.Module):
         x = self.forward_feature(x)
         # Todo: x展平+池化
         x = self.avgpool(x)
-        x = x.squeeze(-1)
+        x = torch.flatten(x, 1)
+        out1 = self.fc(x)
         # Todo: 第一维应该是batch，这里将二维特征展平
         z = self.forward_dgcn(inp)
+        z = z.transpose(1, 2)
 
         # output = torch.cat([z, x], dim=-1)
         # output = self.fc(output)
         # output = self.classifier(output)
 
-        # z的维度是batch_size * feat_dim * num_classes
-        # x的维度是batch_size * feat_dim * 1
-        output = torch.matmul(z.transpose(1,2),x).squeeze(-1)
-        return output
+        # z的维度是batch_size * num_classes * feat_dim
+        # x的维度是batch_size * feat_dim
+        # Todo: 采用直接求点积的方式,out2算下来太大了
+
+        out2 = torch.matmul(z, x.unsqueeze(-1)).squeeze(-1) / z.size(2)
+        return out1, out2
 
     def get_config_optim(self, lr, lrp):
         # 与GCN类似
