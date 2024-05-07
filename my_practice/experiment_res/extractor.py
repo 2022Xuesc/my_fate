@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202404251528266799550"
-job_id = "202404251528266799550"
+dir_id = "202405070301077615030"
+job_id = "202405070301077615030"
 module_name = 'gcn_0'
-target_dir = 'norm_add_gcn/corrected_add_gcn/add_gcn_dynamic_all'
+target_dir = 'pruned_add_gcn/pruned_addgcn_with_cnn_gcn'
 client_num = 10
 
 
