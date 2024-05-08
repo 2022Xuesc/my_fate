@@ -157,7 +157,7 @@
         },
         "5": {
           "gcn_0": {
-            "device": "cuda:1",
+            "device": "cuda:3",
             "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client7/train/anno.json"
           },
           "reader_0": {
@@ -175,7 +175,7 @@
         },
         "6": {
           "gcn_0": {
-            "device": "cuda:1",
+            "device": "cuda:3",
             "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client8/train/anno.json"
           },
           "reader_0": {
@@ -193,7 +193,7 @@
         },
         "7": {
           "gcn_0": {
-            "device": "cuda:2",
+            "device": "cuda:4",
             "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client9/train/anno.json"
           },
           "reader_0": {
