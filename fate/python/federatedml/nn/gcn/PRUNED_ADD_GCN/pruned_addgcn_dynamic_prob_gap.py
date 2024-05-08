@@ -604,7 +604,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # 仅仅使用初始化权重，仍要进行学习
     model = pruned_add_gcn_resnet101(param.pretrained, adjList,
                                      device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                                     needOptimize=True, constraint=False, prob=True, gap=False)
+                                     needOptimize=True, constraint=False, prob=True, gap=True)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

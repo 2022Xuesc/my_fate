@@ -81,7 +81,7 @@ class DynamicGraphConvolution(nn.Module):
         # 将static_adj和relu拆分开来
         x = self.relu(x)
         x = self.static_weight(x.transpose(1, 2))
-        return x
+        return x, adj  # 将静态相关性矩阵返回
 
     def forward_construct_dynamic_graph(self, x):
         ### Model global representations ###
@@ -105,7 +105,7 @@ class DynamicGraphConvolution(nn.Module):
         x = self.relu(x)
         return x
 
-    def forward(self, x):
+    def forward(self, x, out1=None, prob=False, gap=False):
         """ D-GCN module
 
         Shape: 
@@ -113,17 +113,30 @@ class DynamicGraphConvolution(nn.Module):
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
         x = x.transpose(1, 2)
-        out_static = self.forward_static_gcn(x)
+        out_static, static_adj = self.forward_static_gcn(x)
         x = x + out_static  # Todo: 残差连接
         dynamic_adj = self.forward_construct_dynamic_graph(x)
 
+        # Todo: 这里引入动态损失
+        #  1. 第一部分，概率向量损失
+        num_classes = out1.size(1)
+        dynamic_adj_loss = 0
+        if prob:
+            transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
+            transformed_out1 /= num_classes
+            # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
+            dynamic_adj_loss += torch.sum(torch.norm(out1 - transformed_out1, dim=1))
+        if gap:
+            diff = dynamic_adj - static_adj
+            # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
+            dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1)) / num_classes
         x = self.forward_dynamic_gcn(x, dynamic_adj)
-        return x
+        return x, dynamic_adj_loss
 
 
 class PRUNED_ADD_GCN(nn.Module):
     def __init__(self, model, num_classes, in_features=300, out_features=2048, adjList=None, needOptimize=True,
-                 constraint=False):
+                 constraint=False, prob=False, gap=False):
         super(PRUNED_ADD_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
@@ -146,14 +159,17 @@ class PRUNED_ADD_GCN(nn.Module):
         #     nn.Tanh()
         # )
         # self.classifier = Element_Wise_Layer(num_classes, out_features)
+        self.prob = prob
+        self.gap = gap
 
     def forward_feature(self, x):
         x = self.features(x)
         return x
 
-    def forward_dgcn(self, x):
-        x = self.gcn(x)
-        return x
+    def forward_dgcn(self, x, out1, prob, gap):
+        # Todo: 在这里调用，在这里配置
+        x, dynamic_loss = self.gcn(x, out1, prob, gap)
+        return x, dynamic_loss
 
     def forward(self, x, inp):
         x = self.forward_feature(x)
@@ -162,7 +178,7 @@ class PRUNED_ADD_GCN(nn.Module):
         x = torch.flatten(x, 1)
         out1 = self.fc(x)
         # Todo: 第一维应该是batch，这里将二维特征展平
-        z = self.forward_dgcn(inp)
+        z, dynamic_adj_loss = self.forward_dgcn(inp, out1, self.prob, self.gap)
         z = z.transpose(1, 2)
 
         # output = torch.cat([z, x], dim=-1)
@@ -174,7 +190,8 @@ class PRUNED_ADD_GCN(nn.Module):
         # Todo: 采用直接求点积的方式,out2算下来太大了
 
         out2 = torch.matmul(z, x.unsqueeze(-1)).squeeze(-1) / z.size(2)
-        return out1, out2
+        # Todo: dynamic_adj_loss也不一定有值，
+        return out1, out2, dynamic_adj_loss
 
     def get_config_optim(self, lr, lrp):
         # 与GCN类似
