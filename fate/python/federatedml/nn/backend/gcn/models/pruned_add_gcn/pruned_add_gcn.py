@@ -120,7 +120,7 @@ class DynamicGraphConvolution(nn.Module):
         # Todo: 这里引入动态损失
         #  1. 第一部分，概率向量损失
         num_classes = out1.size(1)
-        dynamic_adj_loss = 0
+        dynamic_adj_loss = torch.tensor(0.).to(out1.device)
         if prob:
             transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
             transformed_out1 /= num_classes
