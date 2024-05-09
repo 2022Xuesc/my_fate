@@ -536,7 +536,8 @@ class GCNFitter(object):
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, prev_target)
 
-            lambda_dynamic = 1
+            # Todo: 把权重调小一些看能不能训练动
+            lambda_dynamic = 0.1
             asym_loss = criterion(sigmoid_func(predicts), target)
             overall_loss = asym_loss + \
                            lambda_dynamic * dynamic_adj_loss

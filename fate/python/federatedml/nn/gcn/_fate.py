@@ -536,7 +536,8 @@ class GCNFitter(object):
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, prev_target)
 
-            lambda_dynamic = 1
+            # Todo: 把权重调小一些看能不能训练动
+            lambda_dynamic = 0.1
             asym_loss = criterion(sigmoid_func(predicts), target)
             overall_loss = asym_loss + \
                            lambda_dynamic * dynamic_adj_loss
@@ -604,7 +605,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # 仅仅使用初始化权重，仍要进行学习
     model = pruned_add_gcn_resnet101(param.pretrained, adjList,
                                      device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                                     needOptimize=True, constraint=True)
+                                     needOptimize=True, constraint=False, prob=True, gap=False)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
