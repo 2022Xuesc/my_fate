@@ -379,8 +379,6 @@ class GCNFitter(object):
                 adjList[i] = adjList[i] / nums[i]
 
         # 使用非对称的
-        for i in range(num_labels):
-            adjList[i][i] = 1
         self.adjList = adjList
 
         # Todo: 现有的gcn分类器
@@ -602,7 +600,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     #  对于初始化的，使用300即可
     in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = pruned_add_standard_gcn_resnet101(param.pretrained, adjList,
+    model = pruned_add_gin_resnet101(param.pretrained, adjList,
                                      device=param.device, num_classes=param.num_labels, in_channels=in_channel,
                                      needOptimize=True, constraint=False)
     gcn_optimizer = None

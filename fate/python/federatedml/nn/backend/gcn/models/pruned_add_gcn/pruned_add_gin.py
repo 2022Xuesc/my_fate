@@ -64,8 +64,8 @@ class DynamicGraphConvolution(nn.Module):
         self.static_gin2 = GINLayer(in_features, in_features)
 
         # 两个gin，之间建立残差连接
-        self.dynamic_gin1 = GINLayer(in_features, in_features)
-        self.dynamic_gin2 = GINLayer(in_features, in_features)
+        self.dynamic_gin1 = GINLayer(in_features, out_features)
+        self.dynamic_gin2 = GINLayer(out_features, out_features)
 
     def un_sigmoid(self, adjList):
         un_adjList = -np.log(1 / (adjList + np.exp(-8)) - 1)
