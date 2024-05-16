@@ -132,13 +132,13 @@ class DynamicGraphConvolution(nn.Module):
         transformed_adjs = self.gen_adjs(dynamic_adjs)
         x = self.forward_gcn(x, self.dynamic_weight, transformed_adjs)
 
-        x = torch.transpose(x, 1, 2)
-        batch_size, num_classes, feature_dim = x.size()
-        x_reshaped = x.view(-1, feature_dim)
-        x_reshaped = self.bn(x_reshaped)
-        x = x_reshaped.view(batch_size, num_classes, feature_dim)
-
-        x = torch.transpose(x, 1, 2)
+        # x = torch.transpose(x, 1, 2)
+        # batch_size, num_classes, feature_dim = x.size()
+        # x_reshaped = x.view(-1, feature_dim)
+        # x_reshaped = self.bn(x_reshaped)
+        # x = x_reshaped.view(batch_size, num_classes, feature_dim)
+        # 
+        # x = torch.transpose(x, 1, 2)
 
         x = self.relu(x)
         return x
