@@ -76,7 +76,9 @@ def do_draw(path, file):
 method_paths = ['add_gcn',
                 'gin',
                 'pruned_addgcn_with_cnn_gcn',
-                'pruned_addgcn_with_diff'
+                'pruned_addgcn_with_diff',
+                'pruned_add_standard_gcn',
+                # 'pruned_addgcn_with_constraint' 效果不太好
                 ]
 
 
@@ -91,7 +93,7 @@ def compare_layer_ratio_method(paths, file):
             file = 'valid.csv'
             x_axis = 'epoch'
 
-        colors = ['g', 'purple', 'r', 'b', 'orange','black']
+        colors = ['g', 'purple', 'r', 'b', 'orange', 'black']
         ind = 0
         show_epochs = 8 if is_arbiter else 20
         for method_path in method_paths:
