@@ -23,7 +23,7 @@ class GINLayer(nn.Module):
     # 前向传播，权重与输入相乘、结果再与邻接矩阵adj相乘。
     def forward(self, x, adj):
         x = torch.transpose(x, 1, 2)
-        x = (1 + self.epsilon) * x + torch.matmul(adj, x)
+        x = (1 + self.epsilon) * x + torch.matmul(adj, x) 
         x = self.fc1(x)
         x = self.fc2(x)
         # Todo: 这个bn怎么添加？

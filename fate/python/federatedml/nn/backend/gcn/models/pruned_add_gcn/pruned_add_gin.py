@@ -46,6 +46,7 @@ class DynamicGraphConvolution(nn.Module):
         if adjList is not None:
             self.static_adj = Parameter(torch.Tensor(num_nodes, num_nodes))
             # Todo: 注意这里需要进行转置
+            #  需要，因为也是adj * x的形式，那说明计算正确
             adj = torch.transpose(torch.from_numpy(adjList), 0, 1)
             if constraint:
                 adj = self.un_sigmoid(adj)
