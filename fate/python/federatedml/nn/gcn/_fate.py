@@ -259,12 +259,12 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    #param.batch_size = 2
-    #param.max_iter = 1000
-    #param.num_labels = 20
-    #param.device = 'cuda:0'
-    #param.lr = 0.0001
-    #param.aggregate_every_n_epoch = 1
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
