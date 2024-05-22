@@ -311,7 +311,8 @@ class GCNFedAggregator(object):
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
             # self.context.do_convergence_check()
-            np.save(f'global_model_{self.context.aggregation_iteration}', self.model)
+            LOGGER.warn(f'当前所在目录为 {os.getcwd()}')
+            np.save(f'{os.getcwd()}/global_model_{self.context.aggregation_iteration}', self.model)
 
             self.context.increase_aggregation_iteration()
 
