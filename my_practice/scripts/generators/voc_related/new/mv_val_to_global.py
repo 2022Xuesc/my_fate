@@ -1,6 +1,20 @@
+import json
 import os
 import shutil
-from my_practice.scripts.generators.voc_related.new.generate_anno import generate_anno
+
+
+def generate_anno(data, images_dir, phase='train'):
+    image_id_path = os.path.join(data, f'{phase}_full_image_id.json')
+    image_id = json.load(open(image_id_path, 'r'))
+    files = os.listdir(images_dir)
+    anno_list = []
+    for filename in files:
+        if not filename.endswith('.jpg'):
+            continue
+        anno_list.append(image_id[filename])
+    target_file_path = os.path.join(images_dir, 'anno.json')
+    json.dump(anno_list, open(target_file_path, 'w'))
+
 
 client_ids = range(1, 11)
 target_dir = '/data/projects/dataset/voc2007/clustered_voc_expanded/global_val'
