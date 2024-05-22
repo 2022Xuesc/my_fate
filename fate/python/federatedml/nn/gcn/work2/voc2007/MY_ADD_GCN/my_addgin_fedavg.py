@@ -290,6 +290,7 @@ class GCNFedAggregator(object):
         self.context = context
         self.model = None
         self.bn_data = None
+        self.relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -310,15 +311,14 @@ class GCNFedAggregator(object):
             self.context.send_model((self.model, self.bn_data))
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
-            # self.context.do_convergence_check()
             np.save(f'global_model_{self.context.aggregation_iteration}', self.model)
 
             self.context.increase_aggregation_iteration()
 
-        # if self.context.finished():
-        #     print(os.getcwd())
-        #     np.save('global_model', self.model)
-        #     np.save('bn_data', self.bn_data)
+        if self.context.finished():
+            print(os.getcwd())
+            np.save('global_model', self.model)
+            np.save('bn_data', self.bn_data)
 
     def export_model(self, param):
         pass
@@ -379,8 +379,6 @@ class GCNFitter(object):
                 adjList[i] = adjList[i] / nums[i]
 
         # 使用非对称的
-        for i in range(num_labels):
-            adjList[i][i] = 1
         self.adjList = adjList
 
         # Todo: 现有的gcn分类器
@@ -598,7 +596,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     #  对于初始化的，使用300即可
     in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = pruned_add_gcn_resnet101(param.pretrained, adjList,
+    model = pruned_add_gin_resnet101(param.pretrained, adjList,
                                      device=param.device, num_classes=param.num_labels, in_channels=in_channel,
                                      needOptimize=True, constraint=False)
     gcn_optimizer = None
