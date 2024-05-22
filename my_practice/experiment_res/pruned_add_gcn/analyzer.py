@@ -78,6 +78,7 @@ method_paths = ['add_gcn',
                 'pruned_addgcn_with_cnn_gcn',
                 'pruned_addgcn_with_diff',
                 'pruned_add_standard_gcn',
+                'pruned_add_gin'
                 # 'pruned_addgcn_with_constraint' 效果不太好
                 ]
 
