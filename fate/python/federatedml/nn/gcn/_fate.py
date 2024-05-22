@@ -21,7 +21,8 @@ from federatedml.param.gcn_param import GCNParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
-my_writer = MyWriter(dir_name=os.getcwd())
+cur_dir_name = os.getcwd()
+my_writer = MyWriter(dir_name=cur_dir_name)
 train_header = ['epoch', 'mAP', 'asym_loss', 'dynamic_adj_loss', 'overall_loss']
 valid_header = ['epoch', 'mAP', 'loss']
 
@@ -254,16 +255,16 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 20
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 20
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -311,8 +312,7 @@ class GCNFedAggregator(object):
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
             # self.context.do_convergence_check()
-            LOGGER.warn(f'当前所在目录为 {os.getcwd()}')
-            np.save(f'{os.getcwd()}/global_model_{self.context.aggregation_iteration}', self.model)
+            np.save(f'{cur_dir_name}/global_model_{self.context.aggregation_iteration}', self.model)
 
             self.context.increase_aggregation_iteration()
 
