@@ -258,9 +258,9 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     dataset = 'coco'
     # dataset = 'nuswide'
     # dataset = 'voc_expanded'
-
-    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    # Todo: [WARN]
+    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     inp_name = f'{dataset}_glove_word2vec.pkl'
 
