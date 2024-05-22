@@ -21,7 +21,8 @@ from federatedml.param.gcn_param import GCNParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
-my_writer = MyWriter(dir_name=os.getcwd())
+cur_dir_name = os.getcwd()
+my_writer = MyWriter(dir_name=cur_dir_name)
 train_header = ['epoch', 'mAP', 'asym_loss', 'dynamic_adj_loss', 'overall_loss']
 valid_header = ['epoch', 'mAP', 'loss']
 
@@ -279,7 +280,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=True)
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=False)
 
     fitter = GCNFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
@@ -311,14 +312,10 @@ class GCNFedAggregator(object):
             self.context.send_model((self.model, self.bn_data))
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
-            np.save(f'global_model_{self.context.aggregation_iteration}', self.model)
+            np.save(f'{cur_dir_name}/global_model_{self.context.aggregation_iteration}', self.model)
 
             self.context.increase_aggregation_iteration()
 
-        if self.context.finished():
-            print(os.getcwd())
-            np.save('global_model', self.model)
-            np.save('bn_data', self.bn_data)
 
     def export_model(self, param):
         pass
