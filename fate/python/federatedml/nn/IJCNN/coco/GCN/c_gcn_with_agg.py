@@ -480,6 +480,7 @@ class GCNFitter(object):
         weight_list.append(self._num_data_consumed)
 
         # FedAvg聚合策略
+        # Todo: 静态相关性矩阵在聚合一次后都相同，因此直接从self.adjList中拿就行
         agg_bn_data, adjList = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
                                                            relation_matrix=self.adjList,
                                                            device=self.param.device)
