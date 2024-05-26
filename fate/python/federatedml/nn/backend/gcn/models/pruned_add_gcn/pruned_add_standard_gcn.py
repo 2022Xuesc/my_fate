@@ -68,6 +68,12 @@ class DynamicGraphConvolution(nn.Module):
         # 手动创建的网络参数，需要进行reset
         self.reset_weight_parameters()
 
+    def updateA(self, adjList):
+        self.static_adj.data.copy_(torch.from_numpy(adjList).float())
+
+    def getAdj(self):
+        return self.static_adj.data.cpu().numpy()
+
     def reset_weight_parameters(self):
         # 为static_weight规范化
         static_stdv = 1. / math.sqrt(self.static_weight.size(1))
@@ -137,7 +143,7 @@ class DynamicGraphConvolution(nn.Module):
 
     def forward_dynamic_gcn(self, x, dynamic_adj):
         transformed_adjs = self.gen_adjs(dynamic_adj)
-        x = self.forward_gcn(x,self.dynamic_weight,transformed_adjs)
+        x = self.forward_gcn(x, self.dynamic_weight, transformed_adjs)
         x = self.relu(x)
         return x
 
@@ -190,9 +196,15 @@ class PRUNED_ADD_STANDARD_GCN(nn.Module):
                                            constraint)
         # 这里的fc是1000维的，改成num_classes维
         self.fc = torch.nn.Linear(in_features=2048, out_features=num_classes, bias=True)
-        
+
         self.prob = prob
         self.gap = gap
+
+    def updateA(self, adjList):
+        self.gcn.updateA(adjList)
+        
+    def getAdj(self):
+        return self.gcn.getAdj()
 
     def forward_feature(self, x):
         x = self.features(x)
