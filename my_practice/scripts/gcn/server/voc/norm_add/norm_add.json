@@ -31,7 +31,7 @@
   "component_parameters": {
     "common": {
       "gcn_0": {
-        "max_iter": 100,
+        "max_iter": 25,
         "batch_size": 8,
         "aggregate_every_n_epoch": 4,
         "lr": 0.0001,

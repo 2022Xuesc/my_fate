@@ -1,0 +1,6 @@
+import torchvision.models
+
+model = torchvision.models.resnet101()
+model = model.to('cuda:4')
+print(model)
+
