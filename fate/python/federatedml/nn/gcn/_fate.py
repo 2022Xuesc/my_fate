@@ -92,7 +92,7 @@ class FedClientContext(_FedBaseContext):
 
     # 发送模型
     # 这里tensors是模型参数，weight是模型聚合权重
-    def send_model(self, tensors, bn_data, relation_matrix, weight):
+    def send_model(self, tensors, bn_data, weight):
         tensor_arrs = []
         for tensor in tensors:
             tensor_arr = tensor.data.cpu().numpy()
@@ -102,7 +102,7 @@ class FedClientContext(_FedBaseContext):
             bn_arr = bn_item.data.cpu().numpy()
             bn_arrs.append(bn_arr)
         self.aggregator.send_model(
-            (tensor_arrs, bn_arrs, relation_matrix, weight), suffix=self._suffix()
+            (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
         )
 
     def recv_model(self):
@@ -113,14 +113,14 @@ class FedClientContext(_FedBaseContext):
         self.aggregator.send_model((ap, mAP, loss, weight), suffix=self._suffix(group="metrics"))
 
     # 发送、接收全局模型并更新本地模型
-    def do_aggregation(self, bn_data, relation_matrix, weight, device):
+    def do_aggregation(self, bn_data, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, relation_matrix, weight)
+        self.send_model(self._params, bn_data, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
         LOGGER.warn("模型接收完毕")
-        global_model, bn_data, relation_matrix = recv_elements
+        global_model, bn_data = recv_elements
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
@@ -133,7 +133,7 @@ class FedClientContext(_FedBaseContext):
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
-        return bn_tensors, relation_matrix
+        return bn_tensors
 
     def do_convergence_check(self, weight, ap, mAP, loss_value):
         self.send_metrics(ap, mAP, loss_value, weight)
@@ -291,7 +291,6 @@ class GCNFedAggregator(object):
         self.context = context
         self.model = None
         self.bn_data = None
-        self.relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -300,16 +299,18 @@ class GCNFedAggregator(object):
             LOGGER.warn(f'收到{len(recv_elements)}个客户端发送过来的模型')
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             bn_tensors = [party_tuple[1] for party_tuple in recv_elements]
-            relation_matrices = [party_tuple[2] for party_tuple in recv_elements]
 
-            degrees = [party_tuple[3] for party_tuple in recv_elements]
+            degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
+            # Todo: 这里需要再改改
+            #  没有分类层了，因此，无法使用FPSL了
 
-            self.relation_matrix = aggregate_relation_matrix(relation_matrices, degrees)
-            self.model = aggregate_whole_model(tensors, degrees)
+            # self.model = aggregate_whole_model(tensors, degrees)
+            self.model = aggregate_by_labels(tensors, degrees)
+
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
-            self.context.send_model((self.model, self.bn_data, self.relation_matrix))
+            self.context.send_model((self.model, self.bn_data))
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
             # self.context.do_convergence_check()
@@ -479,9 +480,8 @@ class GCNFitter(object):
         weight_list.append(self._num_data_consumed)
 
         # FedAvg聚合策略
-        agg_bn_data, adjList = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
-                                                           relation_matrix=self.model.getAdj(),
-                                                           device=self.param.device)
+        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+                                                  device=self.param.device)
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -489,8 +489,6 @@ class GCNFitter(object):
                 idx += 1
                 layer.running_var.data.copy_(agg_bn_data[idx])
                 idx += 1
-        # Todo: 更新聚合后的全局模型
-        self.model.updateA(adjList)
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         self.train_one_epoch(epoch, train_loader, scheduler)
@@ -603,9 +601,9 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     #  对于初始化的，使用300即可
     in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = pruned_add_standard_gcn_resnet101(param.pretrained, adjList,
-                                              device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                                              needOptimize=True, constraint=False)
+    model = pruned_add_gcn_resnet101(param.pretrained, adjList,
+                                     device=param.device, num_classes=param.num_labels, in_channels=in_channel,
+                                     needOptimize=True, constraint=False)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

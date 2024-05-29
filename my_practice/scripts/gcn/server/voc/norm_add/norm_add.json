@@ -103,7 +103,7 @@
         },
         "2": {
           "gcn_0": {
-            "device": "cuda:2",
+            "device": "cuda:0",
             "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client4/train/anno.json"
           },
           "reader_0": {
