@@ -255,16 +255,16 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 1000
-    param.num_labels = 20
-    param.device = 'cuda:0'
-    param.lr = 0.0001
-    param.aggregate_every_n_epoch = 1
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -313,7 +313,7 @@ class GCNFedAggregator(object):
 
             # self.context.do_convergence_check()
             np.save(f'{cur_dir_name}/global_model_{self.context.aggregation_iteration}', self.model)
-
+            np.save(f'{cur_dir_name}/bn_data_{self.context.aggregation_iteration}', self.bn_data)
             self.context.increase_aggregation_iteration()
 
         # if self.context.finished():

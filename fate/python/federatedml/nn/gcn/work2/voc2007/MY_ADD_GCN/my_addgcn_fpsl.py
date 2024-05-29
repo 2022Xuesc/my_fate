@@ -315,7 +315,7 @@ class GCNFedAggregator(object):
 
             # self.context.do_convergence_check()
             np.save(f'{cur_dir_name}/global_model_{self.context.aggregation_iteration}', self.model)
-
+            np.save(f'{cur_dir_name}/bn_data_{self.context.aggregation_iteration}', self.bn_data)
             self.context.increase_aggregation_iteration()
 
         # if self.context.finished():

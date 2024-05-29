@@ -313,7 +313,7 @@ class GCNFedAggregator(object):
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
 
             np.save(f'{cur_dir_name}/global_model_{self.context.aggregation_iteration}', self.model)
-
+            np.save(f'{cur_dir_name}/bn_data_{self.context.aggregation_iteration}', self.bn_data)
             self.context.increase_aggregation_iteration()
 
 

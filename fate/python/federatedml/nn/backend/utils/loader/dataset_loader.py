@@ -55,7 +55,7 @@ def valid_transforms(resize_scale, crop_scale, is_gcn=False):
 
 class DatasetLoader(object):
     # category_dir是配置文件所在的目录
-    def __init__(self, category_dir, train_path, valid_path, inp_name=None):
+    def __init__(self, category_dir, train_path=None, valid_path=None, inp_name=None):
         super(DatasetLoader, self).__init__()
         self.category_dir = category_dir
         self.train_path = train_path
