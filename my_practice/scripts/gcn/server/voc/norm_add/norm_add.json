@@ -46,7 +46,7 @@
       "guest": {
         "0": {
           "gcn_0": {
-            "device": "cuda:5",
+            "device": "cuda:4",
             "batch_size" : 16,
             "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client1/train/anno.json"
           },
@@ -67,7 +67,7 @@
       "host": {
         "0": {
           "gcn_0": {
-            "device": "cuda:5",
+            "device": "cuda:4",
             "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client2/train/anno.json"
           },
           "reader_0": {
