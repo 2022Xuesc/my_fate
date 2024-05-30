@@ -78,6 +78,7 @@ for task_name in jobid_map:
     model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel, needOptimize=True,
                                  constraint=False)
     print("------------------------")
+    print(f"enter task: {task_name}")
     for i in range(cnt):
         file_name = f'{file_prefix}_{i}.npy'
         global_model = np.load(os.path.join(cur_path, file_name), allow_pickle=True)
@@ -87,7 +88,7 @@ for task_name in jobid_map:
         # Todo: 验证一下是否匹配
         agg_len = len(agg_tensors)
         print(f"dump数据的维度: {agg_len}")
-        model_len = len(list(model.parameters))
+        model_len = len(list(model.parameters()))
         print(f"模型的维度: {model_len}")
         if agg_len != model_len:
             print("不匹配")
