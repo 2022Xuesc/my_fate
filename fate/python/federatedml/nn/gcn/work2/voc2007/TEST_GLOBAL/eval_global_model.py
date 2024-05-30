@@ -99,7 +99,7 @@ for task_name in jobid_map:
                 layer.running_var.data.copy_(bn_data[idx])
                 idx += 1
         # Todo: 模型加载完毕，开始进行训练
-
+        print(f"{task_name}的模型 {i} 加载成功")
         dataset_loader = DatasetLoader(category_dir, valid_path=valid_path, inp_name=inp_name)
         _, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=False)
         OVERALL_LOSS_KEY = 'Overall Loss'
@@ -112,6 +112,7 @@ for task_name in jobid_map:
 
         with torch.no_grad():
             for validate_step, ((features, inp), target) in enumerate(valid_loader):
+                print("progress, validate_step: ", validate_step)
                 features = features.to(device)
                 inp = inp.to(device)
                 prev_target = target.clone()
