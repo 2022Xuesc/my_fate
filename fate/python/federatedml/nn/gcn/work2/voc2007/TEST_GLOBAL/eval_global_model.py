@@ -4,19 +4,15 @@ import numpy as np
 import torch
 
 import os
+
 sys.path.append('/data/projects/fate/fate/python')
 
 from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
-
-from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 
 from federatedml.nn.backend.gcn.models import *
-
-import torchnet.meter as tnt
-from collections import OrderedDict
 
 jobid_map = {
     'my_add_gcn': '202405291743474519260',
@@ -68,7 +64,7 @@ for task_name in jobid_map:
     cur_path = os.path.join(dir_prefix, jobid, f'arbiter/999/gcn_0/{jobid}_gcn_0/0/task_executor')
     cur_path = os.path.join(cur_path, os.listdir(cur_path)[0])
     # Todo: 记录数据的信息
-    
+
     valid_header = ['epoch', 'mAP', 'loss']
     valid_writer = my_writer.get(f"{task_name}_valid.csv", header=valid_header)
     valid_aps_writer = my_writer.get(f"{task_name}_valid_aps.csv")
@@ -81,14 +77,27 @@ for task_name in jobid_map:
             cnt += 1
     model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel, needOptimize=True,
                                  constraint=False)
+    print("------------------------")
     for i in range(cnt):
         file_name = f'{file_prefix}_{i}.npy'
         global_model = np.load(os.path.join(cur_path, file_name), allow_pickle=True)
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
+        # Todo: 验证一下是否匹配
+        agg_len = len(agg_tensors)
+        print(f"dump数据的维度: {agg_len}")
+        model_len = len(list(model.parameters))
+        print(f"模型的维度: {model_len}")
+        if agg_len != model_len:
+            print("不匹配")
+            break
+        else:
+            print("匹配")
+            break
         for param, agg_tensor in zip(model.parameters(), agg_tensors):
             param.data.copy_(agg_tensor)
+
         bn_data = np.load(os.path.join(cur_path, f'bn_data_{i}.npy'), allow_pickle=True)
         # Todo: 加载bn_data
         idx = 0
