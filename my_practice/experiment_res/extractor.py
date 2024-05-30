@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202405090759423670440"
-job_id = "202405090759423670440"
+dir_id = "202405301531543889900"
+job_id = "202405301531543889900"
 module_name = 'gcn_0'
-target_dir = 'pruned_add_gcn/pruned_addgcn_with_constraint'
+target_dir = 'my_add_gcn/my_add_connect_standard_gcn_fv'
 client_num = 10
 
 

@@ -158,10 +158,10 @@ class CONNECT_ADD_STANDARD_GCN(nn.Module):
                                            constraint)
         # 这里的fc是1000维的，改成num_classes维
         feat_dim = 2048
-        self.fc = torch.nn.Linear(in_features=feat_dim, out_features=num_classes, bias=True)
 
         self.connect = torch.nn.Linear(in_features=feat_dim, out_features=in_features, bias=True)
 
+        self.fc = torch.nn.Linear(in_features=feat_dim, out_features=num_classes, bias=True)
         self.prob = prob
         self.gap = gap
 
