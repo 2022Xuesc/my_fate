@@ -100,13 +100,16 @@ for task_name in jobid_map:
             param.data.copy_(agg_tensor)
 
         bn_data = np.load(os.path.join(cur_path, f'bn_data_{i}.npy'), allow_pickle=True)
+        bn_tensors = []
+        for arr in bn_data:
+            bn_tensors.append(torch.from_numpy(arr).to(device))
         # Todo: 加载bn_data
         idx = 0
         for layer in model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
-                layer.running_mean.data.copy_(bn_data[idx])
+                layer.running_mean.data.copy_(bn_tensors[idx])
                 idx += 1
-                layer.running_var.data.copy_(bn_data[idx])
+                layer.running_var.data.copy_(bn_tensors[idx])
                 idx += 1
         # Todo: 模型加载完毕，开始进行训练
         print(f"{task_name}的模型 {i} 加载成功")
