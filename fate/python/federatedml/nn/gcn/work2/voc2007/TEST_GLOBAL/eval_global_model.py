@@ -4,9 +4,9 @@ import numpy as np
 import torch
 
 import os
-from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
-
 sys.path.append('/data/projects/fate/fate/python')
+
+from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 
