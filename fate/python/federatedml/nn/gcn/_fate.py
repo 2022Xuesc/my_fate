@@ -291,7 +291,6 @@ class GCNFedAggregator(object):
         self.context = context
         self.model = None
         self.bn_data = None
-        self.relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -600,7 +599,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     #  对于初始化的，使用300即可
     in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = connect_add_standard_gcn(param.pretrained, adjList,
+    model = pruned_add_gcn_resnet101(param.pretrained, adjList,
                                      device=param.device, num_classes=param.num_labels, in_channels=in_channel,
                                      needOptimize=True, constraint=False)
     gcn_optimizer = None
