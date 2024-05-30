@@ -113,7 +113,7 @@ for task_name in jobid_map:
                 idx += 1
         # Todo: 模型加载完毕，开始进行训练
         print(f"{task_name}的模型 {i} 加载成功")
-        dataset_loader = DatasetLoader(category_dir, valid_path=valid_path, inp_name=inp_name)
+        dataset_loader = DatasetLoader(category_dir, train_path=valid_path, valid_path=valid_path, inp_name=inp_name)
         _, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=False)
         OVERALL_LOSS_KEY = 'Overall Loss'
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
