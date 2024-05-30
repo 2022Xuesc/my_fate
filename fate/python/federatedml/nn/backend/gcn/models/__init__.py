@@ -13,6 +13,7 @@ from federatedml.nn.backend.gcn.models.instance_gcn.dynamic_add_gcn import DYNAM
 from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
 from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gcn import NORM_ADD_GCN
 from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gin import NORM_ADD_GIN
+from federatedml.nn.backend.gcn.models.pruned_add_gcn.connect_add_standard_gcn import CONNECT_ADD_STANDARD_GCN
 from federatedml.nn.backend.gcn.models.pruned_add_gcn.pruned_add_gcn import PRUNED_ADD_GCN
 from federatedml.nn.backend.gcn.models.pruned_add_gcn.pruned_add_gin import PRUNED_ADD_GIN
 from federatedml.nn.backend.gcn.models.pruned_add_gcn.pruned_add_standard_gcn import PRUNED_ADD_STANDARD_GCN
@@ -48,6 +49,14 @@ def pruned_add_gin_resnet101(pretrained, adjList, device='cpu', num_classes=80, 
     model = torch_models.resnet101(pretrained)
     model = PRUNED_ADD_GIN(model, num_classes, in_channels, out_channels, adjList, needOptimize, constraint,
                            prob, gap)
+    return model.to(device)
+
+
+def connect_add_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                             out_channels=2048, needOptimize=True, constraint=False, prob=False, gap=False):
+    model = torch_models.resnet101(pretrained)
+    model = CONNECT_ADD_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize, constraint,
+                                     prob, gap)
     return model.to(device)
 
 
