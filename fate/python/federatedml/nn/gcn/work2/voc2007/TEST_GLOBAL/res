@@ -1,0 +1,7 @@
+my_add_gcn_fpsl_valid.csv : 90.7
+my_add_gcn_valid.csv : 91.71
+my_add_gin_fpsl_valid.csv : 87.59
+my_add_gin_valid.csv : 72.65
+my_add_standard_gcn_fpsl_valid.csv : 90.64
+my_add_standard_gcn_valid.csv : 91.5
+my_connect_add_standard_gcn_valid.csv : 91.78
