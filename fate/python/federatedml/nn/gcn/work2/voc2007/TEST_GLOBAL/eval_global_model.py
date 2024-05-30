@@ -6,21 +6,22 @@ import torch
 import os
 
 sys.path.append('/data/projects/fate/fate/python')
-
+import torchnet.meter as tnt
+from collections import OrderedDict
 from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
-
+from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 
 from federatedml.nn.backend.gcn.models import *
 
 jobid_map = {
-    'my_add_gcn': '202405291743474519260',
     'my_add_gcn_fpsl': '202405291853581396420',
     'my_add_standard_gcn': '202405300648009006500',
     'my_add_standard_gcn_fpsl': '202405300824559105990',
     'my_add_gin': '202405300402102596790',
     'my_add_gin_fpsl': '202405301204117812590',
+    'my_add_gcn': '',
     'my_connect_add_standard_gcn': '',
     'my_connect_add_standard_gcn_fpsl': ''
 }
@@ -61,6 +62,8 @@ my_writer = MyWriter(dir_name=cur_dir_name)
 
 for task_name in jobid_map:
     jobid = jobid_map[task_name]
+    if len(jobid) == 0:
+        continue
     cur_path = os.path.join(dir_prefix, jobid, f'arbiter/999/gcn_0/{jobid}_gcn_0/0/task_executor')
     cur_path = os.path.join(cur_path, os.listdir(cur_path)[0])
     # Todo: 记录数据的信息
@@ -92,10 +95,7 @@ for task_name in jobid_map:
         print(f"模型的维度: {model_len}")
         if agg_len != model_len:
             print("不匹配")
-            break
-        else:
-            print("匹配")
-            break
+            continue
         for param, agg_tensor in zip(model.parameters(), agg_tensors):
             param.data.copy_(agg_tensor)
 
