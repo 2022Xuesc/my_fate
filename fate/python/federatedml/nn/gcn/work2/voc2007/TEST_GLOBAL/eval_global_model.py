@@ -16,14 +16,14 @@ from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.gcn.models import *
 
 jobid_map = {
-    'my_add_gcn_fpsl': '202405291853581396420',
-    'my_add_standard_gcn': '202405300648009006500',
-    'my_add_standard_gcn_fpsl': '202405300824559105990',
-    'my_add_gin': '202405300402102596790',
-    'my_add_gin_fpsl': '202405301204117812590',
-    'my_add_gcn': '',
-    'my_connect_add_standard_gcn': '',
-    'my_connect_add_standard_gcn_fpsl': ''
+    #'my_add_gcn_fpsl': '202405291853581396420',
+    #'my_add_standard_gcn': '202405300648009006500',
+    #'my_add_standard_gcn_fpsl': '202405300824559105990',
+    #'my_add_gin': '202405300402102596790',
+    #'my_add_gin_fpsl': '202405301204117812590',
+    #'my_add_gcn': '202405301427122521060',
+    #'my_connect_add_standard_gcn': '202405301531543889900',
+    'my_connect_add_standard_gcn_fpsl': '202405301711468092020'
 }
 model_map = {
     'my_add_gcn': pruned_add_gcn_resnet101,
