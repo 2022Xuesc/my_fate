@@ -291,7 +291,6 @@ class GCNFedAggregator(object):
         self.context = context
         self.model = None
         self.bn_data = None
-        self.relation_matrix = None
 
     def fit(self, loss_callback):
         while not self.context.finished():
@@ -306,10 +305,7 @@ class GCNFedAggregator(object):
             # Todo: 这里需要再改改
             #  没有分类层了，因此，无法使用FPSL了
 
-            # self.model = aggregate_whole_model(tensors, degrees)
-
-            self.model = aggregate_by_labels(tensors, degrees)
-
+            self.model = aggregate_whole_model(tensors, degrees)
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.context.send_model((self.model, self.bn_data))
@@ -485,7 +481,7 @@ class GCNFitter(object):
         agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
                                                   device=self.param.device)
         idx = 0
-        for layer in self.model.modules():
+        for layer in self.model.modules():   # Todo: 更新bn_data
             if isinstance(layer, torch.nn.BatchNorm2d):
                 layer.running_mean.data.copy_(agg_bn_data[idx])
                 idx += 1
@@ -603,9 +599,9 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     #  对于初始化的，使用300即可
     in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = connect_add_standard_gcn(param.pretrained, adjList,
-                                     device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                                     needOptimize=True, constraint=False)
+    model = connect_add_gcn(param.pretrained, adjList,
+                            device=param.device, num_classes=param.num_labels, in_channels=in_channel,
+                            needOptimize=True, constraint=False)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
