@@ -62,10 +62,11 @@ def connect_add_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, 
 
 
 def connect_add_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                    out_channels=2048, needOptimize=True, constraint=False, prob=False, gap=False):
+                    out_channels=2048, needOptimize=True, constraint=False, prob=False, gap=False,
+                    label_prob_vec=None):
     model = torch_models.resnet101(pretrained)
     model = CONNECTED_ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize, constraint,
-                              prob, gap)
+                              prob, gap, label_prob_vec=label_prob_vec)
     return model.to(device)
 
 

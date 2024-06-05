@@ -255,16 +255,16 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 20
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 20
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -373,6 +373,7 @@ class GCNFitter(object):
                     y = labels[j]
                     adjList[x][y] += 1
                     adjList[y][x] += 1
+        label_prob_vec = nums / len(image_id2labels)
         nums = nums[:, np.newaxis]
         # 遍历每一行
         for i in range(num_labels):
@@ -387,7 +388,8 @@ class GCNFitter(object):
         # Todo: 现有的gcn分类器
         self.model, self.scheduler, self.optimizer, self.gcn_optimizer = _init_gcn_learner(self.param,
                                                                                            self.param.device,
-                                                                                           self.adjList)
+                                                                                           self.adjList,
+                                                                                           label_prob_vec)
 
         # 使用非对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
@@ -593,7 +595,7 @@ class GCNFitter(object):
 
 
 # Todo: 相关性矩阵初始化 + 优化
-def _init_gcn_learner(param, device='cpu', adjList=None):
+def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # in_channel是标签嵌入向量的初始（输入）维度
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     #  对于初始化的，使用300即可
@@ -601,7 +603,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # 仅仅使用初始化权重，仍要进行学习
     model = connect_add_gcn(param.pretrained, adjList,
                             device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                            needOptimize=True, constraint=False, prob=True)
+                            needOptimize=True, constraint=False, prob=True, label_prob_vec=label_prob_vec)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
