@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202405301531543889900"
-job_id = "202405301531543889900"
+dir_id = "202406050612249408270"
+job_id = "202406050612249408270"
 module_name = 'gcn_0'
-target_dir = 'my_add_gcn/my_add_connect_standard_gcn_fv'
+target_dir = 'my_add_gcn/my_connect_add_gcn_advanced_prob_fv'
 client_num = 10
 
 
@@ -45,6 +45,7 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
 
 
