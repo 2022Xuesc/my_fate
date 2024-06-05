@@ -16,24 +16,44 @@ from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.gcn.models import *
 
 jobid_map = {
-    #'my_add_gcn_fpsl': '202405291853581396420',
-    #'my_add_standard_gcn': '202405300648009006500',
-    #'my_add_standard_gcn_fpsl': '202405300824559105990',
-    #'my_add_gin': '202405300402102596790',
-    #'my_add_gin_fpsl': '202405301204117812590',
-    #'my_add_gcn': '202405301427122521060',
-    #'my_connect_add_standard_gcn': '202405301531543889900',
-    'my_connect_add_standard_gcn_fpsl': '202405301741117483270'
+    # 'my_add_gcn_fpsl': '202405291853581396420',
+    # 'my_add_standard_gcn': '202405300648009006500',
+    # 'my_add_standard_gcn_fpsl': '202405300824559105990',
+    # 'my_add_gin': '202405300402102596790',
+    # 'my_add_gin_fpsl': '202405301204117812590',
+    # 'my_add_gcn': '202405301427122521060',
+    # 'my_connect_add_standard_gcn': '202405301531543889900',
+    'my_connect_add_standard_gcn_fpsl': '202405301741117483270',
+    'connect_add_gcn_fedavg': '202406041540263877510',
+    'connect_add_gcn_fpsl_meta': '202406051021109290830',
+    'connect_add_gcn_prob': '202406050247596100450',
+    'connect_add_gcn_advanced_prob': '202406050612249408270',
+    # 'connect_add_gcn_gap': '202406051531587900350'
 }
 model_map = {
-    'my_add_gcn': pruned_add_gcn_resnet101,
-    'my_add_gcn_fpsl': pruned_add_gcn_resnet101,
-    'my_add_standard_gcn': pruned_add_standard_gcn_resnet101,
-    'my_add_standard_gcn_fpsl': pruned_add_standard_gcn_resnet101,
-    'my_add_gin': pruned_add_gin_resnet101,
-    'my_add_gin_fpsl': pruned_add_gin_resnet101,
-    'my_connect_add_standard_gcn': connect_add_standard_gcn,
-    'my_connect_add_standard_gcn_fpsl': connect_add_standard_gcn
+    # 'my_add_gcn': pruned_add_gcn_resnet101,
+    # 'my_add_gcn_fpsl': pruned_add_gcn_resnet101,
+    # 'my_add_standard_gcn': pruned_add_standard_gcn_resnet101,
+    # 'my_add_standard_gcn_fpsl': pruned_add_standard_gcn_resnet101,
+    # 'my_add_gin': pruned_add_gin_resnet101,
+    # 'my_add_gin_fpsl': pruned_add_gin_resnet101,
+    # 'my_connect_add_standard_gcn': connect_add_standard_gcn,
+    'my_connect_add_standard_gcn_fpsl': connect_add_standard_gcn,
+    # Todo: 注意参数配置的不同
+    'connect_add_gcn_fedavg': connect_add_gcn,
+    'connect_add_gcn_fpsl_meta': connect_add_gcn,  # 对于以及训练好的元学习模型，没什么不同
+    'connect_add_gcn_prob': connect_add_gcn,
+    'connect_add_gcn_advanced_prob': connect_add_gcn,
+    'connect_add_gcn_gap': connect_add_gcn
+}
+config_map = {
+    'my_connect_add_standard_gcn_fpsl': [False, False],
+    # Todo: 注意参数配置的不同
+    'connect_add_gcn_fedavg': [False, False],
+    'connect_add_gcn_fpsl_meta': [False, False],
+    'connect_add_gcn_prob': [True, False],
+    'connect_add_gcn_advanced_prob': [True, True],
+    'connect_add_gcn_gap': [False, True]
 }
 # Todo: 创建一个模型骨架，然后替换其参数
 
@@ -78,8 +98,9 @@ for task_name in jobid_map:
     for file in files:
         if file.startswith(file_prefix):
             cnt += 1
+    prob, gap = config_map[task_name]
     model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel, needOptimize=True,
-                                 constraint=False)
+                                 constraint=False,prob=prob,gap=gap)
     print("------------------------")
     print(f"enter task: {task_name}")
     for i in range(cnt):

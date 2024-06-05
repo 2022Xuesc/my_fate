@@ -30,7 +30,7 @@ class DynamicGraphConvolution(nn.Module):
         # Todo: 和global相关的下列参数都不使用了
         self.conv_global = nn.Conv1d(in_features, in_features, 1)
         self.bn_global = nn.BatchNorm1d(in_features)
-        
+
         self.relu = nn.LeakyReLU(0.2)
 
         self.conv_create_co_mat = nn.Conv1d(in_features * 2, num_nodes, 1)  # 生成动态图的卷积层
@@ -89,44 +89,46 @@ class DynamicGraphConvolution(nn.Module):
         #   2. 改进2：使用更加精细的控制代替矩阵乘法？之前的工作
         out1 = nn.Sigmoid()(out1)
         if prob:
-            # Todo: 最简单的计算过渡输出的方法
-            # transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
-            # # Todo: 这里的话求过和，需要除以类别数量
-            # transformed_out1 /= num_classes
-            # # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
-            # dynamic_adj_loss += torch.sum(torch.norm(out1 - transformed_out1, dim=1))
-            # Todo: 使用正负相关的方法
-            device = out1.device
-            batch_size = len(out1)
-            candidates = torch.zeros((batch_size, num_classes), dtype=torch.float64).to(device)
-            exists_lower_bound = 0.5  # 如果大于0.5，则认为存在
-            relation_gap = 0
-            for b in range(batch_size):
-                predict_vec = out1[b]
-                for lj in range(num_classes):
-                    relation_num = 0
-                    incr_lower_bound = self.label_prob_vec[lj] + relation_gap
-                    decr_upper_bound = self.label_prob_vec[lj] - relation_gap
-                    for li in range(num_classes):
-                        if li == lj:  # 是同一个标签，则1转移
-                            relation_num += 1
-                            candidates[b][lj] += predict_vec[li]
-                            continue
-                        if predict_vec[li] > exists_lower_bound:
-                            # Todo: 这里使用网络生成的动态相关性矩阵
-                            a = dynamic_adj[b][li][lj].item()
-                            relation_num += 1
-                            # 标签li对标签lj起促进作用，直接相乘即可
-                            if a > incr_lower_bound:
-                                # 仅当起促进作用时，才累加
-                                candidates[b][lj] += predict_vec[li] * a
-                            elif a < decr_upper_bound:  # 标签li对lj起抑制作用
-                                candidates[b][lj] += 1 - predict_vec[li] * (1 - a)
-                    # 按照转移的标签数量进行平均
-                    # 里边既有促进作用的部分，也有抑制作用的部分
-                    candidates[b][lj] /= relation_num
-            # Todo: 使用生成的candidates来计算过渡损失
-            dynamic_adj_loss += torch.sum(torch.norm(out1 - candidates, dim=1))
+            if not gap:
+                # Todo: 最简单的计算过渡输出的方法
+                transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
+                # Todo: 这里的话求过和，需要除以类别数量
+                transformed_out1 /= num_classes
+                # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
+                dynamic_adj_loss += torch.sum(torch.norm(out1 - transformed_out1, dim=1))
+            else:
+                # Todo: 使用正负相关的方法
+                device = out1.device
+                batch_size = len(out1)
+                candidates = torch.zeros((batch_size, num_classes), dtype=torch.float64).to(device)
+                exists_lower_bound = 0.5  # 如果大于0.5，则认为存在
+                relation_gap = 0
+                for b in range(batch_size):
+                    predict_vec = out1[b]
+                    for lj in range(num_classes):
+                        relation_num = 0
+                        incr_lower_bound = self.label_prob_vec[lj] + relation_gap
+                        decr_upper_bound = self.label_prob_vec[lj] - relation_gap
+                        for li in range(num_classes):
+                            if li == lj:  # 是同一个标签，则1转移
+                                relation_num += 1
+                                candidates[b][lj] += predict_vec[li]
+                                continue
+                            if predict_vec[li] > exists_lower_bound:
+                                # Todo: 这里使用网络生成的动态相关性矩阵
+                                a = dynamic_adj[b][li][lj].item()
+                                relation_num += 1
+                                # 标签li对标签lj起促进作用，直接相乘即可
+                                if a > incr_lower_bound:
+                                    # 仅当起促进作用时，才累加
+                                    candidates[b][lj] += predict_vec[li] * a
+                                elif a < decr_upper_bound:  # 标签li对lj起抑制作用
+                                    candidates[b][lj] += 1 - predict_vec[li] * (1 - a)
+                        # 按照转移的标签数量进行平均
+                        # 里边既有促进作用的部分，也有抑制作用的部分
+                        candidates[b][lj] /= relation_num
+                # Todo: 使用生成的candidates来计算过渡损失
+                dynamic_adj_loss += torch.sum(torch.norm(out1 - candidates, dim=1))
         if gap:
             diff = dynamic_adj - static_adj
             # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
@@ -138,7 +140,7 @@ class DynamicGraphConvolution(nn.Module):
 
 class CONNECTED_ADD_GCN(nn.Module):
     def __init__(self, model, num_classes, in_features=300, out_features=2048, adjList=None, needOptimize=True,
-                 constraint=False, prob=False, gap=False,label_prob_vec=None):
+                 constraint=False, prob=False, gap=False, label_prob_vec=None):
         super(CONNECTED_ADD_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
