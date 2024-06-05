@@ -449,8 +449,8 @@ class GCNFitter(object):
         self.ap_meter.reset()
         # Todo: 调整学习率的部分放到scheduler中执行
         mAP, ap, support_loss, query_loss = self.train(train_loader, self.model, self.criterion,
-                                                       self.optimizer, epoch, self.param.device,
-                                                       scheduler)
+                                                                        self.optimizer, epoch, self.param.device,
+                                                                        scheduler)
         train_writer.writerow([epoch, mAP, support_loss, query_loss])
         train_aps_writer.writerow(ap)
         return query_loss
@@ -515,9 +515,9 @@ class GCNFitter(object):
 
         # Todo: 划分support set和query set
         total_samples = len(train_loader.dataset)
-        query_size = max(total_samples // 10, 2)
+        support_size = total_samples // 10
         support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset,
-                                                                       [total_samples - query_size, query_size])
+                                                                       [support_size, total_samples - support_size])
         support_loader = torch.utils.data.DataLoader(
             dataset=support_dataset,
             batch_size=train_loader.batch_size,
@@ -530,7 +530,7 @@ class GCNFitter(object):
             batch_size=train_loader.batch_size,
             shuffle=True,
             num_workers=train_loader.num_workers,
-            drop_last=False
+            drop_loat=False
         )
         INNER_LR = 1e-4
         clone = MAML(model, lr=INNER_LR).clone()
@@ -564,9 +564,8 @@ class GCNFitter(object):
             support_loss = asym_loss + \
                            lambda_dynamic * dynamic_adj_loss
 
-            losses[SUPPORT_LOSS_KEY].add(support_loss.item())
+            losses[SUPPORT_LOSS_KEY].add(support_loss)
             # Todo: 传入计算好的损失，手动进行梯度下降
-            #  注意这里更新的是中间节点的值
             clone.adapt(support_loss)
 
         # Todo: 在query_set上跑
@@ -599,16 +598,15 @@ class GCNFitter(object):
             query_loss = asym_loss + \
                          lambda_dynamic * dynamic_adj_loss
 
-            losses[QUERY_LOSS_KEY].add(query_loss.item())
-            # Todo: 对原生模型进行更新，
-            model.zero_grad()  # 模型的梯度清零
-            # clone.zero_grad()
-            # clone.save_classifier_grad()
+            losses[QUERY_LOSS_KEY].add(query_loss)
+            model.zero_grad()
+            clone.zero_grad()
+            clone.save_classifier_grad()
             query_loss.backward()
-            # clone.adapt(query_loss, do_calc=False)
+            clone.adapt(query_loss, do_calc=False)
             optimizer.step()
-        # 全连接层
-        model.fc.load_state_dict(clone.module.fc.state_dict())
+            # 全连接层
+            model.fc.load_state_dict(clone.module.fc.state_dict())
 
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:

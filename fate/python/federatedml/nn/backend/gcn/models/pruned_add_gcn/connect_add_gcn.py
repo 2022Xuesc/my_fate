@@ -27,8 +27,10 @@ class DynamicGraphConvolution(nn.Module):
             nn.LeakyReLU(0.2))
 
         self.gap = nn.AdaptiveAvgPool1d(1)
+        # Todo: 和global相关的下列参数都不使用了
         self.conv_global = nn.Conv1d(in_features, in_features, 1)
         self.bn_global = nn.BatchNorm1d(in_features)
+        
         self.relu = nn.LeakyReLU(0.2)
 
         self.conv_create_co_mat = nn.Conv1d(in_features * 2, num_nodes, 1)  # 生成动态图的卷积层

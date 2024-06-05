@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import torch.nn
-
-import traceback
 from torch.autograd import grad
 
 from federatedml.nn.backend.multi_label.meta_learning.utils import clone_module, update_module
@@ -99,7 +97,7 @@ class MAML(torch.nn.Module):
         gradients = None
         # 计算loss对包装模型参数的梯度
         if do_calc:
-            gradients = grad(loss, self.module.parameters())
+            gradients = grad(loss, self.module.parameters(), allow_unused=True)
         # 更新模型
         self.module = maml_update(self.module, self.lr, gradients)
 
@@ -127,5 +125,5 @@ class MAML(torch.nn.Module):
         return MAML(clone_module(self.module), lr=self.lr)
 
     def save_classifier_grad(self):
-        self.module.fc[0].weight.retain_grad()
-        self.module.fc[0].bias.retain_grad()
+        self.module.fc.weight.retain_grad()
+        self.module.fc.bias.retain_grad()
