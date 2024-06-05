@@ -373,7 +373,7 @@ class GCNFitter(object):
                     y = labels[j]
                     adjList[x][y] += 1
                     adjList[y][x] += 1
-            label_prob_vec = nums / len(image_id2labels)
+        label_prob_vec = nums / len(image_id2labels)
         nums = nums[:, np.newaxis]
         # 遍历每一行
         for i in range(num_labels):
