@@ -13,8 +13,6 @@ from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.gcn.models import *
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
-# Todo: 导入元学习模型
-from federatedml.nn.backend.multi_label.meta_learning.maml import MAML
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -25,7 +23,7 @@ from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
 cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name)
-train_header = ['epoch', 'mAP', 'support_loss', 'query_loss']
+train_header = ['epoch', 'mAP', 'asym_loss', 'dynamic_adj_loss', 'overall_loss']
 valid_header = ['epoch', 'mAP', 'loss']
 
 train_writer = my_writer.get("train.csv", header=train_header)
@@ -257,16 +255,16 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # dataset = 'nuswide'
     dataset = 'voc_expanded'
 
-    # category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
-    category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
+    category_dir = f'/home/klaus125/research/fate/my_practice/dataset/{dataset}'
+    # category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 20
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 20
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -307,7 +305,7 @@ class GCNFedAggregator(object):
             # Todo: 这里需要再改改
             #  没有分类层了，因此，无法使用FPSL了
 
-            self.model = aggregate_by_labels(tensors, degrees)
+            self.model = aggregate_whole_model(tensors, degrees)
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.context.send_model((self.model, self.bn_data))
@@ -375,6 +373,7 @@ class GCNFitter(object):
                     y = labels[j]
                     adjList[x][y] += 1
                     adjList[y][x] += 1
+        label_prob_vec = nums / len(image_id2labels)
         nums = nums[:, np.newaxis]
         # 遍历每一行
         for i in range(num_labels):
@@ -389,7 +388,8 @@ class GCNFitter(object):
         # Todo: 现有的gcn分类器
         self.model, self.scheduler, self.optimizer, self.gcn_optimizer = _init_gcn_learner(self.param,
                                                                                            self.param.device,
-                                                                                           self.adjList)
+                                                                                           self.adjList,
+                                                                                           label_prob_vec)
 
         # 使用非对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
@@ -448,12 +448,12 @@ class GCNFitter(object):
         # 度量重置
         self.ap_meter.reset()
         # Todo: 调整学习率的部分放到scheduler中执行
-        mAP, ap, support_loss, query_loss = self.train(train_loader, self.model, self.criterion,
-                                                       self.optimizer, epoch, self.param.device,
-                                                       scheduler)
-        train_writer.writerow([epoch, mAP, support_loss, query_loss])
+        mAP, ap, asym_loss, dynamic_adj_loss, overall_loss = self.train(train_loader, self.model, self.criterion,
+                                                                        self.optimizer, epoch, self.param.device,
+                                                                        scheduler)
+        train_writer.writerow([epoch, mAP, asym_loss, dynamic_adj_loss, overall_loss])
         train_aps_writer.writerow(ap)
-        return query_loss
+        return overall_loss
 
     def validate_one_epoch(self, epoch, valid_loader, scheduler):
         self.ap_meter.reset()
@@ -506,37 +506,12 @@ class GCNFitter(object):
         ASYM_LOSS = 'Asym Loss'
         DYNAMIC_ADJ_LOSS = 'Dynamic Adj Loss'
         OVERALL_LOSS_KEY = 'Overall Loss'
-        SUPPORT_LOSS_KEY = 'Support Loss'
-        QUERY_LOSS_KEY = 'Query Loss'
-
-        losses = OrderedDict([(SUPPORT_LOSS_KEY, tnt.AverageValueMeter()),
-                              (QUERY_LOSS_KEY, tnt.AverageValueMeter())])
+        losses = OrderedDict([(ASYM_LOSS, tnt.AverageValueMeter()),
+                              (DYNAMIC_ADJ_LOSS, tnt.AverageValueMeter()),
+                              (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
         sigmoid_func = torch.nn.Sigmoid()
 
-        # Todo: 划分support set和query set
-        total_samples = len(train_loader.dataset)
-        # Todo: 对半划分
-        query_size = max(total_samples // 2, 1)
-        support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset,
-                                                                       [total_samples - query_size, query_size])
-        support_loader = torch.utils.data.DataLoader(
-            dataset=support_dataset,
-            batch_size=train_loader.batch_size,
-            shuffle=True,
-            num_workers=train_loader.num_workers,
-            drop_last=False
-        )
-        query_loader = torch.utils.data.DataLoader(
-            dataset=query_dataset,
-            batch_size=train_loader.batch_size,
-            shuffle=True,
-            num_workers=train_loader.num_workers,
-            drop_last=False
-        )
-        INNER_LR = 1e-4
-        clone = MAML(model, lr=INNER_LR).clone()
-        # Todo: 在support set上的训练过程
-        for train_step, ((features, inp), target) in enumerate(support_loader):
+        for train_step, ((features, inp), target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
 
@@ -554,62 +529,26 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts, dynamic_adj_loss = clone(features, inp)
+            cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features, inp)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
-            # Todo: 对于support集合，暂不添加
-            # self.ap_meter.add(predicts.data, prev_target)
-
-            lambda_dynamic = 1
-            asym_loss = criterion(sigmoid_func(predicts), target)
-            support_loss = asym_loss + \
-                           lambda_dynamic * dynamic_adj_loss
-
-            losses[SUPPORT_LOSS_KEY].add(support_loss.item())
-            # Todo: 传入计算好的损失，手动进行梯度下降
-            #  注意这里更新的是中间节点的值
-            clone.adapt(support_loss)
-
-        # Todo: 在query_set上跑
-        for query_step, ((features, inp), target) in enumerate(query_loader):
-            # features是图像特征，inp是输入的标签相关性矩阵
-            features = features.to(device)
-
-            inp = inp.to(device)
-
-            prev_target = target.clone()
-
-            target[target == 0] = 1
-            target[target == -1] = 0
-            target = target.to(device)
-
-            self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
-
-            # 也可在聚合时候统计，这里为明了起见，直接统计
-            self._num_label_consumed += target.sum().item()
-
-            # 计算模型输出
-            cnn_predicts, gcn_predicts, dynamic_adj_loss = clone(features, inp)
-
-            predicts = (cnn_predicts + gcn_predicts) / 2
-
+            # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, prev_target)
 
             lambda_dynamic = 1
             asym_loss = criterion(sigmoid_func(predicts), target)
-            query_loss = asym_loss + \
-                         lambda_dynamic * dynamic_adj_loss
+            overall_loss = asym_loss + \
+                           lambda_dynamic * dynamic_adj_loss
 
-            losses[QUERY_LOSS_KEY].add(query_loss.item())
-            # Todo: 对原生模型进行更新，
-            model.zero_grad()  # 模型的梯度清零
-            # clone.zero_grad()
-            # clone.save_classifier_grad()
-            query_loss.backward()
-            # clone.adapt(query_loss, do_calc=False)
+            losses[OVERALL_LOSS_KEY].add(overall_loss.item())
+            losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
+            losses[ASYM_LOSS].add(asym_loss.item())
+
+            optimizer.zero_grad()
+
+            overall_loss.backward()
+            # Todo: 这里需要对模型的参数进行裁剪吗？
             optimizer.step()
-        # 全连接层
-        model.fc.load_state_dict(clone.module.fc.state_dict())
 
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:
@@ -618,9 +557,10 @@ class GCNFitter(object):
 
         mAP, ap = self.ap_meter.value()
         mAP *= 100
-        support_loss = losses[SUPPORT_LOSS_KEY].mean
-        query_loss = losses[QUERY_LOSS_KEY].mean
-        return mAP.item(), ap, support_loss, query_loss
+        overall_loss = losses[OVERALL_LOSS_KEY].mean
+        dynamic_adj_loss = losses[DYNAMIC_ADJ_LOSS].mean
+        asym_loss = losses[ASYM_LOSS].mean
+        return mAP.item(), ap, asym_loss, dynamic_adj_loss, overall_loss
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         OVERALL_LOSS_KEY = 'Overall Loss'
@@ -655,7 +595,7 @@ class GCNFitter(object):
 
 
 # Todo: 相关性矩阵初始化 + 优化
-def _init_gcn_learner(param, device='cpu', adjList=None):
+def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # in_channel是标签嵌入向量的初始（输入）维度
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     #  对于初始化的，使用300即可
@@ -663,7 +603,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # 仅仅使用初始化权重，仍要进行学习
     model = connect_add_gcn(param.pretrained, adjList,
                             device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                            needOptimize=True, constraint=False)
+                            needOptimize=True, constraint=False, gap=True, label_prob_vec=label_prob_vec)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
