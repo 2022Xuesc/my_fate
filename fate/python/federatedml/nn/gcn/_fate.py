@@ -515,7 +515,8 @@ class GCNFitter(object):
 
         # Todo: 划分support set和query set
         total_samples = len(train_loader.dataset)
-        query_size = max(total_samples // 10, 2)
+        # Todo: 对半划分
+        query_size = max(total_samples // 2, 1)
         support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset,
                                                                        [total_samples - query_size, query_size])
         support_loader = torch.utils.data.DataLoader(
