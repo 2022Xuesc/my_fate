@@ -5,3 +5,9 @@ my_add_gin_valid.csv : 72.65
 my_add_standard_gcn_fpsl_valid.csv : 90.64
 my_add_standard_gcn_valid.csv : 91.5
 my_connect_add_standard_gcn_valid.csv : 91.78
+connect_add_gcn_advanced_prob_valid.csv : 90.61
+connect_add_gcn_fedavg_valid.csv : 91.35
+connect_add_gcn_fpsl_meta_valid.csv : 90.33
+connect_add_gcn_gap_valid.csv : 91.29
+connect_add_gcn_prob_valid.csv : 91.67
+my_connect_add_standard_gcn_fpsl_valid.csv : 90.91
