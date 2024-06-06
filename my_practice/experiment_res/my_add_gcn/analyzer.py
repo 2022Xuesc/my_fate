@@ -74,14 +74,18 @@ def do_draw(path, file):
 
 
 method_paths = [
-                'my_add_gcn_fv',
-                # 'my_add_gcn_fp',
-                'my_add_gin_fv',
-                # 'my_add_gin_fp',
-                'my_add_standard_gcn_fv',
-                # 'my_add_standard_gcn_fp'
-                'my_add_connect_standard_gcn_fv',
-                ]
+    # 'my_add_gcn_fv',
+    # 'my_add_gcn_fp',
+    # 'my_add_gin_fv',
+    # 'my_add_gin_fp',
+    # 'my_add_standard_gcn_fv',
+    'my_add_standard_gcn_fp',
+    'my_add_connect_standard_gcn_fv',
+    'my_add_connect_gcn_fv',
+    'my_add_connect_gcn_fp_meta',
+    'my_connect_add_gcn_prob_fv',
+    'my_connect_add_gcn_advanced_prob_fv'
+]
 
 colors = ['g', 'purple', 'r', 'b', 'orange', 'black']
 
@@ -224,29 +228,38 @@ def draw_train_and_valid(paths):
 #
 
 # Todo: 各个客户端自身的结果分析
-
+paths = ['my_add_standard_gcn_fp',
+         'my_add_connect_standard_gcn_fv',
+         'my_add_connect_gcn_fv',
+         'my_add_connect_gcn_fp_meta',
+         'my_connect_add_gcn_prob_fv',
+         'my_connect_add_gcn_advanced_prob_fv']
 # paths = ['agg_kmeans', 'kmeans', 'kmeans', 'c_gcn_with_agg', 'c_gcn_without_agg']
-# for path in paths:
-#     clients_path = [os.path.join(path, 'guest/10')]
-# 
-#     for i in range(1, 10):
-#         clients_path.append(os.path.join(path, f'host/{i}'))
-# 
-# 
-#     # Todo: 各个客户端的结果分析
-#     arbiter_path = os.path.join(path, 'arbiter/999')
-#     draw_train_and_valid(clients_path)
-#     draw(arbiter_path, loss_file='avgloss.csv')
+for path in paths:
+    clients_path = [os.path.join(path, 'guest/10')]
+
+    for i in range(1, 10):
+        clients_path.append(os.path.join(path, f'host/{i}'))
+
+
+    # Todo: 各个客户端的结果分析
+    arbiter_path = os.path.join(path, 'arbiter/999')
+    draw_train_and_valid(clients_path)
+    draw(arbiter_path, loss_file='avgloss.csv')
 
 # Todo: 画一下损失成分
-# paths = ['agg_kmeans', 'kmeans', 'kmeans', 'c_gcn_with_agg', 'c_gcn_without_agg']
+paths = ['my_add_standard_gcn_fp',
+         'my_add_connect_standard_gcn_fv',
+         'my_add_connect_gcn_fv',
+         'my_add_connect_gcn_fp_meta',
+         'my_connect_add_gcn_prob_fv',
+         'my_connect_add_gcn_advanced_prob_fv']
 # for path in paths:
 #     clients_path = [os.path.join(path, 'guest/10')]
-#
+# 
 #     for i in range(1, 10):
 #         clients_path.append(os.path.join(path, f'host/{i}'))
-#     draw_losses(clients_path,'train_loss.csv')
-
+#     draw_losses(clients_path, 'train_loss.csv')
 
 # Todo: 比较方法
 clients_path = ['guest/10']
