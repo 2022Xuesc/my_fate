@@ -1,12 +1,13 @@
-path = my_add_connect_standard_gcn_fv,min = 75.71, max = 100.0,  avg = 92.67
-path = my_add_gcn_fp,min = 75.68, max = 100.0,  avg = 92.44
-path = my_add_gcn_fv,min = 75.17, max = 100.0,  avg = 92.53
-path = my_add_gin_fp,min = 67.64, max = 100.0,  avg = 90.89
-path = my_add_gin_fv,min = 75.76, max = 100.0,  avg = 92.65
-path = my_add_standard_gcn_fp,min = 70.63, max = 100.0,  avg = 92.67
-path = my_add_standard_gcn_fv,min = 68.45, max = 100.0,  avg = 92.12
-path = my_add_connect_gcn_fp_meta,min = 64.53, max = 100.0,  avg = 89.98
-path = my_add_connect_gcn_fv,min = 76.19, max = 100.0,  avg = 92.86
-path = my_add_connect_standard_gcn_fp,min = 77.7, max = 100.0,  avg = 92.63
-path = my_connect_add_gcn_advanced_prob_fv,min = 69.66, max = 100.0,  avg = 92.78
-path = my_connect_add_gcn_prob_fv,min = 77.66, max = 100.0,  avg = 93.57
+path = my_add_connect_standard_gcn_fv,min = 75.71, max = 100.0,dominant=92.87,avg = 92.67
+path = my_add_gcn_fp,min = 75.68, max = 100.0,dominant=92.65,avg = 92.44
+path = my_add_gcn_fv,min = 75.17, max = 100.0,dominant=92.85,avg = 92.53
+path = my_add_gin_fp,min = 67.64, max = 100.0,dominant=92.49,avg = 90.89
+path = my_add_gin_fv,min = 75.76, max = 100.0,dominant=92.55,avg = 92.65
+path = my_add_standard_gcn_fp,min = 70.63, max = 100.0,dominant=92.7,avg = 92.67
+path = my_add_standard_gcn_fv,min = 68.45, max = 100.0,dominant=92.71,avg = 92.12
+path = my_add_connect_gcn_fp_meta,min = 64.53, max = 100.0,dominant=92.29,avg = 89.98
+path = my_add_connect_gcn_fv,min = 76.19, max = 100.0,dominant=92.92,avg = 92.86
+path = my_add_connect_standard_gcn_fp,min = 77.7, max = 100.0,dominant=92.77,avg = 92.63
+path = my_connect_add_gcn_advanced_prob_fv,min = 69.66, max = 100.0,dominant=91.63,avg = 92.78
+path = my_connect_add_gcn_prob_fv,min = 77.66, max = 100.0,dominant=92.45,avg = 93.57
+path = my_connect_add_gcn_gap_fv,min = 71.82, max = 100.0,dominant=92.38,avg = 92.37

@@ -1,15 +1,5 @@
 import csv
 import os
-import statistics
-
-
-def calculate_stats(float_list):
-    minimum = min(float_list)
-    maximum = max(float_list)
-    mean = statistics.mean(float_list)
-    variance = statistics.stdev(float_list)
-    return minimum, maximum, mean
-
 
 # IJCNN相关
 # Todo: 计算mAP指标、OF1指标和CF1指标
@@ -26,6 +16,7 @@ for path in files:
     maxClientVal = 0
     minClientVal = 100
     avgClientVal = 0
+    dominantClientVal = 0
     # 遍历每个client_path
     for client_path in clients_path:
         maxVal = 0
@@ -36,5 +27,8 @@ for path in files:
         maxClientVal = max(maxVal, maxClientVal)
         minClientVal = min(maxVal, minClientVal)
         avgClientVal += maxVal
+        if client_path == 'guest/10':
+            dominantClientVal = maxVal
     avgClientVal /= 10
-    print(f'path = {path},min = {round(minClientVal,2)}, max = {round(maxClientVal,2)},  avg = {round(avgClientVal,2)}')
+    print(
+        f'path = {path},min = {round(minClientVal, 2)}, max = {round(maxClientVal, 2)},dominant={round(dominantClientVal,2)},avg = {round(avgClientVal, 2)}')
