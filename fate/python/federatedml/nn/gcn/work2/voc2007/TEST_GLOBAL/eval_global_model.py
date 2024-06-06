@@ -23,12 +23,12 @@ jobid_map = {
     # 'my_add_gin_fpsl': '202405301204117812590',
     # 'my_add_gcn': '202405301427122521060',
     # 'my_connect_add_standard_gcn': '202405301531543889900',
-    'my_connect_add_standard_gcn_fpsl': '202405301741117483270',
-    'connect_add_gcn_fedavg': '202406041540263877510',
-    'connect_add_gcn_fpsl_meta': '202406051021109290830',
-    'connect_add_gcn_prob': '202406050247596100450',
-    'connect_add_gcn_advanced_prob': '202406050612249408270',
-    # 'connect_add_gcn_gap': '202406051531587900350'
+    #'my_connect_add_standard_gcn_fpsl': '202405301741117483270',
+    #'connect_add_gcn_fedavg': '202406041540263877510',
+    #'connect_add_gcn_fpsl_meta': '202406051021109290830',
+    #'connect_add_gcn_prob': '202406050247596100450',
+    # 'connect_add_gcn_advanced_prob': '202406050612249408270',
+    'connect_add_gcn_gap': '202406051531587900350'
 }
 model_map = {
     # 'my_add_gcn': pruned_add_gcn_resnet101,
@@ -52,7 +52,7 @@ config_map = {
     'connect_add_gcn_fedavg': [False, False],
     'connect_add_gcn_fpsl_meta': [False, False],
     'connect_add_gcn_prob': [True, False],
-    'connect_add_gcn_advanced_prob': [True, True],
+    'connect_add_gcn_advanced_prob': [True, False],
     'connect_add_gcn_gap': [False, True]
 }
 # Todo: 创建一个模型骨架，然后替换其参数
