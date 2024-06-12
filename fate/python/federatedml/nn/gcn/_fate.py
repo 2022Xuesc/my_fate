@@ -559,10 +559,10 @@ class GCNFitter(object):
         num_batches = math.ceil(max(num_samples // batch_size, 1) * 1.5)
         # 随机选择生成采样器 # replacement是否False，多样性会好一些
         support_sampler = torch.utils.data.RandomSampler(data_source=dataset,
-                                                         replacement=False,
+                                                         replacement=True,
                                                          num_samples=batch_size * num_batches)
         query_sampler = torch.utils.data.RandomSampler(data_source=dataset,
-                                                       replacement=False,
+                                                       replacement=True,
                                                        num_samples=batch_size * num_batches)
         support_loader = torch.utils.data.DataLoader(
             dataset=dataset,
