@@ -41,6 +41,9 @@ def aggregate_by_labels(tensors, degrees):
     # degrees是91个元素的列表，前90个元素是最后一层各个类别的聚合权重，而最后一个元素是之前层的聚合权重
     # 先聚合之前的特征层，聚合权重为degrees[i][-1]
     # 将degree转为array
+    # 如果只有一个，则直接返回tensors[0]
+    if len(tensors) == 1:
+        return tensors[0]
     degrees = np.array(degrees)
     degrees_sum = degrees.sum(axis=0)
     # i表示第i个客户端

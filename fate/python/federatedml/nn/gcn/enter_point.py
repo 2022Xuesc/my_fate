@@ -74,12 +74,12 @@ class GCNClient(GCNBase):
     def fit(self, train_data, valid_data):
         from federatedml.nn.gcn._fate import build_fitter
         self._fitter = None
-        self._fitter, train_loader, valid_loader = build_fitter(
+        self._fitter, train_loader, valid_loader, agg_type = build_fitter(
             param=self.param,
             train_data=train_data,
             valid_data=valid_data
         )
-        self._fitter.fit(train_loader, valid_loader)
+        self._fitter.fit(train_loader, valid_loader, agg_type)
         self.callback_list.on_train_end()
 
 
