@@ -555,6 +555,7 @@ class GCNFitter(object):
         sigmoid_func = torch.nn.Sigmoid()
         # Todo: 划分support set和query set
         total_samples = len(train_loader.dataset)
+        self._num_data_consumed += total_samples
         # Todo: 对半划分
         query_size = max(total_samples // 2, 1)
         support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset,
