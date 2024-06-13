@@ -448,6 +448,8 @@ class GCNFitter(object):
         self.gcn_lr_scheduler = None
         self.agg_type = 'normal'
 
+        self.INNER_LR = 1e-3
+
     def get_label_mapping(self):
         return self.label_mapping
 
@@ -551,93 +553,87 @@ class GCNFitter(object):
         losses = OrderedDict([(SUPPORT_LOSS_KEY, tnt.AverageValueMeter()),
                               (QUERY_LOSS_KEY, tnt.AverageValueMeter())])
         sigmoid_func = torch.nn.Sigmoid()
-        # Todo: 极少量数据的情况下，使用采样的方式
-        dataset = train_loader.dataset
-        num_samples = len(dataset)
-        batch_size = train_loader.batch_size
-        # 设定num_batches为原来的批次乘以2，充分利用小的
-        num_batches = math.ceil(max(num_samples // batch_size, 1) * 1.5)
-        # 随机选择生成采样器 # replacement是否False，多样性会好一些
-        support_sampler = torch.utils.data.RandomSampler(data_source=dataset,
-                                                         replacement=False,
-                                                         num_samples=batch_size * num_batches)
-        query_sampler = torch.utils.data.RandomSampler(data_source=dataset,
-                                                       replacement=False,
-                                                       num_samples=batch_size * num_batches)
+        # Todo: 划分support set和query set
+        total_samples = len(train_loader.dataset)
+        # Todo: 对半划分
+        query_size = max(total_samples // 2, 1)
+        support_dataset, query_dataset = torch.utils.data.random_split(train_loader.dataset,
+                                                                       [total_samples - query_size, query_size])
         support_loader = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=batch_size,
-            shuffle=False,
-            sampler=support_sampler)
-        query_loader = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=batch_size,
-            shuffle=False,
-            sampler=query_sampler
+            dataset=support_dataset,
+            batch_size=train_loader.batch_size,
+            shuffle=True,
+            num_workers=train_loader.num_workers,
+            drop_last=False
         )
-        # Todo: query和support相等
-        self._num_data_consumed += batch_size * num_batches * 2
-        INNER_LR = 1e-4
-        clone = MAML(model, lr=INNER_LR).clone()
-        for (_, ((support_features, support_inp), support_target)), (
-                _, ((query_features, query_inp), query_target)) in zip(
-            enumerate(support_loader), enumerate(query_loader)):
-            # 执行support步
+        query_loader = torch.utils.data.DataLoader(
+            dataset=query_dataset,
+            batch_size=train_loader.batch_size,
+            shuffle=True,
+            num_workers=train_loader.num_workers,
+            drop_last=False
+        )
+        clone = MAML(model, lr=self.INNER_LR).clone()
+        # Todo: 在support set上的训练过程
+        for train_step, ((features, inp), target) in enumerate(support_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
-            support_features = support_features.to(device)
+            features = features.to(device)
 
-            support_inp = support_inp.to(device)
+            inp = inp.to(device)
 
-            support_target[support_target == 0] = 1
-            support_target[support_target == -1] = 0
-            support_target = support_target.to(device)
+            target[target == 0] = 1
+            target[target == -1] = 0
+            target = target.to(device)
 
-            self._num_per_labels += support_target.t().sum(dim=1).cpu().numpy()
+            self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
             # 也可在聚合时候统计，这里为明了起见，直接统计
-            self._num_label_consumed += support_target.sum().item()
+            self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts, dynamic_adj_loss = clone(support_features, support_inp)
+            cnn_predicts, gcn_predicts, dynamic_adj_loss = clone(features, inp)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
+            # Todo: 对于support集合，暂不添加
+            # self.ap_meter.add(predicts.data, prev_target)
 
             lambda_dynamic = 1
-            asym_loss = criterion(sigmoid_func(predicts), support_target)
+            asym_loss = criterion(sigmoid_func(predicts), target)
             support_loss = asym_loss + \
                            lambda_dynamic * dynamic_adj_loss
 
             losses[SUPPORT_LOSS_KEY].add(support_loss.item())
+            # Todo: 传入计算好的损失，手动进行梯度下降
             #  注意这里更新的是中间节点的值
             clone.adapt(support_loss)
 
-            # Todo: 执行query步
+        # Todo: 在query_set上跑
+        for query_step, ((features, inp), target) in enumerate(query_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
-            query_features = query_features.to(device)
+            features = features.to(device)
 
-            query_inp = query_inp.to(device)
+            inp = inp.to(device)
 
-            prev_query_target = query_target.clone()
+            prev_target = target.clone()
 
-            query_target[query_target == 0] = 1
-            query_target[query_target == -1] = 0
-            query_target = query_target.to(device)
+            target[target == 0] = 1
+            target[target == -1] = 0
+            target = target.to(device)
 
-            # Todo: 训练使用的数据量
-            self._num_per_labels += query_target.t().sum(dim=1).cpu().numpy()
+            self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
             # 也可在聚合时候统计，这里为明了起见，直接统计
-            self._num_label_consumed += query_target.sum().item()
+            self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts, dynamic_adj_loss = clone(query_features, query_inp)
+            cnn_predicts, gcn_predicts, dynamic_adj_loss = clone(features, inp)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
 
-            self.ap_meter.add(predicts.data, prev_query_target)
+            self.ap_meter.add(predicts.data, prev_target)
 
             lambda_dynamic = 1
-            asym_loss = criterion(sigmoid_func(predicts), query_target)
+            asym_loss = criterion(sigmoid_func(predicts), target)
             query_loss = asym_loss + \
                          lambda_dynamic * dynamic_adj_loss
 
@@ -649,13 +645,14 @@ class GCNFitter(object):
             query_loss.backward()
             # clone.adapt(query_loss, do_calc=False)
             optimizer.step()
-            # 全连接层
-            model.fc.load_state_dict(clone.module.fc.state_dict())
+        # 全连接层
+        model.fc.load_state_dict(clone.module.fc.state_dict())
 
         # Todo: 这里对学习率进行调整
         if (epoch + 1) % 4 == 0:
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.9
+            self.INNER_LR *= 0.9
 
         mAP, ap = self.ap_meter.value()
         mAP *= 100
