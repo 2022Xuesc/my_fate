@@ -448,6 +448,8 @@ class GCNFitter(object):
         self.gcn_lr_scheduler = None
         self.agg_type = 'normal'
 
+        self.INNER_LR = 1e-3
+
     def get_label_mapping(self):
         return self.label_mapping
 
@@ -577,8 +579,7 @@ class GCNFitter(object):
         )
         # Todo: query和support相等
         self._num_data_consumed += batch_size * num_batches * 2
-        INNER_LR = 1e-4
-        clone = MAML(model, lr=INNER_LR).clone()
+        clone = MAML(model, lr=self.INNER_LR).clone()
         for (_, ((support_features, support_inp), support_target)), (
                 _, ((query_features, query_inp), query_target)) in zip(
             enumerate(support_loader), enumerate(query_loader)):
@@ -656,7 +657,7 @@ class GCNFitter(object):
         if (epoch + 1) % 4 == 0:
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.9
-
+            self.INNER_LR *= 0.9
         mAP, ap = self.ap_meter.value()
         mAP *= 100
         support_loss = losses[SUPPORT_LOSS_KEY].mean
