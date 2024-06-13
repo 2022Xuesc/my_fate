@@ -89,7 +89,7 @@ class DynamicGraphConvolution(nn.Module):
         #   2. 改进2：使用更加精细的控制代替矩阵乘法？之前的工作
         out1 = nn.Sigmoid()(out1)
         if prob:
-            if not gap:
+            if self.label_prob_vec is None:  # 如果不是advanced
                 # Todo: 最简单的计算过渡输出的方法
                 transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
                 # Todo: 这里的话求过和，需要除以类别数量
@@ -101,7 +101,8 @@ class DynamicGraphConvolution(nn.Module):
                 device = out1.device
                 batch_size = len(out1)
                 candidates = torch.zeros((batch_size, num_classes), dtype=torch.float64).to(device)
-                exists_lower_bound = 0.5  # 如果大于0.5，则认为存在
+                exists_upper_bound = 0.7  # 如果大于0.5，则认为存在
+                # exists_lower_bound = 0.3  # 如果大于0.5，则认为存在
                 relation_gap = 0
                 for b in range(batch_size):
                     predict_vec = out1[b]
@@ -114,7 +115,7 @@ class DynamicGraphConvolution(nn.Module):
                                 relation_num += 1
                                 candidates[b][lj] += predict_vec[li]
                                 continue
-                            if predict_vec[li] > exists_lower_bound:
+                            if predict_vec[li] > exists_upper_bound:
                                 # Todo: 这里使用网络生成的动态相关性矩阵
                                 a = dynamic_adj[b][li][lj].item()
                                 relation_num += 1
