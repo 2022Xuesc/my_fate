@@ -101,8 +101,8 @@ class DynamicGraphConvolution(nn.Module):
                 device = out1.device
                 batch_size = len(out1)
                 candidates = torch.zeros((batch_size, num_classes), dtype=torch.float64).to(device)
-                exists_upper_bound = 0.7  # 如果大于0.5，则认为存在
-                # exists_lower_bound = 0.3  # 如果大于0.5，则认为存在
+                # Todo: 设置成0.7太大了
+                exists_upper_bound = 0.5  # 如果大于0.5，则认为存在
                 relation_gap = 0
                 for b in range(batch_size):
                     predict_vec = out1[b]

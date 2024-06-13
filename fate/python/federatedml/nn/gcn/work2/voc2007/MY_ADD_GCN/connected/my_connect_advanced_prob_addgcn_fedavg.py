@@ -283,7 +283,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=False)
 
     fitter = GCNFitter(param, epochs, context=context)
-    return fitter, train_loader, valid_loader
+    return fitter, train_loader, valid_loader, 'normal'
 
 
 class GCNFedAggregator(object):
@@ -414,7 +414,7 @@ class GCNFitter(object):
         return self.label_mapping
 
     # 执行拟合操作
-    def fit(self, train_loader, valid_loader):
+    def fit(self, train_loader, valid_loader, agg_type):
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
