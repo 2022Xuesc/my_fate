@@ -231,7 +231,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
     # param.batch_size = 2
     # param.max_iter = 1000
-    # param.num_labels = 20
+    # param.num_labels = 80
     # param.device = 'cuda:0'
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
@@ -256,7 +256,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
 
     fitter = MultiLabelFitter(param, epochs, context=context)
 
-    return fitter, train_loader, valid_loader
+    return fitter, train_loader, valid_loader, 'normal'
 
 
 class SyncAggregator(object):
@@ -358,7 +358,7 @@ class MultiLabelFitter(object):
         return self.label_mapping
 
     # 执行拟合操作
-    def fit(self, train_loader, valid_loader):
+    def fit(self, train_loader, valid_loader,agg_type):
 
         # 初始化OneCycleLR学习率调度器
         for epoch in range(self.start_epoch, self.end_epoch):

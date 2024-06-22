@@ -231,14 +231,13 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
     # param.batch_size = 2
     # param.max_iter = 1000
-    # param.num_labels = 20
+    # param.num_labels = 80
     # param.device = 'cuda:0'
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
 
     category_dir = '/data/projects/fate/my_practice/dataset/coco/'
     # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
-
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -257,7 +256,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
 
     fitter = MultiLabelFitter(param, epochs, context=context)
 
-    return fitter, train_loader, valid_loader
+    return fitter, train_loader, valid_loader, 'normal'
 
 
 class SyncAggregator(object):
@@ -268,7 +267,6 @@ class SyncAggregator(object):
 
     def fit(self, loss_callback):
         while not self.context.finished():
-
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
 
             cur_iteration = self.context.aggregation_iteration
@@ -292,7 +290,7 @@ class SyncAggregator(object):
             # Todo: 保存模型和bn_data数据
             np.save(f'{cur_dir_name}/global_model_{self.context.aggregation_iteration}', self.model)
             np.save(f'{cur_dir_name}/bn_data_{self.context.aggregation_iteration}', self.bn_data)
-            
+
             self.context.increase_aggregation_iteration()
 
         # Todo: 除了保存参数之外，还要保存BN层的统计数据mean和var
@@ -360,7 +358,7 @@ class MultiLabelFitter(object):
         return self.label_mapping
 
     # 执行拟合操作
-    def fit(self, train_loader, valid_loader):
+    def fit(self, train_loader, valid_loader,agg_type):
 
         # 初始化OneCycleLR学习率调度器
         for epoch in range(self.start_epoch, self.end_epoch):
