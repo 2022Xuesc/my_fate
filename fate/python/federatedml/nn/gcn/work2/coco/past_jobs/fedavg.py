@@ -358,7 +358,7 @@ class MultiLabelFitter(object):
         return self.label_mapping
 
     # 执行拟合操作
-    def fit(self, train_loader, valid_loader,agg_type):
+    def fit(self, train_loader, valid_loader, agg_type):
 
         # 初始化OneCycleLR学习率调度器
         for epoch in range(self.start_epoch, self.end_epoch):
