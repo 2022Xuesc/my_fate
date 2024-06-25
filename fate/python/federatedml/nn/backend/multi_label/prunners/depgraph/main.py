@@ -1,8 +1,8 @@
-import torch
 from torchvision.models import resnet101
+
+import importance
 from dependency import *
 from function import *
-import importance
 from meta_pruner import *
 
 
@@ -49,7 +49,7 @@ def learn_imp():
 def learn_pruner(global_pruning):
     model = resnet101()
     example_inputs = torch.randn(1, 3, 224, 224)
-    imp = importance.MagnitudeImportance(p=2)
+    imp = importance.MagnitudeImportance(p=1)
 
     # [0, 0, 0.07, 0.14, 0.2, 0.26, 0.33, 0.39, 0.46, 0.55, 0.66]
 
@@ -63,13 +63,16 @@ def learn_pruner(global_pruning):
             importance=imp,
             ch_sparsity=ch_sparsities[i]
         )
+        print(f'ch_sparsities = {round(ch_sparsities[i], 2)}')
         masks = pruner.step()
-        masks = list(masks.values())
-        layer_ratios = []
-        for j in range(len(masks)):
-            layer_mask = masks[j]
-            layer_ratios.append((layer_mask.sum() * 1.0 / layer_mask.numel()).item())
-        print(layer_ratios)
+        # masks = list(masks.values())
+        # layer_ratios = []
+        # for j in range(len(masks)):
+        #     layer_mask = masks[j]
+        #     layer_ratios.append((layer_mask.sum() * 1.0 / layer_mask.numel()).item())
+        # print(layer_ratios)
+
+        print("--------------------------------------")
     print('Hello World')
 
 
