@@ -148,7 +148,10 @@ class FedClientContext(_FedBaseContext):
         self.send_model(self._params2server, bn_data, self._masks, weight)
         LOGGER.warn("模型发送完毕")
 
-        global_model, bn_data = self.recv_model()
+        recv_elements: typing.List = self.recv_model()
+        global_model, bn_data, total_weight_list = recv_elements
+        total_weight_list = np.where(total_weight_list == 0, 1, total_weight_list)
+        agg_ratio = weight / total_weight_list
         # 直接覆盖
         LOGGER.warn("模型接收完毕")
         agg_tensors = []
@@ -156,14 +159,75 @@ class FedClientContext(_FedBaseContext):
             agg_tensors.append(torch.from_numpy(arr).to(device))
         # Todo: 记录接收到的全局模型，便于比较
         self.last_global_model = agg_tensors
-        for param, agg_tensor in zip(self._params, agg_tensors):
-            if param.grad is None:
-                continue
-            param.data.copy_(agg_tensor)
+        # Todo: 并不是直接复制
+        #  如果layer_ratio == 1，则正常进行聚合
+        #  否则layer_ratio < 1，说明有需要保留的
+        if len(self._masks) == 0:
+            for param, agg_tensor in zip(self._params, agg_tensors):
+                if param.grad is None:
+                    continue
+                param.data.copy_(agg_tensor)
+        else:
+            self.agg_local_model(agg_tensors, agg_ratio)
+
         bn_tensors = []
         for arr in bn_data:
             bn_tensors.append(torch.from_numpy(arr).to(device))
         return bn_tensors
+
+    def agg_local_model(self, agg_tensors, agg_ratio):
+        # 遍历每个层
+        layer_nums = len(self._params)
+        # 计算聚合权重
+
+        for i, layer_tensor in enumerate(self._params):
+            # 深层当时没有传输，则不必聚合
+            # Todo: 深层没有传输，也需要聚合吧？
+            #  是应该聚合的，保留深层的本地训练进度
+            mask = self._masks[i]
+            if len(mask) == 0:  # 整个深层都没有传输，整层都进行平均
+                # 如果是最后两层，则分标签聚合
+                if i == layer_nums - 2 or i == layer_nums - 1:
+                    for j in range(len(layer_tensor)):  # 遍历每一个标签
+                        # 第j个标签（向量）
+                        layer_tensor[j].data.copy_(
+                            agg_ratio[j] * layer_tensor[j].data + (1 - agg_ratio[j]) * agg_tensors[i][j]
+                        )
+                else:
+                    layer_tensor.data.copy_(agg_ratio[-1] * layer_tensor.data +
+                                            (1 - agg_ratio[-1]) * agg_tensors[i])
+            else:  # mask不为空，说明传输了，则根据mask的内容进行
+                # 如果是最后两层
+                if i == layer_nums - 2 or i == layer_nums - 1:
+                    # 遍历每一个分类器分量
+                    for j in range(len(layer_tensor)):
+                        # layer_tensor[j]是实数还是一维向量
+                        if len(layer_tensor[j].shape) == 0:
+                            layer_tensor[j].data.copy_(self.get_updated_val(layer_tensor[j],
+                                                                            agg_tensors[i][j],
+                                                                            agg_ratio[j],
+                                                                            mask[j]))
+                        else:  # 两维的
+                            # Todo:也可以直接用torch.where实现
+                            for k in range(len(layer_tensor[j])):
+                                layer_tensor[j][k].data.copy_(self.get_updated_val(layer_tensor[j][k],
+                                                                                   agg_tensors[i][j][k],
+                                                                                   agg_ratio[j],
+                                                                                   mask[j][k]))
+                # 如果是之前的特征层
+                else:
+                    # layer_tensor[0][0][0][1] * 0.5 + agg_tensors[0][0][0][1] * 0.5
+                    # 每层向量是layer_tensor
+                    # mask为0的位置设置为聚合值，mask为1的位置设置为全局值
+                    layer_tensor.data.copy_(
+                        torch.where(mask == 0, agg_ratio[-1] * layer_tensor.data + (1 - agg_ratio[-1]) * agg_tensors[i],
+                                    agg_tensors[i]))
+
+    def get_updated_val(self, local_val, global_val, ratio, mask):
+        if mask == 1:
+            return global_val  # 传输并聚合过了，直接复制
+        else:
+            return ratio * local_val + (1 - ratio) * global_val  # 否则
 
     def do_convergence_check(self, weight, mAP, loss_value):
         self.loss_summary.append(loss_value)
@@ -347,7 +411,7 @@ class SyncAggregator(object):
             # self.model = aggregate_by_labels(tensors, degrees)
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
-            self.context.send_model((self.model, self.bn_data))
+            self.context.send_model((self.model, self.bn_data, np.array(degrees).sum(axis=0)))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
             # 还需要进行收敛验证，目的是统计平均结果
