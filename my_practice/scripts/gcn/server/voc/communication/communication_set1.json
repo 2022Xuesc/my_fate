@@ -31,7 +31,7 @@
   "component_parameters": {
     "common": {
       "gcn_0": {
-        "max_iter": 25,
+        "max_iter": 50,
         "batch_size": 4,
         "aggregate_every_n_epoch": 4,
         "lr": 0.0001,
@@ -121,7 +121,7 @@
         },
         "3": {
           "gcn_0": {
-            "device": "cuda:3",
+            "device": "cuda:2",
             "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client5/train/anno.json"
           },
           "reader_0": {
@@ -139,7 +139,7 @@
         },
         "4": {
           "gcn_0": {
-            "device": "cuda:1",
+            "device": "cuda:3",
             "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client6/train/anno.json"
           },
           "reader_0": {
@@ -211,7 +211,7 @@
         },
         "8": {
           "gcn_0": {
-            "device": "cuda:2",
+            "device": "cuda:3",
             "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client10/train/anno.json"
           },
           "reader_0": {
