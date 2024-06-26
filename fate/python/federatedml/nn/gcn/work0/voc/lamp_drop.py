@@ -1,17 +1,16 @@
 # 服务器与客户端的通用逻辑
+import math
 import torch.nn
 import torchnet.meter as tnt
 
 import copy
 import os
+import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.multi_label.models import *
-# 导入依赖图相关的包
-from federatedml.nn.backend.multi_label.prunners.depgraph.importance import *
-from federatedml.nn.backend.multi_label.prunners.depgraph.meta_pruner import *
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -77,6 +76,7 @@ class FedClientContext(_FedBaseContext):
         )
         self.aggregate_every_n_epoch = aggregate_every_n_epoch
         self._params: list = []
+        self._params2server: list = []
         self._masks: list = []
 
         self._should_stop = False
@@ -144,22 +144,20 @@ class FedClientContext(_FedBaseContext):
     # 发送、接收全局模型并更新本地模型
     def do_aggregation(self, bn_data, weight, device):
         # 发送全局模型
-        self.send_model(self._params, bn_data, self._masks, weight)
+        self.send_model(self._params2server, bn_data, self._masks, weight)
         LOGGER.warn("模型发送完毕")
 
         recv_elements: typing.List = self.recv_model()
-        # 直接覆盖
         global_model, bn_data = recv_elements
+        # Todo: 将全局模型和本地的训练进度合并
+        #  关注self._masks中0元素所在的位置
+        # 直接覆盖
         LOGGER.warn("模型接收完毕")
         agg_tensors = []
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
         # Todo: 记录接收到的全局模型，便于比较
         self.last_global_model = agg_tensors
-
-        # Todo: 将全局模型和本地的训练进度合并
-        #  关注self._masks中0元素所在的位置
-        #  dep_graph_save中需要完成的工作
         for param, agg_tensor in zip(self._params, agg_tensors):
             if param.grad is None:
                 continue
@@ -175,20 +173,14 @@ class FedClientContext(_FedBaseContext):
         return self.recv_loss()
 
     # 计算层传输率，这对于每一层来说是相等的
-    def calculate_layer_ratio(self):
-        # Todo: 给定聚合轮次，返回每层的稀疏率
-        #  这里的稀疏率是如何计算的？
-        # return 1 / (self.lambda_k * self.aggregation_iteration + 1)
-        sparsities = [0, 0.07, 0.14, 0.2, 0.26, 0.33, 0.39, 0.46, 0.55, 0.66]
-        if self.aggregation_iteration < len(sparsities):
-            return sparsities[self.aggregation_iteration]
-        else:
-            return 0
+    def calculate_global_ratio(self):
+        # Todo: 对lambda_k的选取进行修改
+        return 1 / (self.lambda_k * self.aggregation_iteration + 1)
 
     # 配置聚合参数，将优化器中的参数提取出来
     # Todo: 在这里应用选择传输的算法
-    def configure_aggregation_params(self, dep_model, optimizer):
-        layer_ratio = self.calculate_layer_ratio()
+    def configure_aggregation_params(self, optimizer):
+        global_ratio = self.calculate_global_ratio()
         # 获取优化器中的参数列表
         self._params = [
             param
@@ -196,24 +188,31 @@ class FedClientContext(_FedBaseContext):
             for param_group in optimizer.param_groups
             for param in param_group["params"]
         ]
-
-        # Todo: 使用模型计算masks，因此，无需拷贝
-        # self._params2server = copy.deepcopy(self._params)
+        # Todo: 对self._params进行拷贝
+        self._params2server = copy.deepcopy(self._params)
         # 先对层进行筛选
-        layers_num = len(self._params)
+        layers_num = len(self._params2server)
 
         # Todo: 传输所有层
-        LOGGER.warn(f"回合 {self.aggregation_iteration}时，总的参数传输率为{layer_ratio}")
+        select_list = [True for i in range(layers_num)]
+        select_layers(self._params2server, select_list=select_list)
 
-        # select_list = [True for i in range(layers_num)]
-        # select_layers(self._params2server, select_list=select_list)
-
+        layer_ratios = []
         # 返回值是每一层的布尔矩阵
         # 已经对self._params进行了修改，保留变化最大的前p部分参数，将其余参数置为0
-        self._masks, layer_ratios = save_largest_part_of_weights(dep_model, self._params, self.last_global_model,
-                                                                 layer_ratio)
-        # 至此，self._params已经配置完成，将其和self._selected_list一起发送给服务器端
+        if self.last_global_model is not None:
+            normalized_weight_diffs = get_normalized_weight_diffs(self._params2server, self.last_global_model)
+            # 需要计算阈值
+            concat_diffs = torch.cat(normalized_weight_diffs, dim=0)
+            # 计算总的需要保留的参数
+            total_num = sum([self._params2server[i].numel() for i in range(len(self._params2server))])
+            topks, _ = torch.topk(concat_diffs, int(total_num * global_ratio))
+            threshold = topks[-1]
+            self._masks, layer_ratios = save_largest_part_of_weights(self._params2server, normalized_weight_diffs,
+                                                                     threshold)
         LOGGER.warn(f"回合 {self.aggregation_iteration}时，每层的参数传输率为{layer_ratios}")
+        # train_writer.writerow([layer_ratios])
+        # 至此，self._params已经配置完成，将其和self._selected_list一起发送给服务器端
 
     def should_aggregate_on_epoch(self, epoch_index):
         return (epoch_index + 1) % self.aggregate_every_n_epoch == 0
@@ -302,7 +301,7 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # param.batch_size = 2
     # param.max_iter = 1000
     # param.num_labels = 20
-    # param.device = 'cuda:0'
+    # param.device = 'cpu'
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
 
@@ -345,20 +344,18 @@ class SyncAggregator(object):
             degrees = [party_tuple[3] for party_tuple in recv_elements]
 
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
-
             # 对tensors进行重新组合
             self.replace_tensors(tensors, masks)
 
             self.model = aggregate_whole_model(tensors, degrees)
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
+            # Todo: 这里不仅要发送全局模型，还要发送聚合的总权重以及最后一层中各个类的总权重
 
             self.context.send_model((self.model, self.bn_data))
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，模型参数分发成功！')
-            # 还需要进行收敛验证，目的是统计平均结果
-            # self.context.do_convergence_check()
-            # 同步方式下，服务器端也需要记录聚合轮次
+
             np.save(f'{cur_dir_name}/global_model_{self.context.aggregation_iteration}', self.model)
             np.save(f'{cur_dir_name}/bn_data_{self.context.aggregation_iteration}', self.bn_data)
 
@@ -377,8 +374,6 @@ class SyncAggregator(object):
                 mask = masks[i][j]
                 # Todo: 注意处理tensor和mask为空的情况
                 if tensor == []:
-                    # 使用self.model[j]替代
-                    # Todo: 注意使用深拷贝的方式
                     tensors[i][j] = np.copy(self.model[j])
                 else:
                     tensor[np.logical_not(mask)] = self.model[j][np.logical_not(mask)]
@@ -412,11 +407,13 @@ class MultiLabelFitter(object):
         self.scheduler = ...
         self.param = copy.deepcopy(param)
         self._all_consumed_data_aggregated = True
+        self.best_precision = 0
         self.context = context
         self.label_mapping = label_mapping
 
         # Todo: 原始的ResNet101分类器
         (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
+
         # 使用对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
@@ -457,7 +454,7 @@ class MultiLabelFitter(object):
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_mAP):
         if self.context.should_aggregate_on_epoch(epoch):
-            self.aggregate_model(epoch)
+            self.aggregate_model(epoch, self._num_data_consumed)
             # 同步模式下，需要发送loss和mAP
             # mean_mAP, status = self.context.do_convergence_check(
             #     self._num_data_consumed, mAP, loss
@@ -492,11 +489,9 @@ class MultiLabelFitter(object):
         valid_aps_writer.writerow(ap)
         return mAP, loss
 
-    def aggregate_model(self, epoch):
+    def aggregate_model(self, epoch, weight):
         # 配置参数，将优化器optimizer中的参数写入到list中
-        # dep_model = self.model.clone()
-        dep_model = copy.deepcopy(self.model)
-        self.context.configure_aggregation_params(dep_model, self.optimizer)
+        self.context.configure_aggregation_params(self.optimizer)
 
         bn_data = []
         for layer in self.model.modules():
@@ -507,15 +502,7 @@ class MultiLabelFitter(object):
         # Partial Supervised聚合策略
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
-        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data, device=self.param.device)
-
-        idx = 0
-        for layer in self.model.modules():
-            if isinstance(layer, torch.nn.BatchNorm2d):
-                layer.running_mean.data.copy_(agg_bn_data[idx])
-                idx += 1
-                layer.running_var.data.copy_(agg_bn_data[idx])
-                idx += 1
+        self.context.do_aggregation(weight=weight_list, bn_data=bn_data, device=self.param.device)
 
     def train_validate(self, epoch, train_loader, valid_loader, scheduler):
         self.train_one_epoch(epoch, train_loader, scheduler)
@@ -544,7 +531,6 @@ class MultiLabelFitter(object):
             target[target == 0] = 1
             target[target == -1] = 0
             target = target.to(device)
-
             # Debug看这里的统计是否准确
             self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
@@ -576,6 +562,7 @@ class MultiLabelFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
+
         sigmoid_func = torch.nn.Sigmoid()
 
         model.eval()
@@ -612,48 +599,70 @@ def _init_learner(param, device='cpu'):
     return model, scheduler, optimizer
 
 
+# 根据度量指标和全局传输率自适应确定每层的传输率
+def get_normalized_weight_diffs(client_weights, global_weights):
+    # 遍历每一层，计算weight_diffs
+    normalized_weight_diffs = []
+    for i in range(len(client_weights)):
+        weight_diff = torch.abs(client_weights[i].flatten() - global_weights[i].flatten())
+        # 对weight_diff进行处理
+        # 1. 升序排列
+        sorted_diff, sorted_idx = weight_diff.sort(descending=False)
+        # 2. 求前缀和
+        diff_cumsum_tmp = sorted_diff.cumsum(dim=0)
+        diff_cumsum = torch.zeros(diff_cumsum_tmp.shape, device=weight_diff.device)
+        # 3. 前缀和右移一个单位
+        diff_cumsum[1:] = diff_cumsum_tmp[:len(diff_cumsum_tmp) - 1]
+        # 进行归一化
+        sorted_diff /= (weight_diff.sum() - diff_cumsum)
+        # 整理并返回
+        new_diff = torch.zeros(diff_cumsum.shape, device=weight_diff.device)
+        new_diff[sorted_idx] = sorted_diff
+        # new_diff是正则化后的值
+        normalized_weight_diffs.append(new_diff)
+    return normalized_weight_diffs
+
+
 # 选择传输部分的代码
 # 客户端权重、最近全局模型的权重、选取的层比例
 # client_weights和客户端的优化器绑定
-def save_largest_part_of_weights(dep_model, client_weights, global_weights, layer_ratio):
+def save_largest_part_of_weights(client_weights, normalized_scores, threshold):
     # 每一层选择的位置的布尔矩阵
     masks = []
     layer_ratios = []
-    if global_weights is None or layer_ratio == 1:
-        # 无需mask，直接返回即可
-        return masks, layer_ratios
-    # 获取依赖模型的参数列表，方便对其进行赋值
-    parameters = list(dep_model.parameters())
     # 依次遍历每一层
+    # 该层无需选择传输
     for i in range(len(client_weights)):
+        # 跳过删除后的层
+        if len(client_weights[i]) == 0:
+            # 添加占位符
+            masks.append(torch.Tensor())
+            continue
+        # 需要对参数的形状进行判定
+        layer_shape = client_weights[i].shape
+        # 将其展平成一维向量
+        client_weights[i] = client_weights[i].flatten()
+        # 获取最大的p部分的布尔矩阵
+        mask = get_mask(normalized_scores[i], threshold)
+        # 对client_weights进行原地修改，如果不传输，则将其设定为最近全局模型 -->
+        # Todo: 直接设置为0，因为会接收模型，进行聚合。也就是说，不保留较小的训练进度
         with torch.no_grad():
-            parameters[i].data.copy_(client_weights[i] - global_weights[i])
-    # 拷贝完成后，使用dep graph
-    imp = MagnitudeImportance(p=1)
-    example_inputs = torch.randn(1, 3, 224, 224).to(dep_model.conv1.weight.device)
-    # Todo: 这里给定的是通道的稀疏率，因此总体的稀疏率并不等于layer_ratio
-    pruner = MetaPruner(
-        dep_model,
-        example_inputs,
-        global_pruning=True,
-        importance=imp,
-        ch_sparsity=layer_ratio
-    )
-    masks = list(pruner.step().values())
-    for j in range(len(masks)):
-        layer_mask = masks[j]
-        layer_ratios.append((layer_mask.sum() * 1.0 / layer_mask.numel()).item())
-
+            client_weights[i].mul_(mask)
+        # 对client_weights和mask进行reshape
+        client_weights[i] = client_weights[i].reshape(layer_shape)
+        mask = mask.reshape(layer_shape)
+        # 在旧的torch版本上，需要显式地乘以1.0转化成浮点数
+        layer_ratios.append((mask.sum() * 1.0 / client_weights[i].numel()).item())
+        masks.append(mask)
+    # 还需要返回每层的传输比例
     return masks, layer_ratios
 
 
 # 确保输入的client_weights和mask都是一维向量
-def get_mask(client_weights, percentage):
-    mask = torch.zeros(len(client_weights)).to(client_weights.device)
-    _, topk_indices = torch.topk(client_weights, k=int(len(client_weights) * percentage))
-    # 将掩码矩阵对应的位置设置为1
-    mask.scatter_(0, topk_indices, 1)
-    return mask
+# noinspection PyTypeChecker
+def get_mask(client_weights, threshold):
+    device = client_weights.device
+    return torch.where(client_weights >= threshold, torch.tensor(1).to(device), torch.tensor(0).to(device)).to(device)
 
 
 # 选择传输的函数，过滤层
