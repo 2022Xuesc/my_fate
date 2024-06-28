@@ -603,7 +603,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # 仅仅使用初始化权重，仍要进行学习
     model = connect_add_gcn(param.pretrained, adjList,
                             device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                            needOptimize=True, constraint=False, prob=True, label_prob_vec=label_prob_vec)
+                            needOptimize=True, constraint=False, prob=True)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
