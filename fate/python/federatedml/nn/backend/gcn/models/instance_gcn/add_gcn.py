@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+from torch.nn import Parameter
 
 # 动态图卷积层
 class DynamicGraphConvolution(nn.Module):
@@ -10,12 +11,10 @@ class DynamicGraphConvolution(nn.Module):
         super(DynamicGraphConvolution, self).__init__()
         # Todo: 静态相关性矩阵随机初始化得到
         if adjList is not None:
-            self.static_adj = nn.Conv1d(num_nodes, num_nodes, 1, bias=False)
-            self.static_adj.weight.data.copy_(torch.from_numpy(adjList).unsqueeze(-1))
-        else:
-            # Todo: weight是一个c * c * 1的tensor，使用adjList进行转换
-            self.static_adj = nn.Conv1d(num_nodes, num_nodes, 1, bias=False)
-        self.static_adj.requires_grad_(needOptimize)
+            self.static_adj = Parameter(torch.Tensor(num_nodes, num_nodes))
+            adj = torch.transpose(torch.from_numpy(adjList), 0, 1)
+            self.static_adj.data.copy_(adj)
+            
         self.static_weight = nn.Sequential(  # 静态图卷积的变换矩阵，将in_features变换到out_features
             nn.Conv1d(in_features, out_features, 1),
             nn.LeakyReLU(0.2))
@@ -29,7 +28,7 @@ class DynamicGraphConvolution(nn.Module):
         self.dynamic_weight = nn.Conv1d(in_features, out_features, 1)  # 动态图卷积的变换矩阵
 
     def forward_static_gcn(self, x):
-        x = self.static_adj(x.transpose(1, 2))
+        x = torch.matmul(self.static_adj, x.transpose(1, 2))
         # 将static_adj和relu拆分开来
         x = self.relu(x)
         x = self.static_weight(x.transpose(1, 2))

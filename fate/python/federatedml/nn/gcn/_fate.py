@@ -498,7 +498,7 @@ class GCNFitter(object):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
 
-            inp = inp.to(device)
+            # inp = inp.to(device)
 
             target = target.to(device)
 
@@ -508,20 +508,15 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features, inp)
+            cnn_predicts, gcn_predicts = model(features)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(predicts.data, target)
 
-            lambda_dynamic = 1
-            asym_loss = criterion(sigmoid_func(predicts), target)
-            overall_loss = asym_loss + \
-                           lambda_dynamic * dynamic_adj_loss
+            overall_loss = criterion(sigmoid_func(predicts), target)
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
-            losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
-            losses[ASYM_LOSS].add(asym_loss.item())
 
             optimizer.zero_grad()
 
@@ -559,7 +554,7 @@ class GCNFitter(object):
                 inp = inp.to(device)
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts, _ = model(features, inp)
+                cnn_predicts, gcn_predicts = model(features)
                 predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, target)
@@ -581,12 +576,11 @@ class GCNFitter(object):
 def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # in_channel是标签嵌入向量的初始（输入）维度
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
-    #  对于初始化的，使用300即可
-    in_channel = 300
+    in_channel = 1024
     # 仅仅使用初始化权重，仍要进行学习
-    model = connect_add_gcn(param.pretrained, adjList,
-                            device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                            needOptimize=True, constraint=False, prob=True, label_prob_vec=None)
+    model = add_gcn_resnet101(param.pretrained, adjList,
+                              device=param.device, num_classes=param.num_labels, in_channels=in_channel,
+                              needOptimize=True)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
