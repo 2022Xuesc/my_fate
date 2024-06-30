@@ -25,7 +25,10 @@ def calculate_stats(float_list):
 
 # paths = ['IJCNN/nuswide_kmeans']
 # paths = ['IJCNN/coco_fedavg']
-paths = ['IJCNN/kmeans_no_agg', 'IJCNN/salgl_no_agg', 'IJCNN/salgl_agg', 'IJCNN/kmeans_agg', 'IJCNN/p_gcn_no_agg','IJCNN/c_gcn_no_agg']
+# paths = ['IJCNN/kmeans_no_agg', 'IJCNN/salgl_no_agg', 'IJCNN/salgl_agg', 'IJCNN/kmeans_agg', 'IJCNN/p_gcn_no_agg','IJCNN/c_gcn_no_agg']
+
+
+paths = ['work2/ms-coco/fedavg', 'work2/ms-coco/fpsl',  'work2/ms-coco/my_connect_prob_gcn', 'IJCNN/kmeans_agg']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):
