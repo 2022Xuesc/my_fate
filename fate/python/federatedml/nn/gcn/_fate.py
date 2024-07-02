@@ -272,7 +272,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="COCO", drop_last=True)
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="COCO", drop_last=False)
 
     fitter = GCNFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader, 'normal'
@@ -578,9 +578,8 @@ def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     in_channel = 1024
     # 仅仅使用初始化权重，仍要进行学习
-    model = add_gcn_resnet101(param.pretrained, adjList,
-                              device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                              needOptimize=True)
+    model = aaai_add_gcn(param.pretrained, adjList,
+                         device=param.device, num_classes=param.num_labels, in_channels=in_channel)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

@@ -1,11 +1,5 @@
 import torchvision.models as torch_models
 
-from federatedml.nn.backend.gcn.models.IJCNN.Agg_SALGL.resnet_agg_salgl import ResnetAggSalgl
-from federatedml.nn.backend.gcn.models.IJCNN.GCN.c_gcn import ResnetCGCN
-from federatedml.nn.backend.gcn.models.IJCNN.GCN.p_gcn import ResnetPGCN
-from federatedml.nn.backend.gcn.models.IJCNN.KMeans.resnet_kmeans import ResnetKmeans
-from federatedml.nn.backend.gcn.models.IJCNN.KMeans.vit_kmeans import VitKMeans
-from federatedml.nn.backend.gcn.models.IJCNN.SALGL.resnet_salgl import ResnetSalgl
 from federatedml.nn.backend.gcn.models.full_salgl import FullSALGL
 from federatedml.nn.backend.gcn.models.gin.ml_gin import GINResnet
 from federatedml.nn.backend.gcn.models.instance_gcn.add_gcn import ADD_GCN
@@ -13,6 +7,13 @@ from federatedml.nn.backend.gcn.models.instance_gcn.dynamic_add_gcn import DYNAM
 from federatedml.nn.backend.gcn.models.ml_gcn import GCNResnet, PGCNResnet
 from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gcn import NORM_ADD_GCN
 from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gin import NORM_ADD_GIN
+from federatedml.nn.backend.gcn.models.papers.AAAI.add_gcn import AAAI_ADD_GCN
+from federatedml.nn.backend.gcn.models.papers.IJCNN.Agg_SALGL.resnet_agg_salgl import ResnetAggSalgl
+from federatedml.nn.backend.gcn.models.papers.IJCNN.GCN.c_gcn import ResnetCGCN
+from federatedml.nn.backend.gcn.models.papers.IJCNN.GCN.p_gcn import ResnetPGCN
+from federatedml.nn.backend.gcn.models.papers.IJCNN.KMeans.resnet_kmeans import ResnetKmeans
+from federatedml.nn.backend.gcn.models.papers.IJCNN.KMeans.vit_kmeans import VitKMeans
+from federatedml.nn.backend.gcn.models.papers.IJCNN.SALGL.resnet_salgl import ResnetSalgl
 from federatedml.nn.backend.gcn.models.pruned_add_gcn.connect_add_gcn import CONNECTED_ADD_GCN
 from federatedml.nn.backend.gcn.models.pruned_add_gcn.connect_add_standard_gcn import CONNECT_ADD_STANDARD_GCN
 from federatedml.nn.backend.gcn.models.pruned_add_gcn.pruned_add_gcn import PRUNED_ADD_GCN
@@ -163,4 +164,11 @@ def resnet_p_gcn(pretrained, adjList=None, device='cpu', num_classes=80, in_chan
     model = torch_models.resnet101(pretrained=pretrained)
     model = ResnetPGCN(model=model, num_classes=num_classes, in_channel=in_channel, out_channels=out_channel,
                        adjList=adjList)
+    return model.to(device)
+
+
+def aaai_add_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                 out_channels=1024):
+    model = torch_models.resnet101(pretrained)
+    model = AAAI_ADD_GCN(model, num_classes, in_channels, out_channels, adjList)
     return model.to(device)
