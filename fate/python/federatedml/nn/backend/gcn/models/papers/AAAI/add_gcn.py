@@ -69,7 +69,7 @@ class DynamicGraphConvolution(nn.Module):
         - Input: (B, C_in, N) # C_in: 1024, N: num_classes
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
-        out_static, static_adj = self.forward_static_gcn(x)
+        out_static = self.forward_static_gcn(x)
         x = x + out_static
         dynamic_adj = self.forward_construct_dynamic_graph(x)
 
