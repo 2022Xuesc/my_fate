@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202407021656145323230"
-job_id = "202407021656145323230"
+dir_id = "202407031738384057560"
+job_id = "202407031738384057560"
 module_name = 'gcn_0'
-target_dir = 'AAAI/add_gcn'
+target_dir = 'AAAI/add_prob_gcn'
 client_num = 10
 
 
@@ -45,6 +45,7 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
 
 
