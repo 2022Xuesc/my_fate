@@ -29,7 +29,7 @@ def calculate_stats(float_list):
 
 
 paths = ['work2/ms-coco/fedavg', 'work2/ms-coco/fpsl',  'work2/ms-coco/my_connect_prob_gcn', 'IJCNN/kmeans_agg',
-         'AAAI/add_gcn']
+         'AAAI/coco/add_gcn', 'AAAI/coco/add_prob_gcn']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):
