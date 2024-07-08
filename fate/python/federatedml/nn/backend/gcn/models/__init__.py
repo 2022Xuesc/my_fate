@@ -199,6 +199,13 @@ def aaai_connect_add_gcn(pretrained, adjList, device='cpu', num_classes=80, in_c
     return model.to(device)
 
 
+def aaai_fat_connect_add_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                             out_channels=2048):
+    model = torch_models.resnet152(pretrained)
+    model = AAAI_CONNECT_ADD_GCN(model, num_classes, in_channels, out_channels, adjList)
+    return model.to(device)
+
+
 def aaai_gin(pretrained, adjList, device='cpu', num_classes=80, in_channels=300,
              out_channels=1024):
     model = torch_models.resnet101(pretrained)
