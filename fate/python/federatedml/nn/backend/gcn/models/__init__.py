@@ -179,9 +179,10 @@ def aaai_add_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=
 
 
 def aaai_add_prob_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                      out_channels=1024):
+                      out_channels=1024,prob=True,gap=False):
     model = torch_models.resnet101(pretrained)
-    model = AAAI_ADD_PROB_GCN(model, num_classes, in_channels, out_channels, adjList)
+    model = AAAI_ADD_PROB_GCN(model, num_classes, in_channels, out_channels, adjList,
+                              prob=prob,gap=gap)
     return model.to(device)
 
 

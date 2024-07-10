@@ -40,7 +40,7 @@ class DynamicGraphConvolution(nn.Module):
     def forward_static_gcn(self, x):
         x = self.static_adj(x.transpose(1, 2)) / self.num_nodes
         x = self.static_weight(x.transpose(1, 2))
-        return x
+        return x, list(self.static_adj.modules())[1].weight.squeeze(-1)
 
     def forward_construct_dynamic_graph(self, x):
         ### Model global representations ###
@@ -70,7 +70,7 @@ class DynamicGraphConvolution(nn.Module):
         - Input: (B, C_in, N) # C_in: 1024, N: num_classes
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
-        out_static = self.forward_static_gcn(x)
+        out_static, static_adj = self.forward_static_gcn(x)
         x = x + out_static
         dynamic_adj = self.forward_construct_dynamic_graph(x)
 
@@ -87,14 +87,16 @@ class DynamicGraphConvolution(nn.Module):
             else:
                 pass
         if gap:
-            pass
+            diff = dynamic_adj - static_adj
+            dynamic_adj_loss += torch.sum(torch.norm(diff.reshape(diff.size(0), -1), dim=1)) / self.num_nodes
         x = self.forward_dynamic_gcn(x, dynamic_adj)
 
         return x, dynamic_adj_loss
 
 
 class AAAI_ADD_PROB_GCN(nn.Module):
-    def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None):
+    def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None,
+                 prob=True, gap=False):
         super(AAAI_ADD_PROB_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
@@ -119,6 +121,9 @@ class AAAI_ADD_PROB_GCN(nn.Module):
 
         self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())  # 单位矩阵，自相关性
         self.last_linear = nn.Conv1d(out_features, self.num_classes, 1)  # 最终的分类层
+
+        self.prob = prob
+        self.gap = gap
 
     def forward_feature(self, x):
         x = self.features(x)
@@ -154,7 +159,7 @@ class AAAI_ADD_PROB_GCN(nn.Module):
         return x
 
     def forward_dgcn(self, x, out1):
-        x = self.gcn(x, out1)
+        x = self.gcn(x, out1, prob=self.prob, gap=self.gap)
         return x
 
     def forward(self, x):
