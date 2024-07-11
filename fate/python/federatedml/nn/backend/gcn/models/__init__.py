@@ -9,6 +9,7 @@ from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gcn import NORM_ADD_GCN
 from federatedml.nn.backend.gcn.models.norm_gcn.norm_add_gin import NORM_ADD_GIN
 from federatedml.nn.backend.gcn.models.papers.AAAI.add_gcn import AAAI_ADD_GCN
 from federatedml.nn.backend.gcn.models.papers.AAAI.add_prob_gcn import AAAI_ADD_PROB_GCN
+from federatedml.nn.backend.gcn.models.papers.AAAI.add_standard_gcn import AAAI_ADD_STANDARD_GCN
 from federatedml.nn.backend.gcn.models.papers.AAAI.connect_add_gcn import AAAI_CONNECT_ADD_GCN
 from federatedml.nn.backend.gcn.models.papers.AAAI.gin import AAAI_GIN
 from federatedml.nn.backend.gcn.models.papers.AAAI.pruned_add_gcn import AAAI_PRUNED_ADD_GCN
@@ -178,11 +179,18 @@ def aaai_add_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=
     return model.to(device)
 
 
+def aaai_add_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                          out_channels=1024, prob=True, gap=False):
+    model = torch_models.resnet101(pretrained)
+    model = AAAI_ADD_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList)
+    return model.to(device)
+
+
 def aaai_add_prob_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                      out_channels=1024,prob=True,gap=False):
+                      out_channels=1024, prob=True, gap=False):
     model = torch_models.resnet101(pretrained)
     model = AAAI_ADD_PROB_GCN(model, num_classes, in_channels, out_channels, adjList,
-                              prob=prob,gap=gap)
+                              prob=prob, gap=gap)
     return model.to(device)
 
 
