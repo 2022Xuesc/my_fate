@@ -32,7 +32,7 @@
     "common": {
       "gcn_0": {
         "max_iter": 100,
-        "batch_size": 4,
+        "batch_size": 8,
         "aggregate_every_n_epoch": 4,
         "lr": 0.0001,
         "num_labels": 80,
@@ -46,8 +46,8 @@
       "guest": {
         "0": {
           "gcn_0": {
-            "device": "cuda:1",
-            "batch_size": 8,
+            "device": "cuda:2",
+            "batch_size": 16,
             "adj_file": "/data/projects/dataset/clustered_dataset/client1/train/anno.json"
           },
           "reader_0": {
