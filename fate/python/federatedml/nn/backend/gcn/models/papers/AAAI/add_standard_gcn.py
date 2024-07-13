@@ -27,6 +27,7 @@ class DynamicGraphConvolution(nn.Module):
         self.dynamic_weight = Parameter(torch.Tensor(in_features, out_features))
 
         # 手动创建的网络参数，需要进行reset
+        # Todo: 这里的初始化方式正确吗？
         self.reset_weight_parameters()
 
     def updateA(self, adjList):
@@ -36,13 +37,17 @@ class DynamicGraphConvolution(nn.Module):
         return self.static_adj.data.cpu().numpy()
 
     def reset_weight_parameters(self):
-        # 为static_weight规范化
-        static_stdv = 1. / math.sqrt(self.static_weight.size(1))
-        self.static_weight.data.uniform_(-static_stdv, static_stdv)
+        # # 为static_weight规范化
+        # static_stdv = 1. / math.sqrt(self.static_weight.size(1))
+        # self.static_weight.data.uniform_(-static_stdv, static_stdv)
+        # 
+        # # 为dynamic_weight规范化
+        # dynamic_stdv = 1. / math.sqrt(self.dynamic_weight.size(1))
+        # self.dynamic_weight.data.uniform_(-dynamic_stdv, dynamic_stdv)
 
-        # 为dynamic_weight规范化
-        dynamic_stdv = 1. / math.sqrt(self.dynamic_weight.size(1))
-        self.dynamic_weight.data.uniform_(-dynamic_stdv, dynamic_stdv)
+        # 使用恺明初始化的方式
+        torch.nn.init.kaiming_uniform_(self.static_weight, a=math.sqrt(5))
+        torch.nn.init.kaiming_uniform_(self.dynamic_weight, a=math.sqrt(5))
 
     def gen_adj(self, A):
         D = torch.pow(A.sum(1).float(), -0.5)
@@ -54,6 +59,8 @@ class DynamicGraphConvolution(nn.Module):
     def gen_adjs(self, A):
         batch_size = A.size(0)
         adjs = torch.zeros_like(A)
+        # Todo: 生成的矩阵和可能很小啊
+        #  和static_adj进行gap约束，防止其inf
         for i in range(batch_size):
             # 这里对行求和
             D = torch.pow(A[i].sum(1).float(), -0.5)
