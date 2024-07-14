@@ -73,6 +73,16 @@ def do_draw(path, file):
     plt.close()
 
 
+method_paths = [
+    'dep_graph',
+    'dynamic_ratio',
+    'fixed_ratio_drop',
+    'fixed_ratio_save'
+]
+
+colors = ['g', 'purple', 'r', 'b', 'orange', 'black']
+
+
 def compare_layer_ratio_method(paths, file):
     is_arbiter = False
     for path in paths:
@@ -83,30 +93,20 @@ def compare_layer_ratio_method(paths, file):
         else:
             file = 'valid.csv'
             x_axis = 'epoch'
-        fpsl_200_path = os.path.join('voc/voc_fpsl_plateau_200', os.path.join(path, file))
-        fpsl_200_data = pd.read_csv(fpsl_200_path)
 
-        fpsl_200_weight_decay_path = os.path.join('voc/voc_fpsl_plateau_weight_decay', os.path.join(path, file))
-        fpsl_200_weight_decay_data = pd.read_csv(fpsl_200_weight_decay_path)
+        ind = 0
+        show_epochs = 40 if is_arbiter else 100
+        for method_path in method_paths:
+            data = pd.read_csv(os.path.join(method_path, os.path.join(path, file)))
+            mAP = data['mAP']
+            plt.plot(data[x_axis][:show_epochs], mAP[:show_epochs], colors[ind])
+            ind += 1
 
-        fixed_interactive_200_path = os.path.join('voc/voc_fixed_interactive', os.path.join(path, file))
-        fixed_interactive_200_data = pd.read_csv(fixed_interactive_200_path)
-
-        epochs = fpsl_200_data[x_axis]
-
-        fpsl_200_mAP = fpsl_200_data['mAP']
-        fpsl_200_weight_decay_mAP = fpsl_200_weight_decay_data['mAP']
-        fixed_interactive_200_mAP = fixed_interactive_200_data['mAP']
-
-        plt.plot(epochs, fpsl_200_mAP, 'g')
-        plt.plot(epochs, fpsl_200_weight_decay_mAP, 'b')
-        plt.plot(epochs[0: len(fixed_interactive_200_mAP)], fixed_interactive_200_mAP, 'r')
-        # plt.ylim(50, max(max(fpsl_st_mAP), max(fpsl_mAP)) + 10)
-        # plt.ylim(60, 80)
         plt.xlabel(x_axis)
         plt.ylabel('valid mAP')
+        plt.ylim(80, 105)
 
-        plt.legend(['FPSL', 'FPSL Weight Decay', 'Interactive', 'Fixed Interactive'])
+        plt.legend(method_paths)
 
         # 设置题目
         plt.title('The relation between mAP and total epochs of ' + path)
@@ -221,36 +221,40 @@ def draw_train_and_valid(paths):
 #
 
 # Todo: 各个客户端自身的结果分析
-
-# paths = ["voc/voc_fixed_interactive","voc/voc_fpsl_plateau_200","voc/voc_fpsl_plateau_weight_decay"]
-paths = ["work0/dep_graph", "work0/dynamic_ratio", "work0/fixed_ratio_drop", "work0/fixed_ratio_save"]
-for path in paths:
-    clients_path = [os.path.join(path, 'guest/10')]
-
-    for i in range(1, 10):
-        clients_path.append(os.path.join(path, f'host/{i}'))
-
-    # Todo: 各个客户端的结果分析
-    arbiter_path = os.path.join(path, 'arbiter/999')
-    draw_train_and_valid(clients_path)
-    draw(arbiter_path, loss_file='avgloss.csv')
-
-# paths = ["voc/voc_fixed_interactive","voc/voc_fixed_interactive_short"]
-# # Todo: 画一下损失成分
+# paths = ['dep_graph',
+#          'dynamic_ratio',
+#          'fixed_ratio_drop',
+#          'fixed_ratio_save']
+# # paths = ['agg_kmeans', 'kmeans', 'kmeans', 'c_gcn_with_agg', 'c_gcn_without_agg']
 # for path in paths:
 #     clients_path = [os.path.join(path, 'guest/10')]
-#
+# 
 #     for i in range(1, 10):
 #         clients_path.append(os.path.join(path, f'host/{i}'))
-#     draw_losses(clients_path,'train_loss.csv')
+# 
+#     # Todo: 各个客户端的结果分析
+#     arbiter_path = os.path.join(path, 'arbiter/999')
+#     draw_train_and_valid(clients_path)
+#     draw(arbiter_path, loss_file='avgloss.csv')
 
+# Todo: 画一下损失成分
+paths = ['dep_graph',
+         'dynamic_ratio',
+         'fixed_ratio_drop',
+         'fixed_ratio_save']
+# for path in paths:
+#     clients_path = [os.path.join(path, 'guest/10')]
+# 
+#     for i in range(1, 10):
+#         clients_path.append(os.path.join(path, f'host/{i}'))
+#     draw_losses(clients_path, 'train_loss.csv')
 
 # Todo: 比较方法
-# clients_path = ['guest/10']
-#
-# for i in range(1, 10):
-#     clients_path.append(f'host/{i}')
-# # 将服务器端也加进去
-# clients_path.append('arbiter/999')
-#
-# compare_layer_ratio_method(clients_path, 'valid.csv')
+clients_path = ['guest/10']
+
+for i in range(1, 10):
+    clients_path.append(f'host/{i}')
+# 将服务器端也加进去
+clients_path.append('arbiter/999')
+
+compare_layer_ratio_method(clients_path, 'valid.csv')
