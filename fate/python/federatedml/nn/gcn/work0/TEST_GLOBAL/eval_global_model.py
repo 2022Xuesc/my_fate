@@ -16,7 +16,7 @@ from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.multi_label.models import *
 
 jobid_map = {
-    'fixed_ratio_drop': '202406251407444762140',
+#    'fixed_ratio_drop': '202406251407444762140',
     'fixed_ratio_save': '202406260332402179730',
     'dep_graph': '202406261309307703420',
     'dynamic_ratio': '202406261611099073290'
@@ -26,7 +26,7 @@ jobid_map = {
 
 dir_prefix = "/data/projects/fate/fateflow/jobs"
 pretrained = False
-device = 'cuda:3'
+device = 'cuda:1'
 num_labels = 20
 adjList = np.ndarray((20, 20))
 
