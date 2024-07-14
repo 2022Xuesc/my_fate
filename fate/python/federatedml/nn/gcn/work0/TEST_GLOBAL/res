@@ -1,0 +1,4 @@
+dep_graph_valid.csv : 87.05
+dynamic_ratio_valid.csv : 87.3
+fixed_ratio_drop_valid.csv : 88.13
+fixed_ratio_save_valid.csv : 87.41
