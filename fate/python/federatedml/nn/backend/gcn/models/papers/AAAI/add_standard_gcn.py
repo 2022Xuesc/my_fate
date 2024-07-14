@@ -37,17 +37,17 @@ class DynamicGraphConvolution(nn.Module):
         return self.static_adj.data.cpu().numpy()
 
     def reset_weight_parameters(self):
-        # # 为static_weight规范化
-        # static_stdv = 1. / math.sqrt(self.static_weight.size(1))
-        # self.static_weight.data.uniform_(-static_stdv, static_stdv)
-        # 
-        # # 为dynamic_weight规范化
-        # dynamic_stdv = 1. / math.sqrt(self.dynamic_weight.size(1))
-        # self.dynamic_weight.data.uniform_(-dynamic_stdv, dynamic_stdv)
+        # 为static_weight规范化
+        static_stdv = 1. / math.sqrt(self.static_weight.size(1))
+        self.static_weight.data.uniform_(-static_stdv, static_stdv)
+
+        # 为dynamic_weight规范化
+        dynamic_stdv = 1. / math.sqrt(self.dynamic_weight.size(1))
+        self.dynamic_weight.data.uniform_(-dynamic_stdv, dynamic_stdv)
 
         # 使用恺明初始化的方式
-        torch.nn.init.kaiming_uniform_(self.static_weight, a=math.sqrt(5))
-        torch.nn.init.kaiming_uniform_(self.dynamic_weight, a=math.sqrt(5))
+        # torch.nn.init.kaiming_uniform_(self.static_weight, a=math.sqrt(5))
+        # torch.nn.init.kaiming_uniform_(self.dynamic_weight, a=math.sqrt(5))
 
     def gen_adj(self, A):
         D = torch.pow(A.sum(1).float(), -0.5)
@@ -95,6 +95,10 @@ class DynamicGraphConvolution(nn.Module):
         x = torch.cat((x_glb, x), dim=1)
         dynamic_adj = self.conv_create_co_mat(x)
         dynamic_adj = torch.sigmoid(dynamic_adj)
+
+        # Todo: 选择计算和static_adj的残差，而不直接使用生成的dynamic_adj
+        dynamic_adj = dynamic_adj + self.static_adj
+        dynamic_adj /= 2
         return dynamic_adj
 
     def forward_dynamic_gcn(self, x, dynamic_adj):
