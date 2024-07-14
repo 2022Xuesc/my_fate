@@ -36,7 +36,6 @@ batch_size = 8
 
 dataset = 'voc_expanded'
 category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
-inp_name = 'voc_expanded_glove_word2vec.pkl'
 # Todo: 测试集的目录
 
 valid_path = '/data/projects/dataset/voc2007/clustered_voc_expanded/global_val'
@@ -101,7 +100,7 @@ for task_name in jobid_map:
                 idx += 1
         # Todo: 模型加载完毕，开始进行训练
         print(f"{task_name}的模型 {i} 加载成功")
-        dataset_loader = DatasetLoader(category_dir, train_path=valid_path, valid_path=valid_path, inp_name=inp_name)
+        dataset_loader = DatasetLoader(category_dir, train_path=valid_path, valid_path=valid_path)
         _, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=False)
         OVERALL_LOSS_KEY = 'Overall Loss'
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
@@ -112,16 +111,15 @@ for task_name in jobid_map:
         ap_meter.reset()
 
         with torch.no_grad():
-            for validate_step, ((features, inp), target) in enumerate(valid_loader):
+            for validate_step, (features, target) in enumerate(valid_loader):
                 print("progress, validate_step: ", validate_step)
                 features = features.to(device)
-                inp = inp.to(device)
                 prev_target = target.clone()
                 target[target == 0] = 1
                 target[target == -1] = 0
                 target = target.to(device)
 
-                predicts = model(features, inp)
+                predicts = model(features)
                 # Todo: 将计算结果添加到ap_meter中
                 ap_meter.add(predicts.data, prev_target)
 
