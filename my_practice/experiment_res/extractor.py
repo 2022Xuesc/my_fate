@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202406261611099073290"
-job_id = "202406261611099073290"
+dir_id = "202407141219580080550"
+job_id = "202407141219580080550"
 module_name = 'gcn_0'
-target_dir = 'work0/dynamic_ratio'
+target_dir = 'AAAI/coco/add_residual_gcn'
 client_num = 10
 
 
