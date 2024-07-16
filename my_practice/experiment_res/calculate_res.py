@@ -28,9 +28,10 @@ def calculate_stats(float_list):
 # paths = ['IJCNN/kmeans_no_agg', 'IJCNN/salgl_no_agg', 'IJCNN/salgl_agg', 'IJCNN/kmeans_agg', 'IJCNN/p_gcn_no_agg','IJCNN/c_gcn_no_agg']
 
 
-paths = [ 'IJCNN/kmeans_agg',
+paths = ['IJCNN/kmeans_agg',
          'AAAI/coco/add_gcn', 'AAAI/coco/add_prob_gcn', 'AAAI/coco/add_gap_gcn', 'AAAI/coco/pruned_add_gcn',
-          'AAAI/coco/connect_add_gcn','AAAI/coco/fat_connect_prob_gcn','AAAI/coco/gin','AAAI/coco/add_residual_gcn']
+         'AAAI/coco/connect_add_gcn', 'AAAI/coco/fat_connect_prob_gcn', 'AAAI/coco/gin', 'AAAI/coco/add_residual_gcn',
+         'AAAI/coco/add_standard_residual_gcn']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):

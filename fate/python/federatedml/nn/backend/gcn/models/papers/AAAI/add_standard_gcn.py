@@ -15,6 +15,9 @@ class DynamicGraphConvolution(nn.Module):
         # Todo: 标准gcn无需转置吗？
         adj = torch.from_numpy(adjList)
         self.static_adj.data.copy_(adj)
+        # 不进行static_adj的优化
+        self.static_adj.requires_grad_(False)
+
         # Todo: in_features和out_features相等吗？
         self.static_weight = Parameter(torch.Tensor(in_features, in_features))
 
