@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202407151414015364960"
-job_id = "202407151414015364960"
+dir_id = "202407161528152288650"
+job_id = "202407161528152288650"
 module_name = 'gcn_0'
-target_dir = 'AAAI/coco/add_standard_residual_gcn'
+target_dir = 'AAAI/coco/add_standard_residual_keep_static_gcn'
 client_num = 10
 
 
