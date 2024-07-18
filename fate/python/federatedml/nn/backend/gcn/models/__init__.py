@@ -181,16 +181,16 @@ def aaai_add_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=
 
 
 def aaai_add_residual_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                          out_channels=1024):
+                          out_channels=1024, needOptimize=True):
     model = torch_models.resnet101(pretrained)
-    model = AAAI_ADD_RESIDUAL_GCN(model, num_classes, in_channels, out_channels, adjList)
+    model = AAAI_ADD_RESIDUAL_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
     return model.to(device)
 
 
 def aaai_add_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                          out_channels=1024, prob=True, gap=False):
+                          out_channels=1024, prob=True, gap=False, needOptimize=True):
     model = torch_models.resnet101(pretrained)
-    model = AAAI_ADD_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList)
+    model = AAAI_ADD_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
     return model.to(device)
 
 

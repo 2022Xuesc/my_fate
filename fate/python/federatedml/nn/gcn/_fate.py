@@ -578,8 +578,9 @@ def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     in_channel = 1024
     # 仅仅使用初始化权重，仍要进行学习
-    model = aaai_add_standard_gcn(param.pretrained, adjList,
-                                  device=param.device, num_classes=param.num_labels, in_channels=in_channel)
+    model = aaai_add_residual_gcn(param.pretrained, adjList,
+                                  device=param.device, num_classes=param.num_labels, in_channels=in_channel,
+                                  needOptimize=False)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

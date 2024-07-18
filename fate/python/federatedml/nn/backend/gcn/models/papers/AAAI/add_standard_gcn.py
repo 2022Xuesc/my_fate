@@ -8,7 +8,7 @@ from torch.nn import Parameter
 class DynamicGraphConvolution(nn.Module):
     # 节点的输入特征
     # 节点的输出特征
-    def __init__(self, in_features, out_features, num_nodes, adjList=None):
+    def __init__(self, in_features, out_features, num_nodes, adjList=None, needOptimize=False):
         super(DynamicGraphConvolution, self).__init__()
 
         self.static_adj = Parameter(torch.Tensor(num_nodes, num_nodes))
@@ -16,7 +16,7 @@ class DynamicGraphConvolution(nn.Module):
         adj = torch.from_numpy(adjList)
         self.static_adj.data.copy_(adj)
         # 不进行static_adj的优化
-        self.static_adj.requires_grad_(False)
+        self.static_adj.requires_grad_(needOptimize)
 
         # Todo: in_features和out_features相等吗？
         self.static_weight = Parameter(torch.Tensor(in_features, in_features))
@@ -136,7 +136,7 @@ class DynamicGraphConvolution(nn.Module):
 
 class AAAI_ADD_STANDARD_GCN(nn.Module):
     def __init__(self, model, num_classes, in_features=1024, out_features=1024, adjList=None,
-                 prob=False, gap=False):
+                 prob=False, gap=False,needOptimize=True):
         super(AAAI_ADD_STANDARD_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
@@ -154,7 +154,7 @@ class AAAI_ADD_STANDARD_GCN(nn.Module):
         self.conv_transform = nn.Conv2d(2048, in_features, (1, 1))
         self.relu = nn.LeakyReLU(0.2)
 
-        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList)
+        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList,needOptimize)
 
         self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())  # 单位矩阵，自相关性
         self.last_linear = nn.Conv1d(out_features, self.num_classes, 1)  # 最终的分类层
