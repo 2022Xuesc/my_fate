@@ -18,10 +18,10 @@ def get_label_vecs(json_path, num_labels=20):
         filename = image_info['file_name']
         label = image_info['labels']
         # 将label转换成80维度的向量
-        label_vec = [0] * num_labels
-        for label_index in label:
-            label_vec[label_index] = 1
-        label_key = tuple(label_vec)
+        for i in range(num_labels):
+            if label[i] == 0:
+                label[i] = 1   # 将其视为存在
+        label_key = tuple(label)
         if label_key not in vec2names.keys():
             vec2names[label_key] = list()
         vec2names[label_key].append(filename)
@@ -41,17 +41,17 @@ def copy_file_to_cluster(src_dir, clustered_dir, clusters, data, phase, vec2name
 
 
 # dataset = "voc"
-dataset = "voc_expanded"
+dataset = "voc2012"
 
-train_image_id_path = f"/home/klaus125/research/fate/my_practice/dataset/{dataset}/train_image_id.json"
-val_image_id_path = f"/home/klaus125/research/fate/my_practice/dataset/{dataset}/val_image_id.json"
+train_image_id_path = f"/home/klaus125/research/fate/my_practice/dataset/{dataset}/train_full_image_id.json"
+val_image_id_path = f"/home/klaus125/research/fate/my_practice/dataset/{dataset}/val_full_image_id.json"
 
 # 仍然选择划分10个客户端
 num_clients = 10
 # train_dir需要修改
-train_dir = "/home/klaus125/research/dataset/VOC2007/JPEGImages/origin"
-val_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/VOCdevkit/VOC2007/JPEGImages"
-clustered_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc"
+train_dir = "/home/klaus125/research/dataset/VOCdevkit/VOC2012/train"
+val_dir = "/home/klaus125/research/dataset/VOCdevkit/VOC2012/val"
+clustered_dir = "/home/klaus125/research/dataset/VOCdevkit/VOC2012/clustered_voc"
 
 # 使用kmodes聚类方法
 km = kmodes.KModes(n_clusters=num_clients)

@@ -3,8 +3,15 @@ import os
 import json
 
 # Todo: 检查train/val_image_id.json生成的正确性
-train_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/voc_expanded/train_image_id.json"
-val_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/voc_expanded/val_image_id.json"
+train_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/voc2012/train_full_image_id.json"
+val_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/voc2012/val_full_image_id.json"
+
+train_images = '/home/klaus125/research/dataset/VOCdevkit/VOC2012/train'
+val_images = '/home/klaus125/research/dataset/VOCdevkit/VOC2012/val'
+
+print('训练数据集大小', len(os.listdir(train_images)))
+print('验证数据集大小', len(os.listdir(val_images)))
+
 
 train_file = open(train_image_id_path, 'r')
 train_images = json.load(train_file)
@@ -12,6 +19,15 @@ print("训练集大小： ", len(train_images))
 val_file = open(val_image_id_path, 'r')
 val_images = json.load(val_file)
 print("验证集大小： ", len(val_images))
+
+train_list_file = '/home/klaus125/research/dataset/VOCdevkit/VOC2012/ImageSets/Main/train.txt'
+val_list_file = '/home/klaus125/research/dataset/VOCdevkit/VOC2012/ImageSets/Main/val.txt'
+
+train_list = open(train_list_file)
+cnt = 0
+for train_image in train_list:
+    cnt += 1
+print(cnt)
 
 # 将两个字典合并输出为train_image_id_path
 # print(len(train_images))
@@ -32,11 +48,11 @@ else:
 # val_path = "/home/klaus125/research/dataset/VOC2007/JPEGImages/val"
 # print("训练集大小", len(os.listdir(train_path)))
 # print("验证集大小", len(os.listdir(val_path)))
-#
-#
-# # Todo: 输出一下聚类后每个客户端的数据集大小
+
+
+# Todo: 输出一下聚类后每个客户端的数据集大小
 num_clients = 10
-clustered_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc"
+clustered_dir = "/home/klaus125/research/dataset/VOCdevkit/VOC2012/clustered_voc"
 for i in range(1,num_clients + 1):
     client_path = os.path.join(clustered_dir,f'client{i}')
     client_train_path = os.path.join(client_path,'train')
