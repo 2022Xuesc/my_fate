@@ -251,15 +251,15 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 20
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 20
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
+    # category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -505,7 +505,7 @@ class GCNFitter(object):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
 
-            inp = inp.to(device)
+            # inp = inp.to(device)
 
             prev_target = target.clone()
 
@@ -519,7 +519,7 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts = model(features, inp)
+            cnn_predicts, gcn_predicts = model(features)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
             # Todo: 将计算结果添加到ap_meter中
@@ -566,7 +566,7 @@ class GCNFitter(object):
                 target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features,inp)
+                cnn_predicts, gcn_predicts = model(features)
                 predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, prev_target)
@@ -584,7 +584,7 @@ class GCNFitter(object):
 def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # in_channel是标签嵌入向量的初始（输入）维度
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
-    in_channel = 300
+    in_channel = 1024
     # 仅仅使用初始化权重，仍要进行学习
     model = aaai_connect_add_gcn(param.pretrained, adjList,
                                  device=param.device, num_classes=param.num_labels, in_channels=in_channel)
