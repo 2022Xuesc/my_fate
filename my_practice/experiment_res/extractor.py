@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202407181455155476670"
-job_id = "202407181455155476670"
+dir_id = "202407211429337961150"
+job_id = "202407211429337961150"
 module_name = 'gcn_0'
-target_dir = 'AAAI/coco/add_residual_keep_static_gcn'
+target_dir = 'AAAI/voc2012/add_standard_residual_fix_static_gcn'
 client_num = 10
 
 
@@ -45,4 +45,5 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
