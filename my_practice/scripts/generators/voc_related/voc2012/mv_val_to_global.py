@@ -17,9 +17,9 @@ def generate_anno(data, images_dir, phase='train'):
 
 
 client_ids = range(1, 11)
-target_dir = '/data/projects/dataset/voc2007/clustered_voc_expanded/global_val'
+target_dir = '/data/projects/dataset/clustered_voc2012/global_val'
 for client_id in client_ids:
-    val_dir = f'/data/projects/dataset/voc2007/clustered_voc_expanded/client{client_id}/val'
+    val_dir = f'/data/projects/dataset/clustered_voc2012/client{client_id}/val'
     # 遍历val_dir下的所有图片，将其拷贝到target_dir中
     file_names = os.listdir(val_dir)
     for file_name in file_names:
@@ -28,5 +28,5 @@ for client_id in client_ids:
 
 # Todo: 为其生成.json文件
 
-category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
+category_dir = '/data/projects/fate/my_practice/dataset/voc2012'
 generate_anno(category_dir, target_dir, phase='val')
