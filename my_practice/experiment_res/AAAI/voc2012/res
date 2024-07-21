@@ -1,0 +1,6 @@
+path = add_gcn,min = 66.98, max = 100.0,dominant=89.87,avg = 81.5
+path = connect_add_gcn,min = 70.5, max = 100.0,dominant=89.76,avg = 82.07
+path = connect_add_prob_gcn,min = 65.06, max = 100.0,dominant=89.84,avg = 80.8
+path = connect_add_prob_residual_fix_static_gcn,min = 66.04, max = 100.0,dominant=89.42,avg = 79.96
+path = connect_add_prob_residual_gcn,min = 66.43, max = 100.0,dominant=89.24,avg = 81.36
+path = add_standard_residual_fix_static_gcn,min = 68.68, max = 100.0,dominant=89.71,avg = 81.35
