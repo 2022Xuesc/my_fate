@@ -21,6 +21,7 @@ from federatedml.nn.backend.gcn.models.papers.AAAI.connect_prob_residual_gcn imp
 from federatedml.nn.backend.gcn.models.papers.AAAI.gin import AAAI_GIN
 from federatedml.nn.backend.gcn.models.papers.AAAI.pruned_add_gcn import AAAI_PRUNED_ADD_GCN
 from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.fixed_add_standard_gcn import AAAI_FIXED_ADD_STANDARD_GCN
+from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.fixed_connect_add_gcn import AAAI_FIXED_CONNECT_ADD_GCN
 from federatedml.nn.backend.gcn.models.papers.IJCNN.Agg_SALGL.resnet_agg_salgl import ResnetAggSalgl
 from federatedml.nn.backend.gcn.models.papers.IJCNN.GCN.c_gcn import ResnetCGCN
 from federatedml.nn.backend.gcn.models.papers.IJCNN.GCN.p_gcn import ResnetPGCN
@@ -204,7 +205,8 @@ def aaai_add_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_
 def aaai_fixed_add_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
                                 out_channels=1024, prob=True, gap=False, needOptimize=True):
     model = torch_models.resnet101(pretrained)
-    model = AAAI_FIXED_ADD_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize=needOptimize)
+    model = AAAI_FIXED_ADD_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
+                                        needOptimize=needOptimize)
     return model.to(device)
 
 
@@ -227,6 +229,13 @@ def aaai_connect_add_gcn(pretrained, adjList, device='cpu', num_classes=80, in_c
                          out_channels=2048):
     model = torch_models.resnet101(pretrained)
     model = AAAI_CONNECT_ADD_GCN(model, num_classes, in_channels, out_channels, adjList)
+    return model.to(device)
+
+
+def aaai_fixed_connect_add_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                               out_channels=2048):
+    model = torch_models.resnet101(pretrained)
+    model = AAAI_FIXED_CONNECT_ADD_GCN(model, num_classes, in_channels, out_channels, adjList)
     return model.to(device)
 
 
