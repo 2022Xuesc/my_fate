@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202407270526525945200"
-job_id = "202407270526525945200"
+dir_id = "202407271121535929440"
+job_id = "202407271121535929440"
 module_name = 'gcn_0'
-target_dir = 'AAAI/voc2012/fixed_add_standard_gcn'
+target_dir = 'AAAI/voc2012/fixed_connect_add_residual_gcn'
 client_num = 10
 
 
