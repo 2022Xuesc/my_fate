@@ -251,15 +251,15 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 1000
-    param.num_labels = 20
-    param.device = 'cuda:0'
-    param.lr = 0.0001
-    param.aggregate_every_n_epoch = 1
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # param.aggregate_every_n_epoch = 1
 
-    # category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
+    category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -519,7 +519,7 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features, inp)
+            cnn_predicts, gcn_predicts = model(features, inp)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
             # Todo: 将计算结果添加到ap_meter中
@@ -527,11 +527,10 @@ class GCNFitter(object):
 
             lambda_dynamic = 1
             asym_loss = criterion(sigmoid_func(predicts), target)
-            overall_loss = asym_loss + lambda_dynamic * dynamic_adj_loss
+            overall_loss = asym_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[ASYM_LOSS].add(asym_loss.item())
-            losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
 
             optimizer.zero_grad()
 
@@ -567,7 +566,7 @@ class GCNFitter(object):
                 target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts, _ = model(features, inp)
+                cnn_predicts, gcn_predicts = model(features, inp)
                 predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, prev_target)
@@ -587,9 +586,8 @@ def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = aaai_fixed_connect_prob_standard_gcn(param.pretrained, adjList,
-                                                 device=param.device, num_classes=param.num_labels,
-                                                 in_channels=in_channel)
+    model = aaai_fixed_connect_standard_gcn(param.pretrained, adjList,
+                                            device=param.device, num_classes=param.num_labels, in_channels=in_channel)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
