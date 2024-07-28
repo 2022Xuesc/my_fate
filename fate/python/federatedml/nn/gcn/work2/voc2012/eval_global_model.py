@@ -21,7 +21,17 @@ jobid_map = {
     'connect_add_prob_gcn': '202407210703164492330',
     'connect_prob_residual_gcn': '202407210915444664720',
     'connect_prob_redisual_fix_static_gcn': '202407211217440832620',
-    'add_standard_residual_fix_static_gcn': '202407211429337961150'
+    'add_standard_residual_fix_static_gcn': '202407211429337961150',
+
+    # Todo: 这周做的实验
+    'fixed_add_standard_gcn': '202407270526525945200',
+    'fixed_connect_add_gcn': '202407270834459894750',
+    'fixed_connect_prob_gcn': '202407271658384795480',
+    'fixed_connect_add_residual_gcn': '202407271121535929440',
+    'fixed_connect_prob_residual_gcn': '202407271413107609760',
+    'fixed_connect_add_standard_gcn': '202407280627335004850',
+    'fixed_connect_prob_standard_gcn': '202407280752591471990',
+    # 'fixed_connect_prob_standard_residual_gcn': '202407281033362860880'
 }
 model_map = {
     'add_gcn': aaai_add_gcn,
@@ -29,7 +39,16 @@ model_map = {
     'connect_add_prob_gcn': aaai_connect_add_prob_gcn,
     'connect_prob_residual_gcn': aaai_connect_prob_residual_gcn,
     'connect_prob_redisual_fix_static_gcn': aaai_connect_prob_residual_fix_static_gcn,
-    'add_standard_residual_fix_static_gcn': aaai_add_standard_gcn
+    'add_standard_residual_fix_static_gcn': aaai_add_standard_gcn,
+    
+    'fixed_add_standard_gcn': aaai_fixed_add_standard_gcn,
+    'fixed_connect_add_gcn': aaai_fixed_connect_add_gcn,
+    'fixed_connect_prob_gcn': aaai_fixed_connect_prob_gcn,
+    'fixed_connect_add_residual_gcn': aaai_fixed_connect_add_residual_gcn,
+    'fixed_connect_prob_residual_gcn': aaai_fixed_connect_prob_residual_gcn,
+    'fixed_connect_add_standard_gcn': aaai_fixed_connect_standard_gcn,
+    'fixed_connect_prob_standard_gcn': aaai_fixed_connect_prob_standard_gcn,
+    'fixed_connect_prob_standard_residual_gcn': aaai_fixed_connect_prob_standard_residual_gcn
 }
 
 # 1个入参，两个返回值：1
@@ -61,7 +80,41 @@ config_map = {
     'add_standard_residual_fix_static_gcn': {
         "in_channels": 1024,
         "argument_and_return_type": 1
-    }
+    },
+    
+    'fixed_add_standard_gcn': {
+        "in_channels": 1024,
+        "argument_and_return_type": 1
+    },
+    'fixed_connect_add_gcn': {
+        "in_channels": 300,
+        "argument_and_return_type": 2
+    },
+    'fixed_connect_prob_gcn': {
+        "in_channels": 300,
+        "argument_and_return_type": 4
+    },
+    'fixed_connect_add_residual_gcn': {
+        "in_channels": 300,
+        "argument_and_return_type": 2
+    },
+    'fixed_connect_prob_residual_gcn': {
+        "in_channels": 300,
+        "argument_and_return_type": 4
+    },
+    'fixed_connect_add_standard_gcn': {
+        "in_channels": 300,
+        "argument_and_return_type": 2
+    },
+    'fixed_connect_prob_standard_gcn': {
+        "in_channels": 300,
+        "argument_and_return_type": 4
+    },
+    'fixed_connect_prob_standard_residual_gcn': {
+        "in_channels": 300,
+        "argument_and_return_type": 4
+    },
+
 }
 # Todo: 创建一个模型骨架，然后替换其参数
 
