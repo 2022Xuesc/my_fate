@@ -47,7 +47,7 @@
         "0": {
           "gcn_0": {
             "device": "cuda:0",
-            "batch_size" : 8,
+            "batch_size" : 4,
             "adj_file": "/data/projects/dataset/clustered_voc2012/client1/train/anno.json"
           },
           "reader_0": {
@@ -85,7 +85,7 @@
         },
         "1": {
           "gcn_0": {
-            "device": "cuda:4",
+            "device": "cuda:0",
             "adj_file": "/data/projects/dataset/clustered_voc2012/client3/train/anno.json"
           },
           "reader_0": {
