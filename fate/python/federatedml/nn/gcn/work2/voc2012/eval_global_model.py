@@ -16,22 +16,22 @@ from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.gcn.models import *
 
 jobid_map = {
-    'add_gcn': '202407210221332049530',
-    'connect_add_gcn': '202407210448151205460',
-    'connect_add_prob_gcn': '202407210703164492330',
-    'connect_prob_residual_gcn': '202407210915444664720',
-    'connect_prob_redisual_fix_static_gcn': '202407211217440832620',
-    'add_standard_residual_fix_static_gcn': '202407211429337961150',
+    # 'add_gcn': '202407210221332049530',
+    # 'connect_add_gcn': '202407210448151205460',
+    # 'connect_add_prob_gcn': '202407210703164492330',
+    # 'connect_prob_residual_gcn': '202407210915444664720',
+    # 'connect_prob_redisual_fix_static_gcn': '202407211241549176350',
+    # 'add_standard_residual_fix_static_gcn': '202407211429337961150',
 
     # Todo: 这周做的实验
     'fixed_add_standard_gcn': '202407270526525945200',
     'fixed_connect_add_gcn': '202407270834459894750',
-    'fixed_connect_prob_gcn': '202407271658384795480',
     'fixed_connect_add_residual_gcn': '202407271121535929440',
     'fixed_connect_prob_residual_gcn': '202407271413107609760',
     'fixed_connect_add_standard_gcn': '202407280627335004850',
     'fixed_connect_prob_standard_gcn': '202407280752591471990',
-    # 'fixed_connect_prob_standard_residual_gcn': '202407281033362860880'
+    'fixed_connect_prob_standard_residual_gcn': '202407281033362860880',
+    'fixed_connect_prob_gcn': '202407271658384795480'
 }
 model_map = {
     'add_gcn': aaai_add_gcn,
@@ -40,7 +40,7 @@ model_map = {
     'connect_prob_residual_gcn': aaai_connect_prob_residual_gcn,
     'connect_prob_redisual_fix_static_gcn': aaai_connect_prob_residual_fix_static_gcn,
     'add_standard_residual_fix_static_gcn': aaai_add_standard_gcn,
-    
+
     'fixed_add_standard_gcn': aaai_fixed_add_standard_gcn,
     'fixed_connect_add_gcn': aaai_fixed_connect_add_gcn,
     'fixed_connect_prob_gcn': aaai_fixed_connect_prob_gcn,
@@ -81,7 +81,7 @@ config_map = {
         "in_channels": 1024,
         "argument_and_return_type": 1
     },
-    
+
     'fixed_add_standard_gcn': {
         "in_channels": 1024,
         "argument_and_return_type": 1
