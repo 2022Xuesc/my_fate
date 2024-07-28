@@ -125,7 +125,21 @@ for task_name in jobid_map:
         if agg_len != model_len:
             print("不匹配")
             continue
-        for param, agg_tensor in zip(model.parameters(), agg_tensors):
+
+        lr = 0.1
+        lrp = 0.1
+        optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp),
+                                      lr=lr,
+                                      weight_decay=1e-4)
+
+        _params = [
+            param
+            # 不是完全倒序，对于嵌套for循环，先声明的在前面
+            for param_group in optimizer.param_groups
+            for param in param_group["params"]
+        ]
+
+        for param, agg_tensor in zip(_params, agg_tensors):
             param.data.copy_(agg_tensor)
 
         bn_data = np.load(os.path.join(cur_path, f'bn_data_{i}.npy'), allow_pickle=True)
