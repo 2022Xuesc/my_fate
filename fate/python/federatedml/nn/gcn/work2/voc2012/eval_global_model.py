@@ -21,7 +21,7 @@ jobid_map = {
     'connect_add_prob_gcn': '202407210703164492330',
     'connect_prob_residual_gcn': '202407210915444664720',
     'connect_prob_redisual_fix_static_gcn': '202407211217440832620',
-    # 'add_standard_residual_fix_static_gcn': '202407211429337961150'
+    'add_standard_residual_fix_static_gcn': '202407211429337961150'
 }
 model_map = {
     'add_gcn': aaai_add_gcn,
@@ -29,33 +29,45 @@ model_map = {
     'connect_add_prob_gcn': aaai_connect_add_prob_gcn,
     'connect_prob_residual_gcn': aaai_connect_prob_residual_gcn,
     'connect_prob_redisual_fix_static_gcn': aaai_connect_prob_residual_fix_static_gcn,
-    # 'add_standard_residual_fix_static_gcn': aaai_add_standard_gcn
+    'add_standard_residual_fix_static_gcn': aaai_add_standard_gcn
 }
+
+# 1个入参，两个返回值：1
+# 2个入参，两个返回值：2
+# 1个入参，三个返回值：3
+# 2个入参，三个返回值：4
+
 config_map = {
     'add_gcn': {
-        "in_channels": 1024
+        "in_channels": 1024,
+        "argument_and_return_type": 1
     },
     'connect_add_gcn': {
-        "in_channels": 300
+        "in_channels": 300,
+        "argument_and_return_type": 2
     },
     'connect_add_prob_gcn': {
-        "in_channels": 300
+        "in_channels": 300,
+        "argument_and_return_type": 4
     },
     'connect_prob_residual_gcn': {
-        "in_channels": 300
+        "in_channels": 300,
+        "argument_and_return_type": 4
     },
     'connect_prob_redisual_fix_static_gcn': {
-        "in_channels": 300
+        "in_channels": 300,
+        "argument_and_return_type": 4
     },
     'add_standard_residual_fix_static_gcn': {
-        "in_channels": 1024
+        "in_channels": 1024,
+        "argument_and_return_type": 1
     }
 }
 # Todo: 创建一个模型骨架，然后替换其参数
 
 dir_prefix = "/data/projects/fate/fateflow/jobs"
 pretrained = False
-device = 'cuda:2'
+device = 'cuda:0'
 num_labels = 20
 adjList = np.ndarray((20, 20))
 
@@ -131,7 +143,7 @@ for task_name in jobid_map:
         # Todo: 模型加载完毕，开始进行训练
         print(f"{task_name}的模型 {i} 加载成功")
         dataset_loader = DatasetLoader(category_dir, train_path=valid_path, valid_path=valid_path, inp_name=inp_name)
-        _, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=False)
+        _, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=True)
         OVERALL_LOSS_KEY = 'Overall Loss'
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
@@ -150,7 +162,15 @@ for task_name in jobid_map:
                 target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts, _ = model(features, inp)
+                type = config_map[task_name]["argument_and_return_type"]
+                if type == 1:
+                    cnn_predicts, gcn_predicts = model(features)
+                elif type == 2:
+                    cnn_predicts, gcn_predicts = model(features, inp)
+                elif type == 3:
+                    cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features)
+                else:
+                    cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features, inp)
                 predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
                 ap_meter.add(predicts.data, prev_target)
