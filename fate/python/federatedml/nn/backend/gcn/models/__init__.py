@@ -29,6 +29,8 @@ from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.fixed_connect_prob_resi
     AAAI_FIXED_CONNECT_PROB_RESIDUAL_GCN
 from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.fixed_connect_prob_standard_gcn import \
     AAAI_FIXED_CONNECT_PROB_STANDARD_GCN
+from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.fixed_connect_prob_standard_residual_gcn import \
+    AAAI_FIXED_CONNECT_PROB_STANDARD_RESIDUAL_GCN
 from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.fixed_connect_standard_gcn import \
     AAAI_FIXED_CONNECT_STANDARD_GCN
 from federatedml.nn.backend.gcn.models.papers.IJCNN.Agg_SALGL.resnet_agg_salgl import ResnetAggSalgl
@@ -226,11 +228,20 @@ def aaai_fixed_connect_standard_gcn(pretrained, adjList, device='cpu', num_class
                                             )
     return model.to(device)
 
+
 def aaai_fixed_connect_prob_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                                    out_channels=2048, prob=True, gap=False, needOptimize=True):
+                                         out_channels=2048, prob=True, gap=False, needOptimize=True):
     model = torch_models.resnet101(pretrained)
     model = AAAI_FIXED_CONNECT_PROB_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
-                                            )
+                                                 )
+    return model.to(device)
+
+
+def aaai_fixed_connect_prob_standard_residual_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                                                  out_channels=2048, prob=True, gap=False, needOptimize=True):
+    model = torch_models.resnet101(pretrained)
+    model = AAAI_FIXED_CONNECT_PROB_STANDARD_RESIDUAL_GCN(model, num_classes, in_channels, out_channels, adjList,
+                                                          )
     return model.to(device)
 
 
