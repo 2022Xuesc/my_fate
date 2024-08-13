@@ -521,7 +521,8 @@ class GCNFitter(object):
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[ASYM_LOSS].add(asym_loss.item())
             losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
-
+            LOGGER.warn(
+                f"epoch: {epoch}, train_step: {train_step}, asym_loss: {asym_loss}, dynamic_loss: {dynamic_adj_loss}")
             optimizer.zero_grad()
 
             overall_loss.backward()
