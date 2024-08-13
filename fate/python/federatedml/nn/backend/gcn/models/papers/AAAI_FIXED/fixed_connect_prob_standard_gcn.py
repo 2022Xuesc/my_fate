@@ -97,17 +97,17 @@ class DynamicGraphConvolution(nn.Module):
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
         # x = x.transpose(1, 2)
-        out_static,static_adj = self.forward_static_gcn(x)
+        out_static, static_adj = self.forward_static_gcn(x)
         x = x + out_static
         x = x.transpose(1, 2)
         dynamic_adj = self.forward_construct_dynamic_graph(x, connect_vec)
         num_classes = out1.size(1)
         dynamic_adj_loss = torch.tensor(0.).to(out1.device)
-        out1 = nn.Sigmoid()(out1)
-        transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
-        transformed_out1 /= num_classes
-        # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
-        dynamic_adj_loss += torch.sum(torch.norm(out1 - transformed_out1, dim=1))
+        # out1 = nn.Sigmoid()(out1)
+        # transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
+        # transformed_out1 /= num_classes
+        # # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
+        # dynamic_adj_loss += torch.sum(torch.norm(out1 - transformed_out1, dim=1))
 
         x = x.transpose(1, 2)
         x = self.forward_dynamic_gcn(x, dynamic_adj)
