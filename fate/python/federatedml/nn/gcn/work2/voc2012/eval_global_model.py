@@ -24,14 +24,14 @@ jobid_map = {
     # 'add_standard_residual_fix_static_gcn': '202407211429337961150',
 
     # Todo: 这周做的实验
-    'fixed_add_standard_gcn': '202407270526525945200',
-    'fixed_connect_add_gcn': '202407270834459894750',
-    'fixed_connect_add_residual_gcn': '202407271121535929440',
-    'fixed_connect_prob_residual_gcn': '202407271413107609760',
-    'fixed_connect_add_standard_gcn': '202407280627335004850',
+    #'fixed_add_standard_gcn': '202407270526525945200',
+    #'fixed_connect_add_gcn': '202407270834459894750',
+    #'fixed_connect_add_residual_gcn': '202407271121535929440',
+    #'fixed_connect_prob_residual_gcn': '202407271413107609760',
+    #'fixed_connect_add_standard_gcn': '202407280627335004850',
     'fixed_connect_prob_standard_gcn': '202407280752591471990',
-    'fixed_connect_prob_standard_residual_gcn': '202407281033362860880',
-    'fixed_connect_prob_gcn': '202407271658384795480'
+    #'fixed_connect_prob_standard_residual_gcn': '202407281033362860880',
+    #'fixed_connect_prob_gcn': '202407271658384795480'
 }
 model_map = {
     'add_gcn': aaai_add_gcn,
@@ -120,7 +120,7 @@ config_map = {
 
 dir_prefix = "/data/projects/fate/fateflow/jobs"
 pretrained = False
-device = 'cuda:0'
+device = 'cuda:2'
 num_labels = 20
 adjList = np.ndarray((20, 20))
 

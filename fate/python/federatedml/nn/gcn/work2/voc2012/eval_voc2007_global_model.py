@@ -122,7 +122,7 @@ ap_meter = AveragePrecisionMeter(difficult_examples=True)
 criterion = AsymmetricLossOptimized().to(device)
 
 cur_dir_name = os.getcwd()
-my_writer = MyWriter(dir_name=cur_dir_name)
+my_writer = MyWriter(dir_name=cur_dir_name,stats_name="voc2007_stats")
 
 for task_name in jobid_map:
     jobid = jobid_map[task_name]
@@ -235,3 +235,4 @@ for task_name in jobid_map:
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         valid_writer.writerow([i, mAP.item(), loss])
         valid_aps_writer.writerow(ap)
+
