@@ -87,7 +87,7 @@ class DatasetLoader(object):
         # 对batch_size进行修正
         batch_size = max(1, min(batch_size, len(train_dataset), len(valid_dataset)))
 
-        num_workers = 32
+        num_workers = 4
 
         train_loader = torch.utils.data.DataLoader(
             dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
