@@ -1,0 +1,10 @@
+path = dep_graph,min = 62.92, max = 100.0,dominant=86.85,avg = 90.25
+path = dynamic_ratio,min = 59.44, max = 100.0,dominant=87.93,avg = 89.82
+path = fixed_ratio_drop,min = 64.17, max = 100.0,dominant=89.43,avg = 89.73
+path = fixed_ratio_save,min = 61.21, max = 100.0,dominant=88.04,avg = 90.27
+
+
+dep_graph_valid.csv : 87.05
+dynamic_ratio_valid.csv : 87.3
+fixed_ratio_drop_valid.csv : 88.13
+fixed_ratio_save_valid.csv : 87.41

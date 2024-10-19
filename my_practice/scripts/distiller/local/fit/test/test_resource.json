@@ -1,0 +1,98 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train",
+      "task_cores": 4,
+      "task_parallelism": 1,
+      "computing_partitions": 16
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 0
+  },
+  "role": {
+    "arbiter": [
+      100
+    ],
+    "host": [
+      1,2
+    ],
+    "guest": [
+      0
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "distiller_0": {
+        "max_iter": 25,
+        "batch_size": 2,
+        "aggregate_every_n_epoch": 2,
+        "lr": 0.005,
+        "pretrained": false,
+        "dataset": "imagenet",
+        "arch": "alexnet",
+        "early_stop_eps": 0,
+        "post_train_quant": false
+      }
+    },
+    "role": {
+      "host": {
+        "0": {
+          "distiller_0": {
+            "device": "cpu"
+          },
+          "reader_0": {
+            "table": {
+              "name": "imagenet_host",
+              "namespace": "small_experiment"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "imagenet_guest",
+              "namespace": "small_experiment"
+            }
+          }
+        },
+        "1": {
+          "distiller_0": {
+            "device": "cpu"
+          },
+          "reader_0": {
+            "table": {
+              "name": "imagenet_host",
+              "namespace": "small_experiment"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "imagenet_guest",
+              "namespace": "small_experiment"
+            }
+          }
+        }
+      },
+      "guest": {
+        "0": {
+          "distiller_0": {
+            "device": "cpu"
+          },
+          "reader_0": {
+            "table": {
+              "name": "imagenet_guest",
+              "namespace": "small_experiment"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "imagenet_host",
+              "namespace": "small_experiment"
+            }
+          }
+        }
+      }
+    }
+  }
+}

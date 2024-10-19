@@ -1,0 +1,18 @@
+double-interactive-fixed-relation_16_2_0.0001_0.0001_0.0_0.0_1.0_stats: 89.3312759399414
+double-interactive-fixed-relation_16_2_0.0001_0.0001_0.0_0.0_10.0_stats: 90.1330795288086
+double-interactive_16_2_0.0001_0.0001_0.0_0.0_1.0_stats: 89.59815979003906
+double-interactive_16_2_0.0001_0.0001_0.0_0.0_10.0_stats: 89.91729736328125
+double-interactive_32_4_0.0001_0.0001_0.0_0.0_1.0_stats: 90.43428039550781
+double-interactive_32_4_0.0001_0.0001_0.0_0.0_5.0_stats: 90.44960021972656
+resnet_16_0.0001_stats: 89.40962219238281
+single_interactive_16_2_0.0001_0.0001_0.0_0.0_1.0_stats: 89.73388671875
+single_interactive_16_2_0.0001_0.0001_0.0_0.0_10.0_stats: 89.6948471069336
+single_interactive_32_4_0.0001_0.0001_0.0_0.0_1.0_stats: 90.404541015625
+
+
+single_interactive_32_4_0.0001_0.0001_0.0_0.0_5.0_stats: 90.48954010009766
+single_interactive_load_model_32_4_0.0001_0.0001_0.0_0.0_1.0_stats: 88.5819320678711
+
+
+使用这个配置
+single_interactive_32_4_0.0001_0.0001_0.0_0.0_5.0_stats: 90.48954010009766

@@ -1,0 +1,95 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train",
+      "task_cores": 4,
+      "task_parallelism": 1,
+      "computing_partitions": 4
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 0
+  },
+  "role": {
+    "arbiter": [
+      100
+    ],
+    "host": [
+      1
+    ],
+    "guest": [
+      0
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "distiller_0": {
+        "max_iter": 25,
+        "batch_size": 16,
+        "aggregate_every_n_epoch": 5,
+        "lr": 0.005,
+        "early_stop_eps": 0,
+        "pretrained": false,
+        "dataset": "imagenet",
+        "arch": "alexnet",
+        "device": "cpu",
+        "post_train_quant": false,
+
+        "sched_dict": {
+          "quantizers": {
+            "training_quantizer": {
+              "class": "QuantAwareTrainRangeLinearQuantizer",
+              "bits_activations": 8,
+              "bits_weights": 8,
+              "ema_decay": 0.999
+            }
+          },
+          "policies": {
+            "quantizer": {
+              "instance_name": "training_quantizer",
+              "starting_epoch": 0,
+              "ending_epoch": 50,
+              "frequency": 2
+            }
+          }
+        }
+      }
+    },
+    "role": {
+      "host": {
+        "0": {
+          "reader_0": {
+            "table": {
+              "name": "imagenet_host_train",
+              "namespace": "small_experiment"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "imagenet_host_valid",
+              "namespace": "small_experiment"
+            }
+          }
+        }
+      },
+      "guest": {
+        "0": {
+          "reader_0": {
+            "table": {
+              "name": "imagenet_guest_train",
+              "namespace": "small_experiment"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "imagenet_guest_valid",
+              "namespace": "small_experiment"
+            }
+          }
+        }
+      }
+    }
+  }
+}

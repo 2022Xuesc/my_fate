@@ -1,0 +1,164 @@
+[
+  {
+    "file_name": "COCO_val2014_000000002592.jpg",
+    "labels": [
+      41,
+      26,
+      27
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000037149.jpg",
+    "labels": [
+      49,
+      36,
+      77,
+      14
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000136355.jpg",
+    "labels": [
+      13,
+      14,
+      77,
+      46,
+      51,
+      52,
+      22,
+      27
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000169539.jpg",
+    "labels": [
+      49,
+      68,
+      22
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000185240.jpg",
+    "labels": [
+      49,
+      5
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000186147.jpg",
+    "labels": [
+      27,
+      15
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000189203.jpg",
+    "labels": [
+      0
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000230593.jpg",
+    "labels": [
+      8,
+      10,
+      44,
+      49,
+      18
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000284743.jpg",
+    "labels": [
+      49,
+      4
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000304853.jpg",
+    "labels": [
+      2,
+      36,
+      39,
+      40,
+      49,
+      22
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000324670.jpg",
+    "labels": [
+      10
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000374010.jpg",
+    "labels": [
+      65,
+      49
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000381792.jpg",
+    "labels": [
+      57,
+      70
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000401240.jpg",
+    "labels": [
+      49,
+      76,
+      23
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000422677.jpg",
+    "labels": [
+      49,
+      58
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000464263.jpg",
+    "labels": [
+      42,
+      45
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000515126.jpg",
+    "labels": [
+      27,
+      26,
+      3,
+      61
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000526418.jpg",
+    "labels": [
+      66,
+      12,
+      22
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000539419.jpg",
+    "labels": [
+      64,
+      36,
+      22
+    ]
+  },
+  {
+    "file_name": "COCO_val2014_000000550691.jpg",
+    "labels": [
+      16,
+      49,
+      18,
+      68
+    ]
+  }
+]

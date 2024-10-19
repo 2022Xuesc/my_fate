@@ -1,0 +1,76 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train"
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 9999
+  },
+  "role": {
+    "arbiter": [
+      10000
+    ],
+    "host": [
+      9997
+    ],
+    "guest": [
+      9999
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "multi_label_0": {
+        "max_iter": 20,
+        "batch_size": 1,
+        "aggregate_every_n_epoch": 1,
+        "lr": 0.0001,
+        "pretrained": true,
+        "dataset": "ms-coco",
+        "arch": "resnet"
+      }
+    },
+    "role": {
+      "guest": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:0"
+          },
+          "reader_0": {
+            "table": {
+              "name": "guest-train",
+              "namespace": "local-coco"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "guest-val",
+              "namespace": "local-coco"
+            }
+          }
+        }
+      },
+      "host": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:0"
+          },
+          "reader_0": {
+            "table": {
+              "name": "host-train",
+              "namespace": "local-coco"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "host-val",
+              "namespace": "local-coco"
+            }
+          }
+        }
+      }
+    }
+  }
+}

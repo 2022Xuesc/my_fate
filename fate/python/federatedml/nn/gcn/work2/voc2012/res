@@ -1,0 +1,19 @@
+add_gcn_valid.csv : 90.97
+add_standard_residual_fix_static_gcn_valid.csv : 89.86
+connect_add_gcn_valid.csv : 89.99
+connect_add_prob_gcn_valid.csv : 89.86
+connect_prob_redisual_fix_static_gcn_valid.csv : 89.24
+connect_prob_residual_gcn_valid.csv : 89.81
+fixed_add_standard_gcn_valid.csv : 89.04
+fixed_connect_add_gcn_valid.csv : 90.03
+fixed_connect_add_residual_gcn_valid.csv : 89.83
+fixed_connect_add_standard_gcn_valid.csv : 89.97
+fixed_connect_prob_gcn_valid.csv : 89.98
+fixed_connect_prob_residual_gcn_valid.csv : 89.92
+fixed_connect_prob_standard_gcn_valid.csv : 90.18
+fixed_connect_prob_standard_residual_gcn_valid.csv : 89.99
+
+
+voc2007的结果
+
+fixed_connect_prob_standard_gcn_valid.csv : 91.84

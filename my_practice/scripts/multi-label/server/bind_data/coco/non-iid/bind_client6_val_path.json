@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "coco-clients10",
+    "name": "client6_val",
+    "address": {
+        "path": "/data/projects/dataset/clustered_dataset/client6/val"
+    }
+}
