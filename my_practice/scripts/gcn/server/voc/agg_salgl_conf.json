@@ -1,0 +1,233 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train"
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 10
+  },
+  "role": {
+    "arbiter": [
+      999
+    ],
+    "host": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "guest": [
+      10
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "gcn_0": {
+        "max_iter": 100,
+        "batch_size": 2,
+        "aggregate_every_n_epoch": 4,
+        "lr": 0.0001,
+        "num_labels": 20,
+        "pretrained": true,
+        "dataset": "voc",
+        "arch": "resnet",
+        "t": 0.4
+      }
+    },
+    "role": {
+      "guest": {
+        "0": {
+          "gcn_0": {
+            "device": "cuda:5",
+            "batch_size" : 8,
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client1/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client1_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client1_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        }
+      },
+      "host": {
+        "0": {
+          "gcn_0": {
+            "device": "cuda:5",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client2/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client2_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client2_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        },
+        "1": {
+          "gcn_0": {
+            "device": "cuda:5",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client3/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client3_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client3_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        },
+        "2": {
+          "gcn_0": {
+            "device": "cuda:3",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client4/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client4_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client4_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        },
+        "3": {
+          "gcn_0": {
+            "device": "cuda:3",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client5/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client5_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client5_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        },
+        "4": {
+          "gcn_0": {
+            "device": "cuda:4",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client6/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client6_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client6_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        },
+        "5": {
+          "gcn_0": {
+            "device": "cuda:4",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client7/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client7_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client7_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        },
+        "6": {
+          "gcn_0": {
+            "device": "cuda:5",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client8/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client8_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client8_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        },
+        "7": {
+          "gcn_0": {
+            "device": "cuda:3",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client9/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client9_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client9_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        },
+        "8": {
+          "gcn_0": {
+            "device": "cuda:4",
+            "adj_file": "/data/projects/dataset/voc2007/clustered_voc_expanded/client10/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client10_train",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client10_val",
+              "namespace": "voc2007_expanded-clients10"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "coco-clients10-iid",
+    "name": "client4_train",
+    "address": {
+        "path": "/data/projects/iid_dataset/client4/train"
+    }
+}

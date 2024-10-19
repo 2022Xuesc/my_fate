@@ -1,0 +1,14 @@
+path = add_gcn,min = 66.98, max = 100.0,dominant=89.87,avg = 81.5
+path = connect_add_gcn,min = 70.5, max = 100.0,dominant=89.76,avg = 82.07
+path = connect_add_prob_gcn,min = 65.06, max = 100.0,dominant=89.84,avg = 80.8
+path = connect_add_prob_residual_fix_static_gcn,min = 66.04, max = 100.0,dominant=89.42,avg = 79.96
+path = connect_add_prob_residual_gcn,min = 66.43, max = 100.0,dominant=89.24,avg = 81.36
+path = add_standard_residual_fix_static_gcn,min = 68.68, max = 100.0,dominant=89.71,avg = 81.35
+path = fixed_add_standard_gcn,min = 65.03, max = 100.0,dominant=89.19,avg = 81.22
+path = fixed_connect_add_gcn,min = 67.95, max = 100.0,dominant=89.89,avg = 81.15
+path = fixed_connect_add_residual_gcn,min = 68.28, max = 100.0,dominant=89.67,avg = 82.0
+path = fixed_connect_add_standard_gcn,min = 67.23, max = 100.0,dominant=89.42,avg = 82.37
+path = fixed_connect_prob_gcn,min = 66.57, max = 100.0,dominant=89.94,avg = 81.21
+path = fixed_connect_prob_residual_gcn,min = 66.93, max = 100.0,dominant=89.48,avg = 80.58
+path = fixed_connect_prob_standard_gcn,min = 70.02, max = 100.0,dominant=89.41,avg = 82.51
+path = fixed_connect_prob_standard_residual_gcn,min = 68.43, max = 100.0,dominant=89.49,avg = 81.08

@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "small_experiment",
+    "name": "imagenet_guest_valid",
+    "address": {
+        "path": "/data/projects/data.imagenet/iid10/guest/valid"
+    }
+}

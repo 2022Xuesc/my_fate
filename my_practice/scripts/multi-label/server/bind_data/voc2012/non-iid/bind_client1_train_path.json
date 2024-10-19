@@ -1,0 +1,8 @@
+{
+  "engine": "PATH",
+  "namespace": "voc2012-clients10",
+  "name": "client1_train",
+  "address": {
+    "path": "/data/projects/dataset/clustered_voc2012/client1/train"
+  }
+}

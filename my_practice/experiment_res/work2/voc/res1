@@ -1,0 +1,7 @@
+path = add_gcn,min = 80.48, max = 99.6,dominant=92.62,avg = 93.2
+path = fedavg,min = 62.0, max = 100.0,dominant=86.61,avg = 90.11
+path = gin,min = 81.0, max = 100.0,dominant=92.55,avg = 94.95
+path = kmeans_scene,min = 79.24, max = 100.0,dominant=92.7,avg = 94.78
+path = my_connect_prob_gcn,min = 77.66, max = 100.0,dominant=92.45,avg = 93.57
+path = norm_gin_dynamic,min = 65.62, max = 100.0,dominant=91.12,avg = 90.85
+path = pruned_add_gin,min = 77.68, max = 100.0,dominant=92.81,avg = 92.85

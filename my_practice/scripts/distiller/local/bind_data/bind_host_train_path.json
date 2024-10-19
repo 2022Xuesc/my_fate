@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "small_experiment",
+    "name": "imagenet_host",
+    "address": {
+        "path": "/home/klaus125/research/fate/my_practice/my_data/imagenet/host/train"
+    }
+}

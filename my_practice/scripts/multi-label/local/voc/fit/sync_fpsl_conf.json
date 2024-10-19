@@ -1,0 +1,79 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train"
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 9999
+  },
+  "role": {
+    "arbiter": [
+      10000
+    ],
+    "host": [
+      9997
+    ],
+    "guest": [
+      9999
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "multi_label_0": {
+        "max_iter": 20,
+        "batch_size": 4,
+        "aggregate_every_n_epoch": 1,
+        "lr": 0.0001,
+        "num_labels": 20,
+        "pretrained": true,
+        "dataset": "voc2007",
+        "arch": "alexnet"
+      }
+    },
+    "role": {
+      "guest": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:0",
+            "json_file": "/home/klaus125/research/dataset/VOC2007/JPEGImages/clustered_voc/client7/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client7_train",
+              "namespace": "voc2007-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client7_val",
+              "namespace": "voc2007-clients10"
+            }
+          }
+        }
+      },
+      "host": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:0",
+            "json_file": "/home/klaus125/research/dataset/VOC2007/JPEGImages/clustered_voc/client7/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client3_val",
+              "namespace": "voc2007-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client3_val",
+              "namespace": "voc2007-clients10"
+            }
+          }
+        }
+      }
+    }
+  }
+}
