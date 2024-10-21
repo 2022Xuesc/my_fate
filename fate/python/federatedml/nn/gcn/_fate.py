@@ -507,7 +507,7 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts = model(features, inp)
+            cnn_predicts, gcn_predicts, _ = model(features, inp)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
             # Todo: 将计算结果添加到ap_meter中
@@ -557,7 +557,7 @@ class GCNFitter(object):
                 inp = inp.to(device)
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features, inp)
+                cnn_predicts, gcn_predicts, _ = model(features, inp)
                 predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, target)
