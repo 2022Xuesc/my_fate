@@ -65,7 +65,7 @@ class DynamicGraphConvolution(nn.Module):
         return output  # 再次进行转置
 
     def forward_static_gcn(self, x):
-        adj = self.static_adj()
+        adj = self.static_adj
         returned_adj = adj
         adj = self.gen_adj(adj)
         x = self.forward_gcn(x, self.static_weight, adj)
