@@ -258,8 +258,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
+    category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -268,7 +268,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    inp_name = 'voc2012_glove_word2vec.pkl'
+    inp_name = 'voc_expanded_glove_word2vec.pkl'
     # 构建数据集
 
     batch_size = param.batch_size
