@@ -16,11 +16,11 @@ from federatedml.nn.backend.gcn.models import *
 
 jobid_map = {
     # 'fixed_connect_prob_standard_gcn': '202407281257225264050',
-    #'fixed_add_standard_gcn': '202410201355496201320',
-    #'fixed_connect_add_gcn': '202410201358546112970',
-    'fixed_connect_prob_gcn': '202410201536139630620',
+    # 'fixed_add_standard_gcn': '202410201355496201320',
+    # 'fixed_connect_add_gcn': '202410201358546112970',
+    'fixed_connect_prob_gcn': '202410201728077585080',
     # 等训练完了
-    'fixed_connect_add_standard_gcn': '202410201536510515090',
+    #'fixed_connect_add_standard_gcn': '202410201536510515090',
 }
 model_map = {
     'add_gcn': aaai_add_gcn,
@@ -239,3 +239,4 @@ for task_name in jobid_map:
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         valid_writer.writerow([i, mAP.item(), loss])
         valid_aps_writer.writerow(ap)
+

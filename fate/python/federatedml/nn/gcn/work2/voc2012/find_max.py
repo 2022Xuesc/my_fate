@@ -20,7 +20,7 @@ def calculate_stats(float_list):
 # IJCNN相关
 # Todo: 计算mAP指标、OF1指标和CF1指标
 
-dir_name = 'voc2007_stats'
+dir_name = 'voc2007_stats_0'
 files = os.listdir(dir_name)
 
 for path in files:
@@ -31,4 +31,4 @@ for path in files:
         maxVal = 0
         for row in reader:
             maxVal = max(maxVal, float(row.get('mAP')))
-        print(f"{path} : {round(maxVal,2)}")
+        print(f"{path} : {round(maxVal,3)}")
