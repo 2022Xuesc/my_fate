@@ -258,8 +258,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -268,7 +268,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    inp_name = 'voc_expanded_glove_word2vec.pkl'
+    inp_name = 'voc2012_glove_word2vec.pkl'
     # 构建数据集
 
     batch_size = param.batch_size
@@ -587,7 +587,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = aaai_fixed_connect_prob_standard_gcn(param.pretrained, adjList,
+    model = aaai_connect_prob_standard_gcn(param.pretrained, adjList,
                                                  device=param.device, num_classes=param.num_labels,
                                                  in_channels=in_channel)
     gcn_optimizer = None
