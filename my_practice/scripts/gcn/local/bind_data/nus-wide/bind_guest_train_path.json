@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "gcn-nuswide",
+    "name": "guest-train",
+    "address": {
+        "path": "/home/klaus125/research/fate/my_practice/dataset/nuswide/data/guest/train"
+    }
+}

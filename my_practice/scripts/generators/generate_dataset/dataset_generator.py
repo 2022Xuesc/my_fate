@@ -249,14 +249,14 @@ nuswide_dir = '../../../dataset/nuswide'
 # generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
 
 # Todo: 客户端待执行代码
-client_nums = 10
-# image_dir = "/home/klaus125/research/dataset/clustered_dataset/"
-# image_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc"
-image_dir = '/home/klaus125/research/dataset/NUS-WIDE/images/clustered'
-dataset = "nuswide"
-for i in range(client_nums):
-    client_id = i + 1
-    generate_anno(nuswide_dir, os.path.join(image_dir, f'client{client_id}/train'), dataset=dataset, phase='train')
-    generate_anno(nuswide_dir, os.path.join(image_dir, f'client{client_id}/val'), dataset=dataset, phase='val')
-    generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
-    generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
+# client_nums = 10
+# # image_dir = "/home/klaus125/research/dataset/clustered_dataset/"
+# # image_dir = "/home/klaus125/research/dataset/VOC2007_Expanded/clustered_voc"
+# image_dir = '/home/klaus125/research/dataset/NUS-WIDE/images/clustered'
+# dataset = "nuswide"
+# for i in range(client_nums):
+#     client_id = i + 1
+#     generate_anno(nuswide_dir, os.path.join(image_dir, f'client{client_id}/train'), dataset=dataset, phase='train')
+#     generate_anno(nuswide_dir, os.path.join(image_dir, f'client{client_id}/val'), dataset=dataset, phase='val')
+#     generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
+#     generate_configs(os.path.join(image_dir, f'client{client_id}/val'))

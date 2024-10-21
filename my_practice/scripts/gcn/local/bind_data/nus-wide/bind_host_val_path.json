@@ -1,0 +1,8 @@
+{
+    "engine": "PATH",
+    "namespace": "gcn-nuswide",
+    "name": "host-val",
+    "address": {
+        "path": "/home/klaus125/research/fate/my_practice/dataset/nuswide/data/host/val"
+    }
+}
