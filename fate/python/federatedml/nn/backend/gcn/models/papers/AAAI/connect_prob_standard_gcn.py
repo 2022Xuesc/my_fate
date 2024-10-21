@@ -13,7 +13,10 @@ class DynamicGraphConvolution(nn.Module):
         super(DynamicGraphConvolution, self).__init__()
         # 可优化的adj参数
         # 对于add_gcn来讲，需要进行transpose
-        self.static_adj = CustomMatrix(adjList)
+        self.static_adj = Parameter(torch.Tensor(num_nodes, num_nodes))
+        adj = torch.from_numpy(adjList)
+        self.static_adj.data.copy_(adj)
+        
 
         # 这个倒是不用改
         self.static_weight = Parameter(torch.Tensor(in_features, in_features))
@@ -79,7 +82,6 @@ class DynamicGraphConvolution(nn.Module):
         dynamic_adj = self.conv_create_co_mat(x)
         # Todo: 这个是原来的sigmoid
         dynamic_adj = torch.sigmoid(dynamic_adj)
-        dynamic_adj = genAdj(dynamic_adj)
         return dynamic_adj
 
     def forward_dynamic_gcn(self, x, dynamic_adj):
@@ -103,11 +105,11 @@ class DynamicGraphConvolution(nn.Module):
         dynamic_adj = self.forward_construct_dynamic_graph(x, connect_vec)
         num_classes = out1.size(1)
         dynamic_adj_loss = torch.tensor(0.).to(out1.device)
-        out1 = nn.Sigmoid()(out1)
-        transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
-        transformed_out1 /= num_classes
-        # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
-        dynamic_adj_loss += torch.sum(torch.norm(out1 - transformed_out1, dim=1))
+        # out1 = nn.Sigmoid()(out1)
+        # transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
+        # transformed_out1 /= num_classes
+        # # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
+        # dynamic_adj_loss += torch.sum(torch.norm(out1 - transformed_out1, dim=1))
 
         x = x.transpose(1, 2)
         x = self.forward_dynamic_gcn(x, dynamic_adj)

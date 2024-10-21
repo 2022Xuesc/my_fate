@@ -347,3 +347,13 @@ def aaai_gin(pretrained, adjList, device='cpu', num_classes=80, in_channels=300,
     model = AAAI_GIN(model=model, num_classes=num_classes, in_channels=in_channels,
                      out_channels=out_channels, adjList=adjList)
     return model.to(device)
+
+
+def aaai_connect_prob_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                                   out_channels=2048, prob=True, gap=False, needOptimize=True):
+    # model = torch_models.resnet101(pretrained)
+    model = torch_models.resnet101(False)
+    model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
+    model = AAAI_CONNECT_ADD_PROB_GCN(model, num_classes, in_channels, out_channels, adjList,
+                                                 )
+    return model.to(device)
