@@ -15,10 +15,10 @@ from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.gcn.models import *
 
 jobid_map = {
-    # 'fixed_connect_prob_standard_gcn': '202407281257225264050',
+    'fixed_connect_prob_standard_gcn': '202410211215453802720',
     # 'fixed_add_standard_gcn': '202410201355496201320',
     # 'fixed_connect_add_gcn': '202410201358546112970',
-    'fixed_connect_prob_gcn': '202410201728077585080',
+    # 'fixed_connect_prob_gcn': '202410201728077585080',
     # 等训练完了
     #'fixed_connect_add_standard_gcn': '202410201536510515090',
 }
