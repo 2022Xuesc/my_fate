@@ -1,5 +1,5 @@
-path = fixed_connect_prob_standard_gcn,min = 78.57, max = 100.0,dominant=92.93,avg = 93.39
+path = fixed_connect_prob_standard_gcn,min = 75.96, max = 100.0,dominant=92.55,avg = 92.72
 path = fixed_add_standard_gcn,min = 80.92, max = 100.0,dominant=92.49,avg = 93.52
+path = fixed_connect_add_gcn,min = 70.48, max = 100.0,dominant=92.78,avg = 92.47
 path = fixed_connect_add_standard_gcn,min = 78.28, max = 100.0,dominant=92.49,avg = 93.21
 path = fixed_connect_prob_gcn,min = 73.18, max = 100.0,dominant=92.97,avg = 92.96
-path = fixed_connect_add_gcn,min = 70.48, max = 100.0,dominant=92.78,avg = 92.47
