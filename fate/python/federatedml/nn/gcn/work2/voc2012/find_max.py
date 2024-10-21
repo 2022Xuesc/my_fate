@@ -31,4 +31,4 @@ for path in files:
         maxVal = 0
         for row in reader:
             maxVal = max(maxVal, float(row.get('mAP')))
-        print(f"{path} : {round(maxVal,3)}")
+        print(f"{path} : {round(maxVal,2)}")
