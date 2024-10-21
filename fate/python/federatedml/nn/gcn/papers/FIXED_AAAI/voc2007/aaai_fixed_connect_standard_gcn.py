@@ -258,8 +258,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -268,7 +268,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    inp_name = 'voc_expanded_glove_word2vec.pkl'
+    inp_name = 'voc2012_glove_word2vec.pkl'
     # 构建数据集
 
     batch_size = param.batch_size
@@ -519,7 +519,7 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts = model(features)
+            cnn_predicts, gcn_predicts = model(features, inp)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
             # Todo: 将计算结果添加到ap_meter中
@@ -531,7 +531,6 @@ class GCNFitter(object):
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[ASYM_LOSS].add(asym_loss.item())
-            # losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
 
             optimizer.zero_grad()
 
@@ -567,7 +566,7 @@ class GCNFitter(object):
                 target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features)
+                cnn_predicts, gcn_predicts = model(features, inp)
                 predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, prev_target)
@@ -585,11 +584,10 @@ class GCNFitter(object):
 def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # in_channel是标签嵌入向量的初始（输入）维度
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
-    in_channel = 1024
+    in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = aaai_fixed_add_standard_gcn(param.pretrained, adjList,
-                                        device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                                        needOptimize=False)
+    model = aaai_fixed_connect_standard_gcn(param.pretrained, adjList,
+                                            device=param.device, num_classes=param.num_labels, in_channels=in_channel)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
