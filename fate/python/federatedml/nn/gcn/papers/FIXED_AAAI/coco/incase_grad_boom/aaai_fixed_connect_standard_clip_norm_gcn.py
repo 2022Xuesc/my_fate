@@ -12,7 +12,7 @@ from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.gcn.models import *
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
-from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
+from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
@@ -23,16 +23,13 @@ from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name)
 
-train_header = ['epoch', 'mAP', 'asym_loss']
-valid_header = ['epoch', 'mAP', 'loss']
-
-train_writer = my_writer.get("train.csv", header=train_header)
-valid_writer = my_writer.get("valid.csv", header=valid_header)
-avgloss_writer = my_writer.get("avgloss.csv", header=['agg_iter', 'mAP', 'avgloss'])
-
-train_aps_writer = my_writer.get("train_aps.csv")
-valid_aps_writer = my_writer.get("valid_aps.csv")
-agg_ap_writer = my_writer.get("agg_ap.csv")
+client_header = ['epoch', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3', 'map',
+                 'loss']
+server_header = ['agg_iter', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'OP_3', 'OR_3', 'OF1_3', 'CP_3', 'CR_3', 'CF1_3',
+                 'map', 'loss']
+train_writer = my_writer.get("train.csv", header=client_header)
+valid_writer = my_writer.get("valid.csv", header=client_header)
+avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 
 
 class _FedBaseContext(object):
@@ -252,13 +249,13 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
     # param.batch_size = 2
     # param.max_iter = 1000
-    # param.num_labels = 20
+    # param.num_labels = 80
     # param.device = 'cuda:0'
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -267,14 +264,14 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    inp_name = 'voc_expanded_glove_word2vec.pkl'
+    inp_name = 'coco_glove_word2vec.pkl'
     # 构建数据集
 
     batch_size = param.batch_size
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=True)
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="COCO", drop_last=True)
 
     fitter = GCNFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader, 'normal'
@@ -348,16 +345,16 @@ class GCNFitter(object):
         self.context = context
         self.label_mapping = label_mapping
 
+        # Todo: [WARN]
+        # self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
         adjList = np.zeros((num_labels, num_labels))
         nums = np.zeros(num_labels)
         for image_info in image_id2labels:
-            labels = []
-            for i in range(num_labels):
-                if image_info['labels'][i] != -1:
-                    labels.append(i)
-                    nums[i] += 1
+            labels = image_info['labels']
+            for label in labels:
+                nums[label] += 1
             n = len(labels)
             for i in range(n):
                 for j in range(i + 1, n):
@@ -395,7 +392,7 @@ class GCNFitter(object):
         self._num_per_labels = [0] * self.param.num_labels
 
         # Todo: 初始化平均精度度量器
-        self.ap_meter = AveragePrecisionMeter(difficult_examples=True)
+        self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None
@@ -437,19 +434,15 @@ class GCNFitter(object):
         # 度量重置
         self.ap_meter.reset()
         # Todo: 调整学习率的部分放到scheduler中执行
-        mAP, ap, overall_loss = self.train(train_loader, self.model, self.criterion,
-                                           self.optimizer, epoch, self.param.device,
-                                           scheduler)
-        train_writer.writerow([epoch, mAP, overall_loss])
-        train_aps_writer.writerow(ap)
-        return overall_loss
+        metrics = self.train(train_loader, self.model, self.criterion,
+                             self.optimizer, epoch, self.param.device,
+                             scheduler)
+        return metrics
 
     def validate_one_epoch(self, epoch, valid_loader, scheduler):
         self.ap_meter.reset()
-        mAP, ap, loss = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device, scheduler)
-        valid_writer.writerow([epoch, mAP, loss])
-        valid_aps_writer.writerow(ap)
-        return ap, mAP, loss
+        metrics = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device, scheduler)
+        return metrics
 
     def aggregate_model(self, epoch):
         # 配置参数，将优化器optimizer中的参数写入到list中
@@ -506,10 +499,6 @@ class GCNFitter(object):
 
             inp = inp.to(device)
 
-            prev_target = target.clone()
-
-            target[target == 0] = 1
-            target[target == -1] = 0
             target = target.to(device)
 
             self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
@@ -518,11 +507,11 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts = model(features)
+            cnn_predicts, gcn_predicts = model(features, inp)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
             # Todo: 将计算结果添加到ap_meter中
-            self.ap_meter.add(predicts.data, prev_target)
+            self.ap_meter.add(predicts.data, target)
 
             lambda_dynamic = 1
             asym_loss = criterion(sigmoid_func(predicts), target)
@@ -535,7 +524,8 @@ class GCNFitter(object):
             optimizer.zero_grad()
 
             overall_loss.backward()
-            # Todo: 这里需要对模型的参数进行裁剪吗？
+            
+            torch.nn.utils.clip_grad_value_(model.parameters(), clip_value=0.5)
             optimizer.step()
 
         # Todo: 这里对学习率进行调整
@@ -543,10 +533,15 @@ class GCNFitter(object):
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.9
 
-        mAP, ap = self.ap_meter.value()
+        mAP, _ = self.ap_meter.value()
         mAP *= 100
-        overall_loss = losses[OVERALL_LOSS_KEY].mean
-        return mAP.item(), ap, overall_loss
+        loss = losses[OVERALL_LOSS_KEY].mean
+
+        OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
+        OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
+        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item(), loss]
+        train_writer.writerow([epoch] + metrics)
+        return metrics
 
     def validate(self, valid_loader, model, criterion, epoch, device, scheduler):
         OVERALL_LOSS_KEY = 'Overall Loss'
@@ -561,34 +556,35 @@ class GCNFitter(object):
             for validate_step, ((features, inp), target) in enumerate(valid_loader):
                 features = features.to(device)
                 inp = inp.to(device)
-                prev_target = target.clone()
-                target[target == 0] = 1
-                target[target == -1] = 0
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features)
+                cnn_predicts, gcn_predicts = model(features, inp)
                 predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
-                self.ap_meter.add(predicts.data, prev_target)
+                self.ap_meter.add(predicts.data, target)
 
                 objective_loss = criterion(sigmoid_func(predicts), target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
-        mAP, ap = self.ap_meter.value()
+        mAP, _ = self.ap_meter.value()
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
-        return mAP.item(), ap, loss
+        OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
+        OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)
+        metrics = [OP, OR, OF1, CP, CR, CF1, OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k, mAP.item(), loss]
+        valid_writer.writerow([epoch] + metrics)
+        return metrics
 
 
 # Todo: 相关性矩阵初始化 + 优化
 def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # in_channel是标签嵌入向量的初始（输入）维度
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
-    in_channel = 1024
+    in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = aaai_fixed_prob_standard_gcn(param.pretrained, adjList,
-                                         device=param.device, num_classes=param.num_labels, in_channels=in_channel,
-                                         needOptimize=False)
+    model = aaai_fixed_connect_standard_gcn(param.pretrained, adjList,
+                                            device=param.device, num_classes=param.num_labels,
+                                            in_channels=in_channel)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

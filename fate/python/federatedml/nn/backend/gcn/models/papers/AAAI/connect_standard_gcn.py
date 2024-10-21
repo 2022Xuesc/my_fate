@@ -102,11 +102,11 @@ class DynamicGraphConvolution(nn.Module):
         dynamic_adj = self.forward_construct_dynamic_graph(x, connect_vec)
         num_classes = out1.size(1)
         dynamic_adj_loss = torch.tensor(0.).to(out1.device)
-        out1 = nn.Sigmoid()(out1)
-        transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
-        transformed_out1 /= num_classes
-        # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
-        dynamic_adj_loss += torch.sum(torch.norm(out1 - transformed_out1, dim=1))
+        # out1 = nn.Sigmoid()(out1)
+        # transformed_out1 = torch.matmul(out1.unsqueeze(1), dynamic_adj).squeeze(1)
+        # transformed_out1 /= num_classes
+        # # 第0维是batch_size，非对称损失也不求平均；因此，无需torch.mean
+        # dynamic_adj_loss += torch.sum(torch.norm(out1 - transformed_out1, dim=1))
 
         x = x.transpose(1, 2)
         x = self.forward_dynamic_gcn(x, dynamic_adj)
@@ -114,9 +114,9 @@ class DynamicGraphConvolution(nn.Module):
         return x, dynamic_adj_loss
 
 
-class AAAI_CONNECT_PROB_STANDARD_GCN(nn.Module):
+class AAAI_CONNECT_STANDARD_GCN(nn.Module):
     def __init__(self, model, num_classes, in_features=300, out_features=2048, adjList=None):
-        super(AAAI_CONNECT_PROB_STANDARD_GCN, self).__init__()
+        super(AAAI_CONNECT_STANDARD_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
             model.bn1,
