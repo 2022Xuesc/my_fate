@@ -1,7 +1,6 @@
 import sys
 
 import numpy as np
-import torch
 
 import os
 
@@ -16,7 +15,12 @@ from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.gcn.models import *
 
 jobid_map = {
-    'fixed_connect_prob_standard_gcn': '202407281257225264050',
+    # 'fixed_connect_prob_standard_gcn': '202407281257225264050',
+    # 'fixed_add_standard_gcn': '202410201355496201320',
+    # 'fixed_connect_add_gcn': '202410201358546112970',
+    'fixed_connect_prob_gcn': '202410201728077585080',
+    # 等训练完了
+    #'fixed_connect_add_standard_gcn': '202410201536510515090',
 }
 model_map = {
     'add_gcn': aaai_add_gcn,
@@ -122,7 +126,7 @@ ap_meter = AveragePrecisionMeter(difficult_examples=True)
 criterion = AsymmetricLossOptimized().to(device)
 
 cur_dir_name = os.getcwd()
-my_writer = MyWriter(dir_name=cur_dir_name,stats_name="voc2007_stats")
+my_writer = MyWriter(dir_name=cur_dir_name, stats_name="voc2007_stats")
 
 for task_name in jobid_map:
     jobid = jobid_map[task_name]
