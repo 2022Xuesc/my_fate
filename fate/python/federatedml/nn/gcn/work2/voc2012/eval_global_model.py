@@ -29,7 +29,7 @@ jobid_map = {
     #'fixed_connect_add_residual_gcn': '202407271121535929440',
     #'fixed_connect_prob_residual_gcn': '202407271413107609760',
     #'fixed_connect_add_standard_gcn': '202407280627335004850',
-    'fixed_connect_prob_standard_gcn': '202407280752591471990',
+    'fixed_connect_prob_standard_gcn': '202410211138214573530',
     #'fixed_connect_prob_standard_residual_gcn': '202407281033362860880',
     #'fixed_connect_prob_gcn': '202407271658384795480'
 }
@@ -137,7 +137,7 @@ ap_meter = AveragePrecisionMeter(difficult_examples=True)
 criterion = AsymmetricLossOptimized().to(device)
 
 cur_dir_name = os.getcwd()
-my_writer = MyWriter(dir_name=cur_dir_name)
+my_writer = MyWriter(dir_name=cur_dir_name, stats_name='stats_1')
 
 for task_name in jobid_map:
     jobid = jobid_map[task_name]
@@ -250,3 +250,4 @@ for task_name in jobid_map:
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         valid_writer.writerow([i, mAP.item(), loss])
         valid_aps_writer.writerow(ap)
+
