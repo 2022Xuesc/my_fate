@@ -140,7 +140,9 @@ def gcn_resnet101(pretrained, dataset, t, adjList=None, device='cpu', num_classe
 
 
 def p_gcn_resnet101(pretrained, adjList=None, device='cpu', num_classes=80, in_channel=2048, out_channel=1):
-    model = torch_models.resnet101(pretrained=pretrained)
+    # model = torch_models.resnet101(pretrained=pretrained)
+    model = torch_models.resnet101(False)
+    model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
     model = PGCNResnet(model=model, num_classes=num_classes, in_channel=in_channel, out_channels=out_channel,
                        adjList=adjList)
     return model.to(device)

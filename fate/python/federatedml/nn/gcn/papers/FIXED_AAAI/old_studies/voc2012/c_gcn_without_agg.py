@@ -12,7 +12,6 @@ from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.gcn.models import resnet_c_gcn
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import AsymmetricLossOptimized
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -20,7 +19,6 @@ from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 from federatedml.param.gcn_param import GCNParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
-
 
 cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name)
@@ -325,10 +323,6 @@ class GCNFedAggregator(object):
 
             self.context.increase_aggregation_iteration()
 
-        if self.context.finished():
-            print(os.getcwd())
-            np.save('global_model', self.model)
-            np.save('bn_data', self.bn_data)
 
     def export_model(self, param):
         pass
