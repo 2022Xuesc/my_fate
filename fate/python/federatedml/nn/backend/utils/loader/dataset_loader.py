@@ -65,7 +65,8 @@ class DatasetLoader(object):
 
     # 传resize_scale，一般是512或256
     # 传crop_scale，一般是448或224
-    def get_loaders(self, batch_size, resize_scale=512, crop_scale=448, dataset='COCO', shuffle=True, drop_last=True):
+    def get_loaders(self, batch_size, resize_scale=512, crop_scale=448, dataset='COCO', shuffle=True, drop_last=True,
+                    num_workers=16):
         if dataset == 'COCO':
             train_dataset = COCO(images_dir=self.train_path,
                                  config_dir=self.category_dir,
@@ -87,7 +88,6 @@ class DatasetLoader(object):
         # 对batch_size进行修正
         batch_size = max(1, min(batch_size, len(train_dataset), len(valid_dataset)))
 
-        num_workers = 16
 
         train_loader = torch.utils.data.DataLoader(
             dataset=train_dataset, batch_size=batch_size, num_workers=num_workers,
