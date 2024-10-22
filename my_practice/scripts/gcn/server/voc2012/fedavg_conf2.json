@@ -175,7 +175,7 @@
         },
         "6": {
           "gcn_0": {
-            "device": "cuda:2",
+            "device": "cuda:5",
             "adj_file": "/data/projects/dataset/clustered_voc2012/client8/train/anno.json"
           },
           "reader_0": {
@@ -193,7 +193,7 @@
         },
         "7": {
           "gcn_0": {
-            "device": "cuda:2",
+            "device": "cuda:5",
             "adj_file": "/data/projects/dataset/clustered_voc2012/client9/train/anno.json"
           },
           "reader_0": {
