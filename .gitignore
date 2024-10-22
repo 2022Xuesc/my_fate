@@ -173,6 +173,7 @@ Dockerfile
 >>>>>>> ce6f26b3e3e52263ff41e0f32c2c88a53b00895e
 
 **/__pycache__
+*.pyc
 docker-entrypoint.sh
 packages_md5.txt
 
