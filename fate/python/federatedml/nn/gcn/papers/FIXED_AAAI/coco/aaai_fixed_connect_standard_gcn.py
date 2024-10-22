@@ -380,7 +380,7 @@ class GCNFitter(object):
                                                                                            self.adjList)
 
         # 使用非对称损失
-        self.criterion = AsymmetricLossOptimized().to(self.param.device)
+        self.criterion = AsymmetricLossOptimized(mean=True).to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数

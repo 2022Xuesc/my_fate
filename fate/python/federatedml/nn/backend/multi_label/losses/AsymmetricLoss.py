@@ -71,7 +71,7 @@ class AsymmetricLoss(nn.Module):
 
 class AsymmetricLossOptimized(nn.Module):
 
-    def __init__(self, gamma_neg=4, gamma_pos=1, clip=0.05, eps=1e-8, disable_torch_grad_focal_loss=False):
+    def __init__(self, gamma_neg=4, gamma_pos=1, clip=0.05, eps=1e-8, disable_torch_grad_focal_loss=False, mean=False):
         super(AsymmetricLossOptimized, self).__init__()
 
         self.gamma_neg = gamma_neg
@@ -82,7 +82,7 @@ class AsymmetricLossOptimized(nn.Module):
 
         # prevent memory allocation and gpu uploading every iteration, and encourages inplace operations
         self.targets = self.anti_targets = self.xs_pos = self.xs_neg = self.asymmetric_w = self.loss = None
-
+        self.mean = mean
     def forward(self, x, y):
         """"
         Parameters
@@ -119,5 +119,6 @@ class AsymmetricLossOptimized(nn.Module):
             if self.disable_torch_grad_focal_loss:
                 torch.set_grad_enabled(True)
             self.loss *= self.asymmetric_w
-
+        if self.mean:
+            return -self.loss.mean()
         return -self.loss.sum()
