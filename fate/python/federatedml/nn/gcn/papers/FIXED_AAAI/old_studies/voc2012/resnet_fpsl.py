@@ -1,3 +1,4 @@
+# 服务器与客户端的通用逻辑
 import math
 import torch.nn
 import torchnet.meter as tnt
@@ -102,10 +103,10 @@ class FedClientContext(_FedBaseContext):
             (tensor_arrs, bn_arrs, weight), suffix=self._suffix()
         )
 
+    # 接收模型
     def recv_model(self):
         return self.aggregator.get_aggregated_model(suffix=self._suffix())
 
-    # 接收模型
     def send_metrics(self, ap, mAP, loss, weight):
         self.aggregator.send_model((ap, mAP, loss, weight), suffix=self._suffix(group="metrics"))
 
@@ -122,7 +123,6 @@ class FedClientContext(_FedBaseContext):
         for arr in global_model:
             agg_tensors.append(torch.from_numpy(arr).to(device))
         for param, agg_tensor in zip(self._params, agg_tensors):
-            # param.grad处理的是哪种情况
             if param.grad is None:
                 continue
             param.data.copy_(agg_tensor)
@@ -179,7 +179,6 @@ class FedServerContext(_FedBaseContext):
 
     # 发送模型
     def send_model(self, aggregated_arrs):
-
         self.aggregator.send_aggregated_model(aggregated_arrs, suffix=self._suffix())
 
     # 接收客户端模型
@@ -244,12 +243,13 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
         eps=param.early_stop_eps
     )
     context.init(init_aggregation_iteration=init_iteration)
-    # Todo: 这里设置同步的聚合方式
+    # Todo: 这里设置同步或异步的聚合方式
     fed_aggregator = SyncAggregator(context)
     return fed_aggregator
 
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
+
     # Todo: [WARN]
     # param.batch_size = 2
     # param.max_iter = 1000
@@ -297,7 +297,7 @@ class SyncAggregator(object):
             recv_elements: typing.List[typing.Tuple] = self.context.recv_model()
 
             cur_iteration = self.context.aggregation_iteration
-            LOGGER.warn(f'收到{len(recv_elements)}客户端发送过来的模型')
+            LOGGER.warn(f'收到{len(recv_elements)}个客户端发送过来的模型')
 
             tensors = [party_tuple[0] for party_tuple in recv_elements]
             # 还有bn层的统计数据
@@ -306,8 +306,8 @@ class SyncAggregator(object):
             # 抽取出
             degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
-            # 聚合整个模型，flag论文也是这种聚合方式，只是degrees的生成方式变化
-            self.model = aggregate_whole_model(tensors, degrees)
+            # 分标签进行聚合
+            self.model = aggregate_by_labels(tensors, degrees)
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
@@ -321,14 +321,13 @@ class SyncAggregator(object):
             # 同步方式下，服务器端也需要记录聚合轮次
             self.context.increase_aggregation_iteration()
 
+
     def export_model(self, param):
         pass
 
     @classmethod
     def load_model(cls, model_obj, meta_obj, param):
         param.restore_from_pb(meta_obj.params)
-
-    pass
 
     @classmethod
     def load_model(cls, model_obj, meta_obj, param):
@@ -352,16 +351,14 @@ class MultiLabelFitter(object):
         self.scheduler = ...
         self.param = copy.deepcopy(param)
         self._all_consumed_data_aggregated = True
-        self.best_precision = 0
         self.context = context
         self.label_mapping = label_mapping
 
         # Todo: 原始的ResNet101分类器
         (self.model, self.scheduler, self.optimizer) = _init_learner(self.param, self.param.device)
 
-        # Todo: 使用非对称损失
+        # 使用对称损失
         self.criterion = AsymmetricLossOptimized().to(self.param.device)
-
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -370,7 +367,7 @@ class MultiLabelFitter(object):
         # Todo: 以下两种参数需要知道确切的标签信息，因此，在训练的批次迭代中进行更新
         #  FLAG论文客户端在聚合时可根据标签列表信息直接计算聚合权重
         #  而PS论文需要将标签出现向量发送给服务器端实现分标签聚合
-        # 2. 按照训练集的标签宽度进行聚合，对应FLAG论文中alpha = 0的特殊设定
+        # 2. 按照训练使用的标签数进行聚合，对应FLAG论文
         self._num_label_consumed = 0
         # 3. 按照每个标签所包含的样本数进行聚合，维护一个list，对应FLAG论文和Partial Supervised论文
         self._num_per_labels = [0] * self.param.num_labels
@@ -385,6 +382,7 @@ class MultiLabelFitter(object):
 
     # 执行拟合操作
     def fit(self, train_loader, valid_loader):
+
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
             valid_metrics = self.train_validate(epoch, train_loader, valid_loader, self.scheduler)
@@ -403,13 +401,8 @@ class MultiLabelFitter(object):
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         aps, mAP, loss = valid_metrics
         if self.context.should_aggregate_on_epoch(epoch):
-            # 计算聚合权重，模型聚合与损失平均时都要用到
-            weight = 0
-            alpha = 0.3
-            for num in self._num_per_labels:
-                weight += num ** alpha
-
-            self.aggregate_model(epoch, weight)
+            self.aggregate_model(epoch)
+            # 同步模式下，需要发送loss和mAP
 
             # 将相关指标重置为0
             self._num_data_consumed = 0
@@ -417,6 +410,9 @@ class MultiLabelFitter(object):
             self._num_per_labels = [0] * self.param.num_labels
 
             self.context.increase_aggregation_iteration()
+
+        # if (epoch + 1) % 50 == 0:
+        #     torch.save(self.model.state_dict(), f'model_{epoch + 1}.path')
 
     # 执行拟合逻辑的编写
     def train_one_epoch(self, epoch, train_loader, scheduler):
@@ -436,23 +432,22 @@ class MultiLabelFitter(object):
         # 并且返回验证集的ap
         return ap, mAP, loss
 
-    def aggregate_model(self, epoch, weight):
+    def aggregate_model(self, epoch=None, weight=None):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
 
+        # bn_data添加
         bn_data = []
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
                 bn_data.append(layer.running_mean)
                 bn_data.append(layer.running_var)
 
-        # FedAvg聚合策略
-        # self.context.do_aggregation(weight=self._num_data_consumed, device=self.param.device)
+        # Partial Supervised聚合策略
+        weight_list = list(self._num_per_labels)
+        weight_list.append(self._num_data_consumed)
 
-        # Flag聚合策略
-        # Todo: 添加聚合参数
-        # 这里计算weight
-        agg_bn_data = self.context.do_aggregation(weight=weight, bn_data=bn_data, device=self.param.device)
+        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data, device=self.param.device)
         idx = 0
         for layer in self.model.modules():
             if isinstance(layer, torch.nn.BatchNorm2d):
@@ -479,8 +474,8 @@ class MultiLabelFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-
         sigmoid_func = torch.nn.Sigmoid()
+        # 这里不使用inp
         for train_step, (inputs, target) in enumerate(train_loader):
             inputs = inputs.to(device)
 
@@ -490,20 +485,18 @@ class MultiLabelFitter(object):
             target[target == -1] = 0
             target = target.to(device)
 
+            # Debug看这里的统计是否准确
             self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
 
+            # 也可在聚合时候统计，这里为明了起见，直接统计
             self._num_label_consumed += target.sum().item()
 
             output = model(inputs)
             self.ap_meter.add(output.data, prev_target)
 
-            # 这里criterion自然会进行sigmoid操作
             loss = criterion(sigmoid_func(output), target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
-            # 打印进度
-            # LOGGER.warn(
-            #    f'[train] epoch={epoch}, step={train_step} / {steps_per_epoch},loss={loss}')
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -525,8 +518,9 @@ class MultiLabelFitter(object):
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-        model.eval()
         sigmoid_func = torch.nn.Sigmoid()
+
+        model.eval()
         # Todo: 在开始训练之前，重置ap_meter
         self.ap_meter.reset()
         with torch.no_grad():
@@ -553,10 +547,9 @@ class MultiLabelFitter(object):
 
 
 def _init_learner(param, device='cpu'):
-    # 使用resnet101模型、Adam优化器、OneCycleLR
+    # Todo: 将通用部分提取出来
     model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels)
     # 使用Adam优化器
-    optimizer = torch.optim.Adam(model.parameters(), lr=param.lr, weight_decay=1e-4)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=param.lr, weight_decay=1e-4)
     scheduler = None
-    # 配置自定义的调度器
     return model, scheduler, optimizer
