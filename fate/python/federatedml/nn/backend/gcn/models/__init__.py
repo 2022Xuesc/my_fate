@@ -171,7 +171,9 @@ def resnet_agg_salgl(pretrained, device, num_scenes=6, num_classes=80):
 
 
 def resnet_salgl(pretrained, device, num_scenes=6, num_classes=80):
-    model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
+    # model = torch_models.resnet101(pretrained=pretrained, num_classes=1000)
+    model = torch_models.resnet101(False)
+    model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
     return ResnetSalgl(model, num_scenes=num_scenes, num_classes=num_classes).to(device)
 
 
