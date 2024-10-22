@@ -34,7 +34,9 @@ def create_model(pretrained, dataset, arch, device, num_classes=1000):
 
 def create_resnet101_model(pretrained, device, num_classes=80, layer_num=101):
     # Todo: 先下载1000类的全连接层
-    model = resnet_models[layer_num](pretrained=pretrained, num_classes=1000)
+    # model = resnet_models[layer_num](pretrained=pretrained, num_classes=1000)
+    model = torch_models.resnet101(False)
+    model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
     # 将最后的全连接层替换掉
     model.fc = torch.nn.Sequential(torch.nn.Linear(2048, num_classes))
     torch.nn.init.kaiming_normal_(model.fc[0].weight.data)

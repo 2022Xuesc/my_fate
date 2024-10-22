@@ -1,0 +1,79 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train"
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 9999
+  },
+  "role": {
+    "arbiter": [
+      10000
+    ],
+    "host": [
+      9997
+    ],
+    "guest": [
+      9999
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "multi_label_0": {
+        "max_iter": 20,
+        "batch_size": 4,
+        "aggregate_every_n_epoch": 1,
+        "lr": 0.0001,
+        "num_labels": 20,
+        "pretrained": true,
+        "dataset": "voc2007",
+        "arch": "alexnet"
+      }
+    },
+    "role": {
+      "guest": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:0",
+            "json_file": "/home/klaus125/research/fate/my_practice/dataset/voc_expanded/data/host/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "host-train",
+              "namespace": "gcn-voc"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "host-val",
+              "namespace": "gcn-voc"
+            }
+          }
+        }
+      },
+      "host": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:0",
+            "json_file": "/home/klaus125/research/fate/my_practice/dataset/voc_expanded/data/host/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "host-train",
+              "namespace": "gcn-voc"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "host-val",
+              "namespace": "gcn-voc"
+            }
+          }
+        }
+      }
+    }
+  }
+}
