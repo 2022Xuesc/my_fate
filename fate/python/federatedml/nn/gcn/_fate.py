@@ -34,8 +34,6 @@ avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 debug_header = ['epoch', 'batch', 'layer_name', 'val_mean', 'val_max', 'grad_mean', 'grad_max', 'loss']
 debug_writer = my_writer.get("debug.csv", header=debug_header, buf_size=1000)
 
-flag = False
-
 
 class _FedBaseContext(object):
     def __init__(self, max_num_aggregation, name):
@@ -403,6 +401,8 @@ class GCNFitter(object):
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None
+        
+        self.flag = False
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -532,12 +532,12 @@ class GCNFitter(object):
 
             overall_loss.backward()
             # Todo: 这里需要对模型的参数进行裁剪吗？
-            if math.isnan(asym_loss.item()) and not flag:
+            if math.isnan(asym_loss.item()) and not self.flag:
                 # np.save(f'{cur_dir_name}/bn_data_{self.context.aggregation_iteration}', self.bn_data)
                 np.save(f'{cur_dir_name}/cnn_predicts', cnn_predicts)
                 np.save(f'{cur_dir_name}/gnn_predicts', gcn_predicts)
                 np.save(f'{cur_dir_name}/target', target)
-                flag = True
+                self.flag = True
             for name, param in model.named_parameters():
                 if param.requires_grad and param.grad is not None:
                     param_mean = round(param.data.mean().item(), 2)
