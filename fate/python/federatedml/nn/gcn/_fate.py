@@ -498,7 +498,7 @@ class GCNFitter(object):
         losses = OrderedDict([(ASYM_LOSS, tnt.AverageValueMeter()),
                               (DYNAMIC_ADJ_LOSS, tnt.AverageValueMeter()),
                               (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
-        # sigmoid_func = torch.nn.Sigmoid()
+        sigmoid_func = torch.nn.Sigmoid()
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
@@ -521,7 +521,7 @@ class GCNFitter(object):
             self.ap_meter.add(predicts.data, target)
 
             lambda_dynamic = 1
-            asym_loss = criterion(predicts, target)
+            asym_loss = criterion(sigmoid_func(predicts), target)
             overall_loss = asym_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
@@ -585,7 +585,7 @@ class GCNFitter(object):
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, target)
 
-                objective_loss = criterion(predicts, target)
+                objective_loss = criterion(sigmoid_func(predicts), target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
         mAP, _ = self.ap_meter.value()
