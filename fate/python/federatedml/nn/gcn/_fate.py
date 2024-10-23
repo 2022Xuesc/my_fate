@@ -532,14 +532,14 @@ class GCNFitter(object):
 
             overall_loss.backward()
             # Todo: 这里需要对模型的参数进行裁剪吗？
-            np.save(f'{cur_dir_name}/cnn_predicts', cnn_predicts.detach().cpu().numpy())
-            np.save(f'{cur_dir_name}/gnn_predicts', gcn_predicts.detach().cpu().numpy())
-            np.save(f'{cur_dir_name}/target', target.detach().cpu().numpy())
+            # torch.save(model, f'{cur_dir_name}/bad_model.pt')
+            # np.save(f'{cur_dir_name}/features', features.detach().cpu().numpy())
             if math.isnan(asym_loss.item()) and not self.flag:
-                # np.save(f'{cur_dir_name}/bn_data_{self.context.aggregation_iteration}', self.bn_data)
-                np.save(f'{cur_dir_name}/cnn_predicts', cnn_predicts.detach().cpu().numpy())
-                np.save(f'{cur_dir_name}/gnn_predicts', gcn_predicts.detach().cpu().numpy())
-                np.save(f'{cur_dir_name}/target', target.detach().cpu().numpy())
+                torch.save(model, f'{cur_dir_name}/bad_model.pt')
+                np.save(f'{cur_dir_name}/features', features.detach().cpu().numpy())
+                # np.save(f'{cur_dir_name}/cnn_predicts', cnn_predicts.detach().cpu().numpy())
+                # np.save(f'{cur_dir_name}/gnn_predicts', gcn_predicts.detach().cpu().numpy())
+                # np.save(f'{cur_dir_name}/target', target.detach().cpu().numpy())
                 self.flag = True
             for name, param in model.named_parameters():
                 if param.requires_grad and param.grad is not None:
