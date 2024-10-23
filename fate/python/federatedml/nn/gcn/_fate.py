@@ -11,6 +11,7 @@ from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.gcn.models import *
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -32,6 +33,8 @@ avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 
 debug_header = ['epoch', 'batch', 'layer_name', 'val_mean', 'val_max', 'grad_mean', 'grad_max', 'loss']
 debug_writer = my_writer.get("debug.csv", header=debug_header, buf_size=1000)
+
+flag = False
 
 
 class _FedBaseContext(object):
@@ -382,8 +385,8 @@ class GCNFitter(object):
                                                                                            self.adjList)
 
         # 使用非对称损失
-        # self.criterion = AsymmetricLossOptimized(mean=True).to(self.param.device)
-        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
+        self.criterion = AsymmetricLossOptimized(mean=True).to(self.param.device)
+        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -529,7 +532,12 @@ class GCNFitter(object):
 
             overall_loss.backward()
             # Todo: 这里需要对模型的参数进行裁剪吗？
-
+            if math.isnan(asym_loss.item()) and not flag:
+                # np.save(f'{cur_dir_name}/bn_data_{self.context.aggregation_iteration}', self.bn_data)
+                np.save(f'{cur_dir_name}/cnn_predicts', cnn_predicts)
+                np.save(f'{cur_dir_name}/gnn_predicts', gcn_predicts)
+                np.save(f'{cur_dir_name}/target', target)
+                flag = True
             for name, param in model.named_parameters():
                 if param.requires_grad and param.grad is not None:
                     param_mean = round(param.data.mean().item(), 2)
