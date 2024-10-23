@@ -31,6 +31,9 @@ train_writer = my_writer.get("train.csv", header=client_header)
 valid_writer = my_writer.get("valid.csv", header=client_header)
 avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 
+debug_header = ['epoch', 'batch', 'layer_name', 'val_mean', 'val_max', 'grad_mean', 'grad_max', 'loss']
+debug_writer = my_writer.get("debug.csv", header=debug_header, buf_size=1000)
+
 
 class _FedBaseContext(object):
     def __init__(self, max_num_aggregation, name):
@@ -526,6 +529,17 @@ class GCNFitter(object):
 
             overall_loss.backward()
             # Todo: 这里需要对模型的参数进行裁剪吗？
+
+            for name, param in model.named_parameters():
+                if param.requires_grad and param.grad is not None:
+                    param_mean = round(param.data.mean().item(), 2)
+                    param_max = round(param.data.max().item(), 2)
+                    grad_mean = round(param.grad.mean().item(), 2)
+                    grad_max = round(param.grad.max().item(), 2)
+                    debug_writer.writerow(
+                        [epoch, train_step, name, param_mean, param_max, grad_mean, grad_max,
+                         round(overall_loss.item(), 2)])
+
             optimizer.step()
 
         # Todo: 这里对学习率进行调整
