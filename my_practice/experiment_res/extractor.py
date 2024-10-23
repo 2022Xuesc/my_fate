@@ -13,10 +13,10 @@
 import os
 import shutil
 
-dir_id = "202410230437149415740"
-job_id = "202410230437149415740"
+dir_id = "202410230456053956480"
+job_id = "202410230456053956480"
 module_name = 'gcn_0'
-target_dir = 'AAAI/debug'
+target_dir = 'AAAI/debug2'
 client_num = 10
 
 
