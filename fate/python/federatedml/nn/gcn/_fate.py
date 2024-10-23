@@ -31,9 +31,6 @@ train_writer = my_writer.get("train.csv", header=client_header)
 valid_writer = my_writer.get("valid.csv", header=client_header)
 avgloss_writer = my_writer.get("avgloss.csv", header=server_header)
 
-debug_header = ['epoch', 'batch', 'layer_name', 'val_mean', 'val_max', 'grad_mean', 'grad_max', 'loss']
-debug_writer = my_writer.get("debug.csv", header=debug_header, buf_size=1000)
-
 
 class _FedBaseContext(object):
     def __init__(self, max_num_aggregation, name):
@@ -401,7 +398,7 @@ class GCNFitter(object):
 
         self.lr_scheduler = None
         self.gcn_lr_scheduler = None
-        
+
         self.flag = False
 
     def get_label_mapping(self):
@@ -531,25 +528,6 @@ class GCNFitter(object):
             optimizer.zero_grad()
 
             overall_loss.backward()
-            # Todo: 这里需要对模型的参数进行裁剪吗？
-            # torch.save(model, f'{cur_dir_name}/bad_model.pt')
-            # np.save(f'{cur_dir_name}/features', features.detach().cpu().numpy())
-            if math.isnan(asym_loss.item()) and not self.flag:
-                torch.save(model, f'{cur_dir_name}/bad_model.pt')
-                np.save(f'{cur_dir_name}/features', features.detach().cpu().numpy())
-                # np.save(f'{cur_dir_name}/cnn_predicts', cnn_predicts.detach().cpu().numpy())
-                # np.save(f'{cur_dir_name}/gnn_predicts', gcn_predicts.detach().cpu().numpy())
-                # np.save(f'{cur_dir_name}/target', target.detach().cpu().numpy())
-                self.flag = True
-            for name, param in model.named_parameters():
-                if param.requires_grad and param.grad is not None:
-                    param_mean = round(param.data.mean().item(), 2)
-                    param_max = round(param.data.max().item(), 2)
-                    grad_mean = round(param.grad.mean().item(), 2)
-                    grad_max = round(param.grad.max().item(), 2)
-                    debug_writer.writerow(
-                        [epoch, train_step, name, param_mean, param_max, grad_mean, grad_max,
-                         round(overall_loss.item(), 2)])
 
             optimizer.step()
 
