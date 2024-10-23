@@ -11,7 +11,6 @@ from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.gcn.models import *
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -383,7 +382,8 @@ class GCNFitter(object):
                                                                                            self.adjList)
 
         # 使用非对称损失
-        self.criterion = AsymmetricLossOptimized(mean=True).to(self.param.device)
+        # self.criterion = AsymmetricLossOptimized(mean=True).to(self.param.device)
+        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -495,7 +495,7 @@ class GCNFitter(object):
         losses = OrderedDict([(ASYM_LOSS, tnt.AverageValueMeter()),
                               (DYNAMIC_ADJ_LOSS, tnt.AverageValueMeter()),
                               (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
-        sigmoid_func = torch.nn.Sigmoid()
+        # sigmoid_func = torch.nn.Sigmoid()
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
@@ -518,7 +518,7 @@ class GCNFitter(object):
             self.ap_meter.add(predicts.data, target)
 
             lambda_dynamic = 1
-            asym_loss = criterion(sigmoid_func(predicts), target)
+            asym_loss = criterion(predicts, target)
             overall_loss = asym_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
@@ -577,7 +577,7 @@ class GCNFitter(object):
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, target)
 
-                objective_loss = criterion(sigmoid_func(predicts), target)
+                objective_loss = criterion(predicts, target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
         mAP, _ = self.ap_meter.value()
