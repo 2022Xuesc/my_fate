@@ -47,7 +47,7 @@
         "0": {
           "gcn_0": {
             "device": "cuda:5",
-            "batch_size": 32,
+            "batch_size": 16,
             "adj_file": "/data/projects/dataset/clustered_dataset/client1/train/anno.json"
           },
           "reader_0": {
