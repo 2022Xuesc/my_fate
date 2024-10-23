@@ -5,7 +5,7 @@ from torch.nn import Parameter
 
 # 自定义的矩阵
 class CustomMatrix(nn.Module):
-    def __init__(self, adjList, needTranspose=False):
+    def __init__(self, adjList, needTranspose=False, needToOptimize=True):
         super(CustomMatrix, self).__init__()
         num_labels = len(adjList)
         self.fixed_diagonal = Parameter(torch.tensor([1. for _ in range(num_labels)]))
@@ -16,6 +16,7 @@ class CustomMatrix(nn.Module):
         if needTranspose:
             adj = torch.transpose(adj, 0, 1)
         self.off_diagonal.data.copy_(adj)
+        self.off_diagonal.requires_grad_(needToOptimize)
         # self.mask不在
         self.mask = Parameter(torch.eye(num_labels))
         self.mask.requires_grad_(False)
