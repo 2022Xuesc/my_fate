@@ -24,7 +24,6 @@ class DynamicGraphConvolution(nn.Module):
         self.relu = nn.LeakyReLU(0.2)
 
         self.conv_create_co_mat = nn.Conv1d(in_features * 2, num_nodes, 1)  # 生成动态图的卷积层
-        self.bn_for_adj = nn.BatchNorm1d(num_nodes)
         self.dynamic_weight = Parameter(torch.Tensor(in_features, out_features))
 
         self.reset_weight_parameters()
@@ -78,7 +77,6 @@ class DynamicGraphConvolution(nn.Module):
         ### Construct the dynamic correlation matrix ###
         x = torch.cat((connect_vec, x), dim=1)
         dynamic_adj = self.conv_create_co_mat(x)
-        dynamic_adj = self.bn_for_adj(dynamic_adj)
         # Todo: 这个是原来的sigmoid
         dynamic_adj = torch.sigmoid(dynamic_adj)
         dynamic_adj = genAdj(dynamic_adj)
@@ -101,7 +99,6 @@ class DynamicGraphConvolution(nn.Module):
         # x = x.transpose(1, 2)
         out_static, static_adj = self.forward_static_gcn(x)
         x = x + out_static
-        x = self.relu(x)
         x = x.transpose(1, 2)
         dynamic_adj = self.forward_construct_dynamic_graph(x, connect_vec, static_adj)
         num_classes = out1.size(1)
@@ -139,8 +136,7 @@ class AAAI_FIXED_CONNECT_STANDARD_GCN_FOR_COCO(nn.Module):
         feat_dim = 2048
         self.connect = torch.nn.Linear(in_features=feat_dim, out_features=in_features, bias=True)
         self.fc = torch.nn.Linear(in_features=feat_dim, out_features=num_classes, bias=True)
-        self.bn_for_connect = nn.BatchNorm1d(in_features)
-        self.relu = nn.LeakyReLU(0.2)
+
 
     def forward_feature(self, x):
         x = self.features(x)
@@ -160,8 +156,8 @@ class AAAI_FIXED_CONNECT_STANDARD_GCN_FOR_COCO(nn.Module):
         connect_vec = self.connect(x)
 
         # Todo: 对connect_vec进行一些操作
-        connect_vec = self.bn_for_connect(connect_vec)
-        connect_vec = self.relu(connect_vec)
+        # connect_vec = self.bn_for_connect(connect_vec)
+        # connect_vec = self.relu(connect_vec)
 
         z, dynamic_adj_loss = self.forward_dgcn(inp, connect_vec, out1)
         # z = z.transpose(1, 2)
