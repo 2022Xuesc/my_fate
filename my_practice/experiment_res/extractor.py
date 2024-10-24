@@ -1,22 +1,13 @@
-# jobs/202303230755355571510/arbiter/1/multi_label_0/202303230755355571510_multi_label_0/0/task_executor/2ef98ae4c95011edabbc3cecefb44c14/stats
-# jobs/202303230755355571510/arbiter/0/multi_label_0/202303230755355571510_multi_label_0/0/task_executor
-#
-# jobs/202303230755355571510/guest/2/multi_label_0/202303230755355571510_multi_label_0/0/task_executor/2f8fdc9cc95011edae143cecefb44c14/stats
-#
-#
-#
-# jobs/202303230755355571510/host/3/multi_label_0/202303230755355571510_multi_label_0/0/task_executor/2f0a225ac95011eda7043cecefb44c14/stats
-# jobs/202303230755355571510/host/4/multi_label_0/202303230755355571510_multi_label_0/0/task_executor/2f1c3dd2c95011edae3a3cecefb44c14/stats
 
 
 # 到task_executor后直接进入目录即可
 import os
 import shutil
 
-dir_id = "202410230456053956480"
-job_id = "202410230456053956480"
+dir_id = "202410221435365967720"
+job_id = "202410221435365967720"
 module_name = 'gcn_0'
-target_dir = 'AAAI/debug2'
+target_dir = 'AAAI/voc2012/salgl'
 client_num = 10
 
 
@@ -45,6 +36,7 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
 
 
