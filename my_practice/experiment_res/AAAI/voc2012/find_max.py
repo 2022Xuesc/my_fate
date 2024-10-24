@@ -5,6 +5,7 @@ import os
 # Todo: 计算mAP指标、OF1指标和CF1指标
 
 files = os.listdir(".")
+# files = ['fedavg', 'flag', 'fpsl', 'c_gcn', 'p_gcn', 'salgl', 'fixed_connect_add_standard_gcn']
 
 clients_path = ['guest/10']
 for i in range(1, 10):
@@ -31,4 +32,4 @@ for path in files:
             dominantClientVal = maxVal
     avgClientVal /= 10
     print(
-        f'path = {path},min = {round(minClientVal, 2)}, max = {round(maxClientVal, 2)},dominant={round(dominantClientVal,2)},avg = {round(avgClientVal, 2)}')
+        f'path = {path},min = {round(minClientVal, 2)}, max = {round(maxClientVal, 2)},dominant={round(dominantClientVal, 2)},avg = {round(avgClientVal, 2)}')

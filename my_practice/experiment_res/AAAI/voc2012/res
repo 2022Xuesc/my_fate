@@ -12,3 +12,10 @@ path = fixed_connect_prob_gcn,min = 66.57, max = 100.0,dominant=89.94,avg = 81.2
 path = fixed_connect_prob_residual_gcn,min = 66.93, max = 100.0,dominant=89.48,avg = 80.58
 path = fixed_connect_prob_standard_gcn,min = 68.99, max = 100.0,dominant=89.89,avg = 81.47
 path = fixed_connect_prob_standard_residual_gcn,min = 68.43, max = 100.0,dominant=89.49,avg = 81.08
+path = c_gcn,min = 57.33, max = 100.0,dominant=84.05,avg = 75.03
+path = connect_standard_gcn,min = 65.6, max = 100.0,dominant=89.9,avg = 81.14
+path = fedavg,min = 53.39, max = 100.0,dominant=80.31,avg = 75.49
+path = flag,min = 57.82, max = 100.0,dominant=83.4,avg = 78.8
+path = fpsl,min = 53.85, max = 99.4,dominant=80.39,avg = 75.76
+path = p_gcn,min = 67.98, max = 100.0,dominant=89.08,avg = 84.24
+path = salgl,min = 63.97, max = 100.0,dominant=89.43,avg = 82.18
