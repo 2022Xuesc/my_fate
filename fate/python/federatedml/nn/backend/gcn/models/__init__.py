@@ -409,4 +409,7 @@ def aaai_connect_prob_standard_gcn(pretrained, adjList, device='cpu', num_classe
     model = AAAI_CONNECT_PROB_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
                                       )
     return model.to(device)
+<<<<<<< HEAD
 
+=======
+>>>>>>> e09fc6e02753ea7dc8ae560f2f9e9341cbb93e15
