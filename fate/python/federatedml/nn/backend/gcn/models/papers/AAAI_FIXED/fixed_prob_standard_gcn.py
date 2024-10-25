@@ -106,7 +106,6 @@ class DynamicGraphConvolution(nn.Module):
         - Input: (B, C_in, N) # C_in: 1024, N: num_classes
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
-        x = x.transpose(1, 2)
         out_static, static_adj = self.forward_static_gcn(x)
         x = x + out_static
         x = x.transpose(1, 2)
@@ -141,66 +140,31 @@ class AAAI_FIXED_PROB_STANDARD_GCN(nn.Module):
             model.layer4,
         )
         self.num_classes = num_classes
-        self.fc = nn.Conv2d(model.fc.in_features, num_classes, (1, 1), bias=False)
 
-        self.conv_transform = nn.Conv2d(2048, in_features, (1, 1))
-        self.relu = nn.LeakyReLU(0.2)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList, needOptimize)
 
-        self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())  # 单位矩阵，自相关性
-        self.last_linear = nn.Conv1d(out_features, self.num_classes, 1)  # 最终的分类层
+        feat_dim = 2048
+        self.fc = torch.nn.Linear(in_features=feat_dim, out_features=num_classes, bias=True)
 
     def forward_feature(self, x):
         x = self.features(x)
         return x
 
-    def forward_classification_sm(self, x):
-        """ Get another confident scores {s_m}.
-
-        Shape:
-        - Input: (B, C_in, H, W) # C_in: 2048
-        - Output: (B, C_out) # C_out: num_classes
-        """
-        x = self.fc(x)  # batch_size, num_classes , H, W
-        x = x.view(x.size(0), x.size(1), -1)  # batch_size, num_classes, H * W
-        x = x.topk(1, dim=-1)[0].mean(dim=-1)  # 从topk1这里可以看出是最大池化
-        return x
-
-    def forward_sam(self, x):
-        """ SAM module
-
-        Shape: 
-        - Input: (B, C_in, H, W) # C_in: 2048
-        - Output: (B, C_out, N) # C_out: 1024, N: num_classes
-        """
-        mask = self.fc(x)
-        mask = mask.view(mask.size(0), mask.size(1), -1)
-        mask = torch.sigmoid(mask)  # 求sigmoid，将其归为0到1之间，注意力值
-        mask = mask.transpose(1, 2)  # B, H*W, N
-
-        x = self.conv_transform(x)
-        x = x.view(x.size(0), x.size(1), -1)
-        x = torch.matmul(x, mask)
-        return x
-
     def forward_dgcn(self, x, out1):
-        x, _ = self.gcn(x, out1)
+        x = self.gcn(x, out1)
         return x
 
-    def forward(self, x):
+    def forward(self, x, inp):
         x = self.forward_feature(x)
 
-        out1 = self.forward_classification_sm(x)  # 计算初始分类器的预测向量
-
-        v = self.forward_sam(x)  # B*1024*num_classes，每个类别的注意力向量
-        z = self.forward_dgcn(v, out1)
-        z = v + torch.transpose(z, 1, 2)
-
-        out2 = self.last_linear(z)  # B*1*num_classes
-        mask_mat = self.mask_mat.detach()
-        out2 = (out2 * mask_mat).sum(-1)
-        return out1, out2
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        out1 = self.fc(x)
+        z, dynamic_adj_loss = self.forward_dgcn(inp, out1)
+        out2 = torch.matmul(z, x.unsqueeze(-1)).squeeze(-1) / z.size(2)
+        return out1, out2, dynamic_adj_loss
 
     def get_config_optim(self, lr, lrp):
         # 与GCN类似
@@ -212,3 +176,4 @@ class AAAI_FIXED_PROB_STANDARD_GCN(nn.Module):
             {'params': self.features.parameters(), 'lr': lr * lrp},
             {'params': large_lr_layers, 'lr': lr},
         ]
+
