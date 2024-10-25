@@ -17,7 +17,7 @@ def calculate_stats(float_list):
 # for path in all_paths:
 #     if os.path.isdir(f'stats/{path}') and not path.startswith('compare'):
 #         paths.append(f'stats/{path}')
-paths = os.listdir('.')
+paths = ['connect_prob_standard_gcn', 'fixed_prob_standard_gcn']
 
 for path in paths:
     if not os.path.isdir(path):
