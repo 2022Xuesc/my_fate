@@ -19,6 +19,7 @@ from federatedml.nn.backend.gcn.models.papers.AAAI.connect_prob_residual_fix_sta
 from federatedml.nn.backend.gcn.models.papers.AAAI.connect_prob_residual_gap_gcn import \
     AAAI_CONNECT_PROB_RESIDUAL_GAP_GCN
 from federatedml.nn.backend.gcn.models.papers.AAAI.connect_prob_residual_gcn import AAAI_CONNECT_PROB_RESIDUAL_GCN
+from federatedml.nn.backend.gcn.models.papers.AAAI.connect_prob_standard_gcn import AAAI_CONNECT_PROB_STANDARD_GCN
 from federatedml.nn.backend.gcn.models.papers.AAAI.connect_standard_gcn import AAAI_CONNECT_STANDARD_GCN
 from federatedml.nn.backend.gcn.models.papers.AAAI.gin import AAAI_GIN
 from federatedml.nn.backend.gcn.models.papers.AAAI.pruned_add_gcn import AAAI_PRUNED_ADD_GCN
@@ -235,10 +236,10 @@ def aaai_fixed_add_standard_gcn(pretrained, adjList, device='cpu', num_classes=8
 
 
 def aaai_fixed_prob_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                                 out_channels=1024, prob=True, gap=False, needOptimize=True):
-    model = torch_models.resnet101(pretrained)
-    # model = torch_models.resnet101(False)
-    # model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
+                                 out_channels=2048, prob=True, gap=False, needOptimize=True):
+    # model = torch_models.resnet101(pretrained)
+    model = torch_models.resnet101(False)
+    model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
     model = AAAI_FIXED_PROB_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
                                          needOptimize=needOptimize)
     return model.to(device)
@@ -396,5 +397,15 @@ def aaai_connect_standard_gcn(pretrained, adjList, device='cpu', num_classes=80,
     model = torch_models.resnet101(False)
     model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
     model = AAAI_CONNECT_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
+                                      )
+    return model.to(device)
+
+
+def aaai_connect_prob_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
+                                   out_channels=2048, prob=True, gap=False, needOptimize=True):
+    # model = torch_models.resnet101(pretrained)
+    model = torch_models.resnet101(False)
+    model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
+    model = AAAI_CONNECT_PROB_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
                                       )
     return model.to(device)
