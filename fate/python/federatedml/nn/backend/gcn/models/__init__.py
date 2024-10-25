@@ -327,11 +327,11 @@ def aaai_fixed_connect_add_gcn(pretrained, adjList, device='cpu', num_classes=80
 
 
 def aaai_fixed_connect_prob_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                                out_channels=2048):
-    model = torch_models.resnet101(pretrained)
-    # model = torch_models.resnet101(False)
-    # model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
-    model = AAAI_FIXED_CONNECT_PROB_GCN(model, num_classes, in_channels, out_channels, adjList)
+                                out_channels=2048, isVOC=True):
+    # model = torch_models.resnet101(pretrained)
+    model = torch_models.resnet101(False)
+    model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
+    model = AAAI_FIXED_CONNECT_PROB_GCN(model, num_classes, in_channels, out_channels, adjList, isVOC)
     return model.to(device)
 
 
@@ -408,5 +408,5 @@ def aaai_connect_prob_standard_gcn(pretrained, adjList, device='cpu', num_classe
     model = torch_models.resnet101(False)
     model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
     model = AAAI_CONNECT_PROB_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
-                                      )
+                                           )
     return model.to(device)

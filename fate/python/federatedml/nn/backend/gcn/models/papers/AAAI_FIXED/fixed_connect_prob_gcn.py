@@ -7,14 +7,15 @@ from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.custom_matrix import Cu
 class DynamicGraphConvolution(nn.Module):
     # 节点的输入特征
     # 节点的输出特征
-    def __init__(self, in_features, out_features, num_nodes, adjList=None):
+    def __init__(self, in_features, out_features, num_nodes, adjList=None,
+                 isVOC=True):
         super(DynamicGraphConvolution, self).__init__()
 
         self.num_nodes = num_nodes
 
         # 可优化的adj参数
         # 对于add_gcn来讲，需要进行transpose
-        self.static_adj = CustomMatrix(adjList, needTranspose=True)
+        self.static_adj = CustomMatrix(adjList, needTranspose=True, needToOptimize=isVOC)
 
         # 这个倒是不用改
         self.static_weight = nn.Sequential(
@@ -83,7 +84,7 @@ class DynamicGraphConvolution(nn.Module):
 
 
 class AAAI_FIXED_CONNECT_PROB_GCN(nn.Module):
-    def __init__(self, model, num_classes, in_features=300, out_features=2048, adjList=None):
+    def __init__(self, model, num_classes, in_features=300, out_features=2048, adjList=None, isVOC=True):
         super(AAAI_FIXED_CONNECT_PROB_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
@@ -99,7 +100,7 @@ class AAAI_FIXED_CONNECT_PROB_GCN(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList)
+        self.gcn = DynamicGraphConvolution(in_features, out_features, num_classes, adjList, isVOC)
 
         feat_dim = 2048
         self.connect = torch.nn.Linear(in_features=feat_dim, out_features=in_features, bias=True)
