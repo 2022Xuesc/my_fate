@@ -13,7 +13,7 @@ class DynamicGraphConvolution(nn.Module):
         super(DynamicGraphConvolution, self).__init__()
         # 可优化的adj参数
         # 对于add_gcn来讲，需要进行transpose
-        self.static_adj = CustomMatrix(adjList)
+        self.static_adj = CustomMatrix(adjList, needToOptimize=False)
 
         # 这个倒是不用改
         self.static_weight = Parameter(torch.Tensor(in_features, in_features))
