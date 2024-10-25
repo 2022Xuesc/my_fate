@@ -1,6 +1,5 @@
 # 服务器与客户端的通用逻辑
 import math
-import torch
 import torch.nn
 import torchnet.meter as tnt
 
@@ -584,7 +583,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # 仅仅使用初始化权重，仍要进行学习
     model = aaai_fixed_connect_prob_standard_gcn(param.pretrained, adjList,
                                                  device=param.device, num_classes=param.num_labels,
-                                                 in_channels=in_channel)
+                                                 in_channels=in_channel, isVOC=False)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
