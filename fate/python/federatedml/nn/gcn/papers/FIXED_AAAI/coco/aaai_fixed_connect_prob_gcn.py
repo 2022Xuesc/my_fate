@@ -271,7 +271,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="COCO", drop_last=True)
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="COCO", drop_last=True,
+                                                            num_workers=4)
 
     fitter = GCNFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader, 'normal'

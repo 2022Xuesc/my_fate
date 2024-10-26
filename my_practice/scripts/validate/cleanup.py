@@ -14,7 +14,7 @@ current_dir = os.getcwd()
 for item in os.listdir(current_dir):
     item_path = os.path.join(current_dir, item)
     # 检查是否为目录
-    if os.path.isdir(item_path):
+    if os.path.isdir(item_path) and item[:8] != '20241025':
         if item not in keep_dirs:
             print(f"Deleting directory: {item}")
-            shutil.rmtree(item_path)  # 删除目录及其内容
+            # shutil.rmtree(item_path)  # 删除目录及其内容
