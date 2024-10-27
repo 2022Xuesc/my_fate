@@ -22,13 +22,16 @@ client_nums = 10
 # category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded'
 
 # 客户端
-image_dir = '/home/klaus125/research/dataset/VOCdevkit/VOC2012/clustered_voc'
-category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
-
-for i in range(client_nums):
-    client_id = i + 1
-    print('generate anno for ', client_id)
-    generate_anno(category_dir, os.path.join(image_dir, f'client{client_id}/train'), phase='train')
-    generate_anno(category_dir, os.path.join(image_dir, f'client{client_id}/val'), phase='val')
+# image_dir = '/home/klaus125/research/dataset/VOCdevkit/VOC2012/clustered_voc'
+category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+# 
+# for i in range(client_nums):
+#     client_id = i + 1
+#     print('generate anno for ', client_id)
+#     generate_anno(category_dir, os.path.join(image_dir, f'client{client_id}/train'), phase='train')
+#     generate_anno(category_dir, os.path.join(image_dir, f'client{client_id}/val'), phase='val')
 
     # generate_anno(category_dir,image_dir,phase='train')
+
+image_dir = '/home/klaus125/research/fate/fate/python/federatedml/nn/gcn/papers/FIXED_AAAI/generate_label_graph/images'
+generate_anno(category_dir,image_dir,phase='val')
