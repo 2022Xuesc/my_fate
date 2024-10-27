@@ -236,12 +236,12 @@ def aaai_fixed_add_standard_gcn(pretrained, adjList, device='cpu', num_classes=8
 
 
 def aaai_fixed_prob_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                                 out_channels=2048, prob=True, gap=False, needOptimize=True):
+                                 out_channels=2048, prob=True, gap=False, isVOC=True):
     # model = torch_models.resnet101(pretrained)
     model = torch_models.resnet101(False)
     model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
     model = AAAI_FIXED_PROB_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
-                                         needOptimize=needOptimize)
+                                         needOptimize=isVOC)
     return model.to(device)
 
 
@@ -403,10 +403,11 @@ def aaai_connect_standard_gcn(pretrained, adjList, device='cpu', num_classes=80,
 
 
 def aaai_connect_prob_standard_gcn(pretrained, adjList, device='cpu', num_classes=80, in_channels=1024,
-                                   out_channels=2048, prob=True, gap=False, needOptimize=True):
+                                   out_channels=2048, prob=True, gap=False, needOptimize=True,
+                                   isVOC=True):
     # model = torch_models.resnet101(pretrained)
     model = torch_models.resnet101(False)
     model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
     model = AAAI_CONNECT_PROB_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
-                                           )
+                                           isVOC)
     return model.to(device)

@@ -10,11 +10,11 @@ from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.custom_matrix import Cu
 class DynamicGraphConvolution(nn.Module):
     # 节点的输入特征
     # 节点的输出特征
-    def __init__(self, in_features, out_features, num_nodes, adjList=None, needOptimize=False):
+    def __init__(self, in_features, out_features, num_nodes, adjList=None, needOptimize=True):
         super(DynamicGraphConvolution, self).__init__()
 
         # 将adjList传给custom_matrix即可
-        self.static_adj = CustomMatrix(adjList)
+        self.static_adj = CustomMatrix(adjList, needToOptimize=needOptimize)
 
         # Todo: in_features和out_features相等吗？
         self.static_weight = Parameter(torch.Tensor(in_features, in_features))

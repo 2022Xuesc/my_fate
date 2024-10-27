@@ -247,15 +247,15 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 80
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 80
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -347,7 +347,7 @@ class GCNFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: [WARN]
-        # self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
+        self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
         adjList = np.zeros((num_labels, num_labels))
