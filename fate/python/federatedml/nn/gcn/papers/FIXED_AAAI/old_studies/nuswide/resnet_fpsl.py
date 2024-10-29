@@ -4,19 +4,18 @@ import torch.nn
 import torchnet.meter as tnt
 
 import copy
-import json
 import os
 import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.gcn.models import *
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
+from federatedml.nn.backend.multi_label.models import *
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
-from federatedml.param.gcn_param import GCNParam
+from federatedml.param.multi_label_param import MultiLabelParam
 from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderArbiter
 
@@ -235,27 +234,27 @@ class FedServerContext(_FedBaseContext):
         return is_converged, mean_loss
 
 
-def build_aggregator(param: GCNParam, init_iteration=0):
+def build_aggregator(param: MultiLabelParam, init_iteration=0):
     context = FedServerContext(
         max_num_aggregation=param.max_iter,
         eps=param.early_stop_eps
     )
     context.init(init_aggregation_iteration=init_iteration)
-    fed_aggregator = GCNFedAggregator(context)
+    fed_aggregator = SyncAggregator(context)
     return fed_aggregator
 
 
-def build_fitter(param: GCNParam, train_data, valid_data):
+def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 81
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 81
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/nuswide/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/nuswide'
+    # category_dir = '/data/projects/fate/my_practice/dataset/nuswide/'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/nuswide'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -265,19 +264,19 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # 与服务器进行握手
     context.init()
     # 构建数据集
-    inp_name = 'nuswide_glove_word2vec.pkl'
+
     batch_size = param.batch_size
-    dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
+    dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path)
 
     # Todo: 图像规模减小
     train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="COCO", drop_last=True,
                                                             num_workers=4)
 
-    fitter = GCNFitter(param, epochs, context=context)
-    return fitter, train_loader, valid_loader, 'normal'
+    fitter = MultiLabelFitter(param, epochs, context=context)
+    return fitter, train_loader, valid_loader
 
 
-class GCNFedAggregator(object):
+class SyncAggregator(object):
     def __init__(self, context: FedServerContext):
         self.context = context
         self.model = None
@@ -294,7 +293,7 @@ class GCNFedAggregator(object):
             degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
 
-            self.model = aggregate_whole_model(tensors, degrees)
+            self.model = aggregate_by_labels(tensors, degrees)
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
             self.context.send_model((self.model, self.bn_data))
@@ -331,7 +330,7 @@ class GCNFedAggregator(object):
 
 
 # Todo: 对gcn fitter的改写
-class GCNFitter(object):
+class MultiLabelFitter(object):
     def __init__(
             self,
             param,
@@ -346,44 +345,11 @@ class GCNFitter(object):
         self.label_mapping = label_mapping
 
         # Todo: 现有的gcn分类器
-        # Todo: [WARN]
-        # self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
-        image_id2labels = json.load(open(self.param.adj_file, 'r'))
-        num_labels = self.param.num_labels
-        adjList = np.zeros((num_labels, num_labels))
-        nums = np.zeros(num_labels)
-        for image_info in image_id2labels:
-            labels = image_info['labels']
-            for label in labels:
-                nums[label] += 1
-            n = len(labels)
-            for i in range(n):
-                for j in range(i + 1, n):
-                    x = labels[i]
-                    y = labels[j]
-                    adjList[x][y] += 1
-                    adjList[y][x] += 1
-        nums = nums[:, np.newaxis]
-        # 遍历每一行
-        for i in range(num_labels):
-            if nums[i] != 0:
-                adjList[i] = adjList[i] / nums[i]
-
-        # 遍历A，将主对角线元素设置为1
-        t = self.param.t
-        adjList[adjList < t] = 0
-        adjList[adjList >= t] = 1
-        adjList = adjList * 0.25 / (adjList.sum(0, keepdims=True) + 1e-6)
-        adjList = adjList + np.identity(num_labels, np.int)
-        self.adjList = adjList
-
-        self.model, self.scheduler, self.optimizer, self.gcn_optimizer = _init_gcn_learner(self.param,
-                                                                                           self.param.device,
-                                                                                           adjList)
+        self.model, self.scheduler, self.optimizer = _init_learner(self.param,
+                                                                   self.param.device)
 
         # 使用非对称损失
-        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
-
+        self.criterion = AsymmetricLossOptimized().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -404,7 +370,7 @@ class GCNFitter(object):
         return self.label_mapping
 
     # 执行拟合操作
-    def fit(self, train_loader, valid_loader, agg_type):
+    def fit(self, train_loader, valid_loader):
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.on_fit_epoch_start(epoch, len(train_loader.sampler))
@@ -497,12 +463,12 @@ class GCNFitter(object):
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-        # sigmoid_func = torch.nn.Sigmoid()
+        sigmoid_func = torch.nn.Sigmoid()
 
-        for train_step, ((features, inp), target) in enumerate(train_loader):
+        for train_step, (features, target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
-            inp = inp.to(device)
+
             target = target.to(device)
 
             self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
@@ -511,12 +477,12 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            output = model(features, inp)
+            output = model(features)
 
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(output.data, target)
 
-            loss = criterion(output, target)
+            loss = criterion(sigmoid_func(output), target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
@@ -545,21 +511,20 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # sigmoid_func = torch.nn.Sigmoid()
+        sigmoid_func = torch.nn.Sigmoid()
         model.eval()
         self.ap_meter.reset()
 
         with torch.no_grad():
-            for validate_step, ((features, inp), target) in enumerate(valid_loader):
+            for validate_step, (features, target) in enumerate(valid_loader):
                 features = features.to(device)
-                inp = inp.to(device)
                 target = target.to(device)
 
-                output = model(features, inp)
+                output = model(features)
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(output.data, target)
 
-                loss = criterion(output, target)
+                loss = criterion(sigmoid_func(output), target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
         mAP, _ = self.ap_meter.value()
@@ -572,24 +537,11 @@ class GCNFitter(object):
         return metrics
 
 
-def _init_gcn_learner(param, device='cpu', adjList=None):
-    # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
-    #  不同部分使用不同的学习率
-
-    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
-    model = resnet_c_gcn(param.pretrained, param.dataset, t=param.t, adjList=adjList,
-                         device=param.device, num_classes=param.num_labels, in_channel=in_channel)
-    gcn_optimizer = None
-
-    # 注意，这里的lrp设置为0.1
-    lr, lrp = param.lr, 0.1
-
-    # 使用AdamW优化器
-    # optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
-    optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
-                                lr=lr,
-                                momentum=0.9,
-                                weight_decay=1e-4)
-
+def _init_learner(param, device='cpu'):
+    # 使用resnet101模型、Adam优化器、OneCycleLR
+    model = create_resnet101_model(param.pretrained, device=device, num_classes=param.num_labels)
+    # 使用Adam优化器
+    optimizer = torch.optim.Adam(model.parameters(), lr=param.lr, weight_decay=1e-4)
     scheduler = None
-    return model, scheduler, optimizer, gcn_optimizer
+    # 配置自定义的调度器
+    return model, scheduler, optimizer

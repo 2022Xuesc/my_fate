@@ -42,7 +42,9 @@ paths = [
     # 'AAAI/coco/add_residual_keep_static_gcn',
     'AAAI/coco/fixed_connect_standard_gcn',
     'AAAI/coco/fixed_connect_prob_standard_gcn',
-    'AAAI/coco/fixed_connect_prob_add_gcn'
+    'AAAI/coco/fixed_connect_prob_add_gcn',
+    'AAAI/coco/connect_prob_standard_gcn',
+    'AAAI/coco/fixed_prob_standard_gcn'
 ]
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]

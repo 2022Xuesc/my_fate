@@ -11,7 +11,6 @@ from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.gcn.models import *
-from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -576,9 +575,10 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
     #  不同部分使用不同的学习率
 
-    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
-    model = resnet_c_gcn(param.pretrained, param.dataset, t=param.t, adjList=adjList,
-                         device=param.device, num_classes=param.num_labels, in_channel=in_channel)
+    in_channel = 2048  # in_channel是标签嵌入向量的初始（输入）维度
+    model = p_gcn_resnet101(param.pretrained, adjList=adjList,
+                            device=param.device, num_classes=param.num_labels, in_channel=in_channel)
+
     gcn_optimizer = None
 
     # 注意，这里的lrp设置为0.1
