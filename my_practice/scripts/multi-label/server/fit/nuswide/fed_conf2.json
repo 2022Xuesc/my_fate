@@ -38,8 +38,7 @@
         "num_labels": 81,
         "pretrained": true,
         "dataset": "ms-nuswide",
-        "arch": "resnet",
-        "t": 0.4
+        "arch": "resnet"
       }
     },
     "role": {
