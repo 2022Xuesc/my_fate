@@ -491,7 +491,7 @@ class MultiLabelFitter(object):
 
         mAP, _ = self.ap_meter.value()
         mAP *= 100
-        loss = losses[OVERALL_LOSS_KEY].mean
+        loss = losses[OBJECTIVE_LOSS_KEY].mean
 
         OP, OR, OF1, CP, CR, CF1 = self.ap_meter.overall()
         OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = self.ap_meter.overall_topk(3)

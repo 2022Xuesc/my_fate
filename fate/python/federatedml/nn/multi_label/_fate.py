@@ -246,15 +246,15 @@ def build_aggregator(param: MultiLabelParam, init_iteration=0):
 
 def build_fitter(param: MultiLabelParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 81
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 81
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/nuswide/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/nuswide'
+    # category_dir = '/data/projects/fate/my_practice/dataset/nuswide/'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/nuswide'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
