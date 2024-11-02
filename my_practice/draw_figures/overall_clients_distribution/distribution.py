@@ -40,7 +40,7 @@ plt.xticks([x * 30 + width for x in range(10)], index, fontsize=16)
 plt.xlim(-10, 300)
 # plt.title(f'Distribution of three datasets among clients')
 plt.ylabel('The size of the client dataset (log10)',fontsize=16)
-plt.legend(loc=0)
+plt.legend(loc=0,prop={'size':16})
 
 plt.savefig(f'overall_fig.svg', dpi=600, format='svg')
 
