@@ -10,23 +10,23 @@ Ours   : 91.84
 
 消融实验
 w/o stand : 91.9
-w/o fix   : 立即跑
-w/o connect : 立即跑
+w/o fix   : 91.82
+w/o connect : 91.98
 w/o prob  : 91.22
 
 
 VOC 2012
 
-FedAvg : 立即跑
-FLAG   : 立即跑
-FPSL   : 立即跑
+FedAvg : 82.64
+FLAG   : 87.58
+FPSL   : 81.49
 C-GCN: 立即跑
 P-GCN: 立即跑
 Ours   : 90.18
 
 消融实验
 w/o stand : 89.98
-w/o fix   : 立即跑
+w/o fix   : 90.13
 w/o connect : 立即跑
 w/o prob  : 89.97
 

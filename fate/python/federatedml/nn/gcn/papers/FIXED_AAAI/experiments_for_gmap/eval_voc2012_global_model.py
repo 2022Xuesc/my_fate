@@ -28,7 +28,7 @@ jobid_map = {
     # FPSL: '202410220819086555390',
     # C_GCN: '202410220904548901360',
     # P_GCN: '202410221551230972550',
-    WITHOUT_FIX: '202410250218416948480',
+    # WITHOUT_FIX: '202410250218416948480',
     WITHOUT_CONNECT: '202410250650256294940',
 }
 model_map = {
@@ -103,7 +103,7 @@ cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name, stats_name='voc2012_stats')
 
 for task_name in jobid_map:
-    is_multi_label = task_name.startswith('f')
+    is_multi_label = task_name.startswith('f') and not task_name.startswith('fixed')
     jobid = jobid_map[task_name]
     if len(jobid) == 0:
         continue
