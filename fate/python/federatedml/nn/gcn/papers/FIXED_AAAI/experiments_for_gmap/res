@@ -1,0 +1,47 @@
+VOC 2007
+主要实验
+
+FedAvg : 重跑
+FLAG   : 重跑
+FPSL   : 重跑
+C-GCN（WITHOUT AGG）: 重跑
+P-GCN（WITHOUT AGG）: 重跑
+Ours   : 91.84
+
+消融实验
+w/o stand : 91.9
+w/o fix   : 立即跑
+w/o connect : 立即跑
+w/o prob  : 91.22
+
+
+VOC 2012
+
+FedAvg : 立即跑
+FLAG   : 立即跑
+FPSL   : 立即跑
+C-GCN（WITHOUT AGG）: 立即跑
+P-GCN（WITHOUT AGG）: 立即跑
+Ours   : 90.18
+
+消融实验
+w/o stand : 89.98
+w/o fix   : 立即跑
+w/o connect : 立即跑
+w/o prob  : 89.97
+
+
+MS-COCO
+
+FedAvg : 重跑
+FLAG   : 54.8
+FPSL   : 重跑
+C-GCN（WITHOUT AGG）: 重跑
+P-GCN（WITHOUT AGG）: 重跑
+Ours   : 立即跑
+
+消融实验
+w/o stand : 立即跑
+w/o fix   : 立即跑
+w/o connect : 立即跑
+w/o prob  : 立即跑

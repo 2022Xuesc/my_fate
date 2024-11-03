@@ -1,5 +1,6 @@
 # 服务器与客户端的通用逻辑
 import math
+import torch
 import torch.nn
 import torchnet.meter as tnt
 
@@ -247,15 +248,15 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    # param.batch_size = 2
-    # param.max_iter = 1000
-    # param.num_labels = 81
-    # param.device = 'cuda:0'
-    # param.lr = 0.0001
-    # param.aggregate_every_n_epoch = 1
+    param.batch_size = 2
+    param.max_iter = 1000
+    param.num_labels = 80
+    param.device = 'cuda:0'
+    param.lr = 0.0001
+    param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/nuswide/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/nuswide'
+    # category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -264,14 +265,14 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
+    inp_name = 'coco_glove_word2vec.pkl'
     # 构建数据集
-    inp_name = 'nuswide_glove_word2vec.pkl'
+
     batch_size = param.batch_size
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="COCO", drop_last=True,
-                                                            num_workers=4)
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset="COCO", drop_last=True)
 
     fitter = GCNFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader, 'normal'
@@ -345,9 +346,8 @@ class GCNFitter(object):
         self.context = context
         self.label_mapping = label_mapping
 
-        # Todo: 现有的gcn分类器
         # Todo: [WARN]
-        # self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
+        self.param.adj_file = "/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train/anno.json"
         image_id2labels = json.load(open(self.param.adj_file, 'r'))
         num_labels = self.param.num_labels
         adjList = np.zeros((num_labels, num_labels))
@@ -369,21 +369,18 @@ class GCNFitter(object):
             if nums[i] != 0:
                 adjList[i] = adjList[i] / nums[i]
 
-        # 遍历A，将主对角线元素设置为1
-        t = self.param.t
-        adjList[adjList < t] = 0
-        adjList[adjList >= t] = 1
-        adjList = adjList * 0.25 / (adjList.sum(0, keepdims=True) + 1e-6)
-        adjList = adjList + np.identity(num_labels, np.int)
+        # 使用非对称的
+        for i in range(num_labels):
+            adjList[i][i] = 1
         self.adjList = adjList
 
+        # Todo: 现有的gcn分类器
         self.model, self.scheduler, self.optimizer, self.gcn_optimizer = _init_gcn_learner(self.param,
                                                                                            self.param.device,
-                                                                                           adjList)
+                                                                                           self.adjList)
 
         # 使用非对称损失
-        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
-
+        self.criterion = AsymmetricLossOptimized().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -399,6 +396,7 @@ class GCNFitter(object):
         self.ap_meter = AveragePrecisionMeter(difficult_examples=False)
 
         self.lr_scheduler = None
+        self.gcn_lr_scheduler = None
 
     def get_label_mapping(self):
         return self.label_mapping
@@ -422,12 +420,7 @@ class GCNFitter(object):
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         if self.context.should_aggregate_on_epoch(epoch):
-            weight = 0
-            alpha = 0.3
-            for num in self._num_per_labels:
-                weight += num ** alpha
-
-            self.aggregate_model(epoch, weight)
+            self.aggregate_model(epoch)
 
             self._all_consumed_data_aggregated = True
 
@@ -452,7 +445,7 @@ class GCNFitter(object):
         metrics = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device, scheduler)
         return metrics
 
-    def aggregate_model(self, epoch, weight):
+    def aggregate_model(self, epoch):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
         # 调用上下文执行聚合
@@ -465,6 +458,7 @@ class GCNFitter(object):
                 bn_data.append(layer.running_mean)
                 bn_data.append(layer.running_var)
 
+        # Partial Supervised聚合策略
         weight_list = list(self._num_per_labels)
         weight_list.append(self._num_data_consumed)
 
@@ -492,17 +486,20 @@ class GCNFitter(object):
         self.ap_meter.reset()
         model.train()
         # Todo: 记录损失的相关信息
+        ASYM_LOSS = 'Asym Loss'
+        DYNAMIC_ADJ_LOSS = 'Dynamic Adj Loss'
         OVERALL_LOSS_KEY = 'Overall Loss'
-        OBJECTIVE_LOSS_KEY = 'Objective Loss'
-        losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
-                              (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-
-        # sigmoid_func = torch.nn.Sigmoid()
+        losses = OrderedDict([(ASYM_LOSS, tnt.AverageValueMeter()),
+                              (DYNAMIC_ADJ_LOSS, tnt.AverageValueMeter()),
+                              (OVERALL_LOSS_KEY, tnt.AverageValueMeter())])
+        sigmoid_func = torch.nn.Sigmoid()
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
             features = features.to(device)
-            inp = inp.to(device)
+
+            # inp = inp.to(device)
+
             target = target.to(device)
 
             self._num_per_labels += target.t().sum(dim=1).cpu().numpy()
@@ -511,17 +508,19 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            output = model(features, inp)
+            cnn_predicts, gcn_predicts = model(features)
 
+            predicts = (cnn_predicts + gcn_predicts) / 2
             # Todo: 将计算结果添加到ap_meter中
-            self.ap_meter.add(output.data, target)
+            self.ap_meter.add(predicts.data, target)
 
-            loss = criterion(output, target)
-            losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+            overall_loss = criterion(sigmoid_func(predicts), target)
+
+            losses[OVERALL_LOSS_KEY].add(overall_loss.item())
 
             optimizer.zero_grad()
 
-            loss.backward()
+            overall_loss.backward()
             # Todo: 这里需要对模型的参数进行裁剪吗？
             optimizer.step()
 
@@ -545,7 +544,7 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # sigmoid_func = torch.nn.Sigmoid()
+        sigmoid_func = torch.nn.Sigmoid()
         model.eval()
         self.ap_meter.reset()
 
@@ -555,13 +554,14 @@ class GCNFitter(object):
                 inp = inp.to(device)
                 target = target.to(device)
 
-                output = model(features, inp)
+                cnn_predicts, gcn_predicts = model(features)
+                predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
-                self.ap_meter.add(output.data, target)
+                self.ap_meter.add(predicts.data, target)
 
-                loss = criterion(output, target)
+                objective_loss = criterion(sigmoid_func(predicts), target)
 
-                losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+                losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
         mAP, _ = self.ap_meter.value()
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
@@ -572,24 +572,20 @@ class GCNFitter(object):
         return metrics
 
 
-def _init_gcn_learner(param, device='cpu', adjList=None):
-    # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
-    #  不同部分使用不同的学习率
-
-    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
-    model = resnet_c_gcn(param.pretrained, param.dataset, t=param.t, adjList=adjList,
-                         device=param.device, num_classes=param.num_labels, in_channel=in_channel)
+# Todo: 相关性矩阵初始化 + 优化
+def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
+    # in_channel是标签嵌入向量的初始（输入）维度
+    # Todo: 对于static_graph优化变量形式，输入通道设置为1024
+    in_channel = 1024
+    # 仅仅使用初始化权重，仍要进行学习
+    model = aaai_add_gcn(param.pretrained, adjList,
+                         device=param.device, num_classes=param.num_labels, in_channels=in_channel)
     gcn_optimizer = None
 
-    # 注意，这里的lrp设置为0.1
     lr, lrp = param.lr, 0.1
-
-    # 使用AdamW优化器
-    # optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
-    optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
-                                lr=lr,
-                                momentum=0.9,
-                                weight_decay=1e-4)
+    optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp),
+                                  lr=lr,
+                                  weight_decay=1e-4)
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
