@@ -105,7 +105,10 @@ for task_name in jobid_map:
     jobid = jobid_map[task_name]
     if len(jobid) == 0:
         continue
-    cur_path = os.path.join(dir_prefix, jobid, f'arbiter/999/gcn_0/{jobid}_gcn_0/0/task_executor')
+    if not is_multi_label:
+        cur_path = os.path.join(dir_prefix, jobid, f'arbiter/999/gcn_0/{jobid}_gcn_0/0/task_executor')
+    else:
+        cur_path = os.path.join(dir_prefix, jobid, f'arbiter/999/multi_label_0/{jobid}_multi_label_0/0/task_executor')
     cur_path = os.path.join(cur_path, os.listdir(cur_path)[0])
     # Todo: 记录数据的信息
 
