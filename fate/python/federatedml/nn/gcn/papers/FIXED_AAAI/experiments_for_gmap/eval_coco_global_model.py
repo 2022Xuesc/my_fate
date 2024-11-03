@@ -10,8 +10,7 @@ from collections import OrderedDict
 from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
-from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
-from federatedml.nn.backend.multi_label.models import *
+from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.gcn.models import *
 
 FED_AVG = 'fed_avg'
@@ -19,26 +18,35 @@ FLAG = 'flag'
 FPSL = 'fpsl'
 C_GCN = 'c_gcn'
 P_GCN = 'p_gcn'
+OURS = 'fixed_connect_prob_standard_gcn'
+WITHOUT_STAND = 'fixed_connect_prob_gcn'
 WITHOUT_FIX = 'connect_prob_standard_gcn'
 WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
+WITHOUT_PROB = 'fixed_connect_standard_gcn'
 
 jobid_map = {
-    # FED_AVG: '202410220416373841590',
-    # FLAG: '202410220442101237570',
-    # FPSL: '202410220819086555390',
-    # C_GCN: '202410220904548901360',
-    # P_GCN: '202410221551230972550',
-    WITHOUT_FIX: '202410250218416948480',
-    WITHOUT_CONNECT: '202410250650256294940',
+    # FED_AVG: '',
+    # FLAG: '',
+    # FPSL: '',
+    # C_GCN: '',
+    # P_GCN: '',
+    OURS: '202410260433398215450',
+    WITHOUT_STAND: '202410260435009642020',
+    WITHOUT_FIX: '202410271049537642420',
+    WITHOUT_CONNECT: '202410271047101038990',
+    WITHOUT_PROB: '202410230710052104430'
 }
 model_map = {
-    FED_AVG: create_resnet101_model,
-    FLAG: create_resnet101_model,
-    FPSL: create_resnet101_model,
-    C_GCN: resnet_c_gcn,
-    P_GCN: p_gcn_resnet101,
+    # FED_AVG: create_resnet101_model,
+    # FLAG: create_resnet101_model,
+    # FPSL: create_resnet101_model,
+    # C_GCN: resnet_c_gcn,
+    # P_GCN: p_gcn_resnet101,
+    OURS: aaai_fixed_connect_prob_standard_gcn,
+    WITHOUT_STAND: aaai_fixed_connect_prob_gcn,
     WITHOUT_FIX: aaai_connect_prob_standard_gcn,
-    WITHOUT_CONNECT: aaai_fixed_prob_standard_gcn
+    WITHOUT_CONNECT: aaai_fixed_prob_standard_gcn,
+    WITHOUT_PROB: aaai_fixed_connect_standard_gcn
 }
 
 # 1个入参，两个返回值：1
@@ -68,6 +76,14 @@ config_map = {
         "in_channels": 2048,
         "argument_and_return_type": 5
     },
+    OURS: {
+        "in_channels": 300,
+        "argument_and_return_type": 4
+    },
+    WITHOUT_STAND: {
+        "in_channels": 300,
+        "argument_and_return_type": 4
+    },
     WITHOUT_FIX: {
         "in_channels": 300,
         "argument_and_return_type": 4
@@ -75,32 +91,35 @@ config_map = {
     WITHOUT_CONNECT: {
         "in_channels": 300,
         "argument_and_return_type": 4
-    }
+    },
+    WITHOUT_PROB: {
+        "in_channels": 300,
+        "argument_and_return_type": 2
+    },
 }
 # Todo: 创建一个模型骨架，然后替换其参数
 
 dir_prefix = "/data/projects/fate/fateflow/jobs"
 pretrained = False
 device = 'cuda:0'
-num_labels = 20
-adjList = np.ndarray((20, 20))
+num_labels = 80
+adjList = np.ndarray((80, 80))
 # Todo: adjList是否优化，会导致不同的结果
 
 batch_size = 8
 
-dataset = 'voc2012'
+dataset = 'coco'
 category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
-inp_name = 'voc2012_glove_word2vec.pkl'
+inp_name = 'coco_glove_word2vec.pkl'
 
 # Todo: 全局验证集的目录
-valid_path = '/data/projects/dataset/clustered_voc2012/global_val'
+valid_path = '/data/projects/dataset/clustered_dataset/global_val'
 
-ap_meter = AveragePrecisionMeter(difficult_examples=True)
+ap_meter = AveragePrecisionMeter(difficult_examples=False)
 criterion = AsymmetricLossOptimized().to(device)
 
-model = model_map[C_GCN](pretrained, adjList, device, num_labels, 300)
 cur_dir_name = os.getcwd()
-my_writer = MyWriter(dir_name=cur_dir_name, stats_name='voc2012_stats')
+my_writer = MyWriter(dir_name=cur_dir_name, stats_name='coco_stats')
 
 for task_name in jobid_map:
     is_multi_label = task_name.startswith('f')
@@ -128,7 +147,7 @@ for task_name in jobid_map:
     if is_multi_label:
         model = model_map[task_name](pretrained, device, num_labels)
     else:
-        model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel)
+        model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel, isVOC=False)
     print("------------------------")
     print(f"enter task: {task_name}")
     for i in range(cnt):
@@ -195,9 +214,6 @@ for task_name in jobid_map:
                     print("progress, validate_step: ", validate_step)
                     features = features.to(device)
                     inp = inp.to(device)
-                    prev_target = target.clone()
-                    target[target == 0] = 1
-                    target[target == -1] = 0
                     target = target.to(device)
 
                     type = config_map[task_name]["argument_and_return_type"]
