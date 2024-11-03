@@ -101,7 +101,7 @@ config_map = {
 
 dir_prefix = "/data/projects/fate/fateflow/jobs"
 pretrained = False
-device = 'cuda:0'
+device = 'cuda:7'
 num_labels = 80
 adjList = np.ndarray((80, 80))
 # Todo: adjList是否优化，会导致不同的结果
@@ -122,7 +122,7 @@ cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name, stats_name='coco_stats')
 
 for task_name in jobid_map:
-    is_multi_label = task_name.startswith('f')
+    is_multi_label = task_name.startswith('f') and not task_name.startswith("fixed")
     jobid = jobid_map[task_name]
     if len(jobid) == 0:
         continue
@@ -199,7 +199,7 @@ for task_name in jobid_map:
         # Todo: 模型加载完毕，开始进行训练
         print(f"{task_name}的模型 {i} 加载成功")
         dataset_loader = DatasetLoader(category_dir, train_path=valid_path, valid_path=valid_path, inp_name=inp_name)
-        _, valid_loader = dataset_loader.get_loaders(batch_size, dataset="VOC", drop_last=True)
+        _, valid_loader = dataset_loader.get_loaders(batch_size, dataset="COCO", drop_last=True)
         OVERALL_LOSS_KEY = 'Overall Loss'
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
@@ -229,26 +229,29 @@ for task_name in jobid_map:
                         gcn_predicts = model(features, inp)
                     predicts = gcn_predicts if type == 5 else (cnn_predicts + gcn_predicts) / 2
                     # Todo: 将计算结果添加到ap_meter中
-                    ap_meter.add(predicts.data, prev_target)
+                    ap_meter.add(predicts.data, target)
 
                     objective_loss = criterion(sigmoid_func(predicts), target)
 
                     losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
             else:
-                for validate_step, ((inputs, inp), target) in enumerate(valid_loader):
-                    print("progress, validate_step: ", validate_step)
-                    inputs = inputs.to(device)
-                    prev_target = target.clone()
-                    target[target == 0] = 1
-                    target[target == -1] = 0
-                    target = target.to(device)
-
-                    output = model(inputs)
-                    loss = criterion(sigmoid_func(output), target)
-                    losses[OBJECTIVE_LOSS_KEY].add(loss.item())
-                    ap_meter.add(output.data, prev_target)
+                # Todo: 有问题，之后查看
+                pass
+                # for validate_step, ((inputs, inp), target) in enumerate(valid_loader):
+                #     print("progress, validate_step: ", validate_step)
+                #     inputs = inputs.to(device)
+                #     prev_target = target.clone()
+                #     target[target == 0] = 1
+                #     target[target == -1] = 0
+                #     target = target.to(device)
+                # 
+                #     output = model(inputs)
+                #     loss = criterion(sigmoid_func(output), target)
+                #     losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+                #     ap_meter.add(output.data, prev_target)
         mAP, ap = ap_meter.value()
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         valid_writer.writerow([i, mAP.item(), loss])
         valid_aps_writer.writerow(ap)
+
