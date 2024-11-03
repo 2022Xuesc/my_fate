@@ -28,23 +28,25 @@ def calculate_stats(float_list):
 # paths = ['IJCNN/salgl_no_agg', 'IJCNN/p_gcn_no_agg', 'IJCNN/c_gcn_no_agg']
 
 paths = [
-    'IJCNN/kmeans_agg',
-    'AAAI/coco/add_gcn',
-    'AAAI/coco/add_prob_gcn',
+    # 'IJCNN/kmeans_agg',
+    # 'AAAI/coco/add_gcn',
+    # 'AAAI/coco/add_prob_gcn',
     # 'AAAI/coco/add_gap_gcn',
     # 'AAAI/coco/pruned_add_gcn',
-    'AAAI/coco/connect_add_gcn',
+    # 'AAAI/coco/connect_add_gcn',
     # 'AAAI/coco/fat_connect_prob_gcn',
-    'AAAI/coco/gin',
+    # 'AAAI/coco/gin',
     # 'AAAI/coco/add_residual_gcn',
     # 'AAAI/coco/add_standard_residual_gcn',
     # 'AAAI/coco/add_standard_residual_keep_static_gcn',
     # 'AAAI/coco/add_residual_keep_static_gcn',
-    'AAAI/coco/fixed_connect_standard_gcn',
-    'AAAI/coco/fixed_connect_prob_standard_gcn',
-    'AAAI/coco/fixed_connect_prob_add_gcn',
-    'AAAI/coco/connect_prob_standard_gcn',
-    'AAAI/coco/fixed_prob_standard_gcn'
+    # 'AAAI/coco/fixed_connect_standard_gcn',
+    # 'AAAI/coco/fixed_connect_prob_standard_gcn',
+    # 'AAAI/coco/fixed_connect_prob_add_gcn',
+    # 'AAAI/coco/connect_prob_standard_gcn',
+    # 'AAAI/coco/fixed_prob_standard_gcn',
+    'gcn/c_gcn',
+    'gcn/p_gcn_fedavg'
 ]
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
@@ -76,7 +78,7 @@ for path in paths:
     print(path)
     print(f"mAP: AmAP, WmAP, BmAP = {AmAP:.1f}, {WmAP:.1f}, {BmAP:.1f}")
     print(f"CF1: ACF1, WCF1, BCF1 = {ACF1:.1f}, {WCF1:.1f}, {BCF1:.1f}")
-    print(f"OF1: ACF1, WCF1, BCF1 = {AOF1:.1f}, {WOF1:.1f}, {BOF1:.1f}")
+    print(f"OF1: AOF1, WOF1, BOF1 = {AOF1:.1f}, {WOF1:.1f}, {BOF1:.1f}")
     print(
         f"{AmAP:.1f} & {WmAP:.1f} & {BmAP:.1f} & {ACF1:.1f} & {WCF1:.1f} & {BCF1:.1f} & {AOF1:.1f} & {WOF1:.1f}& {BOF1:.1f}")
     print('————————————————————————————————————')

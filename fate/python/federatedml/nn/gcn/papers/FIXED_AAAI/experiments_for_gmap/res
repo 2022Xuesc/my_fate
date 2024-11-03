@@ -4,8 +4,8 @@ VOC 2007
 FedAvg : 重跑
 FLAG   : 重跑
 FPSL   : 重跑
-C-GCN（WITHOUT AGG）: 重跑
-P-GCN（WITHOUT AGG）: 重跑
+C-GCN: 重跑
+P-GCN: 重跑
 Ours   : 91.84
 
 消融实验
@@ -20,8 +20,8 @@ VOC 2012
 FedAvg : 立即跑
 FLAG   : 立即跑
 FPSL   : 立即跑
-C-GCN（WITHOUT AGG）: 立即跑
-P-GCN（WITHOUT AGG）: 立即跑
+C-GCN: 立即跑
+P-GCN: 立即跑
 Ours   : 90.18
 
 消融实验
@@ -36,8 +36,8 @@ MS-COCO
 FedAvg : 重跑
 FLAG   : 54.8
 FPSL   : 重跑
-C-GCN（WITHOUT AGG）: 重跑
-P-GCN（WITHOUT AGG）: 重跑
+C-GCN: 重跑
+P-GCN: 重跑
 Ours   : 立即跑
 
 消融实验
@@ -45,3 +45,12 @@ w/o stand : 立即跑
 w/o fix   : 立即跑
 w/o connect : 立即跑
 w/o prob  : 立即跑
+
+
+check一下每种方法的正确性：如果adjList不作为参数优化，则应该初始化给定
+不论是否优化，相关性矩阵都在的
+FedAvg : ok
+FLAG   : ok
+FPSL   : ok
+C-GCN  : 
+P-GCN  : ok

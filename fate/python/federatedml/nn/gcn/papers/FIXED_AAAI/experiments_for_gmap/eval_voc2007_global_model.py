@@ -14,8 +14,8 @@ from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 
 from federatedml.nn.backend.gcn.models import *
 
-C_GCN = 'c_gcn_without_agg'
-P_GCN = 'p_gcn_without_agg'
+C_GCN = 'c_gcn'
+P_GCN = 'p_gcn'
 WITHOUT_FIX = 'connect_prob_standard_gcn'
 WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 
@@ -26,8 +26,8 @@ jobid_map = {
     WITHOUT_CONNECT: '202410250652186486160',
 }
 model_map = {
-    C_GCN: resnet_c_gcn,
-    P_GCN: p_gcn_resnet101,
+    # C_GCN: resnet_c_gcn,
+    # P_GCN: p_gcn_resnet101,
     WITHOUT_FIX: aaai_connect_prob_standard_gcn,
     WITHOUT_CONNECT: aaai_fixed_prob_standard_gcn
 }
