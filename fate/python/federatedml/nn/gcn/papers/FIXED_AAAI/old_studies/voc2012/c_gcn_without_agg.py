@@ -323,7 +323,6 @@ class GCNFedAggregator(object):
 
             self.context.increase_aggregation_iteration()
 
-
     def export_model(self, param):
         pass
 
@@ -593,7 +592,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     #  不同部分使用不同的学习率
 
     in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
-    model = resnet_c_gcn(param.pretrained, param.dataset, t=param.t, adjList=adjList,
+    model = resnet_c_gcn(param.pretrained, dataset=param.dataset, t=param.t, adjList=adjList,
                          device=param.device, num_classes=param.num_labels, in_channel=in_channel)
     gcn_optimizer = None
 

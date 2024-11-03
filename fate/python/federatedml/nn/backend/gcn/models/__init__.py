@@ -188,7 +188,7 @@ def vit_kmeans(pretrained, device, num_scenes=6, n_head=4, num_classes=80):
     return VitKMeans(model, num_scenes=num_scenes, num_classes=num_classes, n_head=n_head).to(device)
 
 
-def resnet_c_gcn(pretrained, dataset, t, adjList=None, device='cpu', num_classes=80, in_channel=300):
+def resnet_c_gcn(pretrained, adjList=None, device='cpu', num_classes=80, in_channel=300, dataset='coco', t=0.4):
     # model = torch_models.resnet101(pretrained=pretrained)
     model = torch_models.resnet101(False)
     model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
