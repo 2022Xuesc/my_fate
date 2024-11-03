@@ -13,14 +13,15 @@ def get_sample_size(data_dir):
 
 client_nums = 10
 
-dataset = "MS-COCO"
+dataset = "VOC 2012"
 # client_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
 
 if dataset == 'MS-COCO':
     server_path = "/data/projects/dataset/clustered_dataset"
-else:
+elif dataset == 'VOC 2007':
     server_path = '/data/projects/dataset/voc2007/clustered_voc_expanded'
-
+else:
+    server_path = '/data/projects/dataset/clustered_voc2012'
 save_dir = 'clusters_distribution'
 
 if not os.path.exists(save_dir):
@@ -41,6 +42,7 @@ for i in range(client_nums):
     # 只选取训练集大小
     samples.append(get_sample_size(client_train_path))
 
+print(samples)
 # Todo: 作出关于samples的柱状图
 log_samples = np.log10(samples)
 
