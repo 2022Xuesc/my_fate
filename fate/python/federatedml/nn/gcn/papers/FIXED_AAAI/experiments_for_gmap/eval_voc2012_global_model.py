@@ -23,9 +23,9 @@ WITHOUT_FIX = 'connect_prob_standard_gcn'
 WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 
 jobid_map = {
-    FED_AVG: '202410220416373841590',
-    FLAG: '202410220442101237570',
-    FPSL: '202410220819086555390',
+    # FED_AVG: '202410220416373841590',
+    # FLAG: '202410220442101237570',
+    # FPSL: '202410220819086555390',
     C_GCN: '202410220904548901360',
     P_GCN: '202410221551230972550',
     WITHOUT_FIX: '202410250218416948480',
@@ -101,7 +101,7 @@ cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name, stats_name='voc2012_stats')
 
 for task_name in jobid_map:
-    is_multi_label = task_name.startswith('F')
+    is_multi_label = task_name.startswith('f')
     jobid = jobid_map[task_name]
     if len(jobid) == 0:
         continue
@@ -146,10 +146,13 @@ for task_name in jobid_map:
 
         lr = 0.1
         lrp = 0.1
-        optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp),
-                                      lr=lr,
-                                      weight_decay=1e-4)
-
+        if not is_multi_label:
+            optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp),
+                                          lr=lr,
+                                          weight_decay=1e-4)
+        else:
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr,
+                                         weight_decay=1e-4)
         _params = [
             param
             # 不是完全倒序，对于嵌套for循环，先声明的在前面
@@ -214,7 +217,7 @@ for task_name in jobid_map:
 
                     losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
             else:
-                for validate_step, (inputs, target) in enumerate(valid_loader):
+                for validate_step, ((inputs, inp), target) in enumerate(valid_loader):
                     print("progress, validate_step: ", validate_step)
                     inputs = inputs.to(device)
                     prev_target = target.clone()
