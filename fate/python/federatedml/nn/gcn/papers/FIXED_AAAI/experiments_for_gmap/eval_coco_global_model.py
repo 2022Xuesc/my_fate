@@ -30,11 +30,11 @@ jobid_map = {
     # FPSL: '',
     # C_GCN: '',
     # P_GCN: '',
-    OURS: '202410260433398215450',
-    WITHOUT_STAND: '202410260435009642020',
-    WITHOUT_FIX: '202410271049537642420',
-    WITHOUT_CONNECT: '202410271047101038990',
-    WITHOUT_PROB: '202410230710052104430'
+    #OURS: '202410260433398215450',
+    #WITHOUT_STAND: '202410260435009642020',
+    #WITHOUT_FIX: '202410271049537642420',
+    #WITHOUT_CONNECT: '202410271047101038990',
+    WITHOUT_PROB: '202410240603464585480'
 }
 model_map = {
     # FED_AVG: create_resnet101_model,
@@ -147,7 +147,7 @@ for task_name in jobid_map:
     if is_multi_label:
         model = model_map[task_name](pretrained, device, num_labels)
     else:
-        model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel, isVOC=False)
+        model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel)
     print("------------------------")
     print(f"enter task: {task_name}")
     for i in range(cnt):
