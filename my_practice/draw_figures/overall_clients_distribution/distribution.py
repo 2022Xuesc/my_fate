@@ -10,29 +10,30 @@ rcParams['font.family'] = 'SimHei'
 plt.figure(figsize=(18,9))
 consume = ['c' + str(i + 1) for i in range(10)]
 # 注意：
-samples = [[4500, 4856, 76469],
-           [107, 30, 630],
-           [27, 62, 949],
-           [19, 16, 759],
-           [226, 292, 500],
-           [21, 152, 1051],
-           [55, 81, 601],
-           [10, 16, 658],
-           [40, 52, 178],
-           [6, 163, 286]
+samples = [[4500, 4856, 76469, 109188],
+           [107, 30, 630, 417],
+           [27, 62, 949, 2296],
+           [19, 16, 759, 1050],
+           [226, 292, 500, 1200],
+           [21, 152, 1051, 1503],
+           [55, 81, 601, 156],
+           [10, 16, 658, 770],
+           [40, 52, 178, 184],
+           [6, 163, 286, 522]
            ]
 log_samples = np.log10(samples)
-pdf = pd.DataFrame(data=log_samples, columns=['VOC 2007', 'VOC 2012', 'MS-COCO'], index=consume)
+pdf = pd.DataFrame(data=log_samples, columns=['VOC 2007', 'VOC 2012', 'MS-COCO 2014', 'MS-COCO 2017'], index=consume)
 
 index = pdf.index
 col = pdf.columns
 width = 8
 plt.bar([i * 30 + width * 0 for i in range(len(index))], pdf['VOC 2007'], width=width, label="VOC 2007")
 plt.bar([i * 30 + width * 1 for i in range(len(index))], pdf['VOC 2012'], width=width, label="VOC 2012")
-plt.bar([i * 30 + width * 2 for i in range(len(index))], pdf['MS-COCO'], width=width, label="MS-COCO")
+plt.bar([i * 30 + width * 2 for i in range(len(index))], pdf['MS-COCO 2014'], width=width, label="MS-COCO 2014")
+plt.bar([i * 30 + width * 3 for i in range(len(index))], pdf['MS-COCO 2017'], width=width, label="MS-COCO 2017")
 
 for i, v in enumerate(log_samples):
-    for j in range(3):
+    for j in range(4):
         plt.text(i * 30 + width * j, v[j] + 0.03, str(samples[i][j]), ha='center',
                  fontsize=10)
 
