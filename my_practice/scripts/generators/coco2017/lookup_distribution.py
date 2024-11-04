@@ -3,8 +3,8 @@ import os
 import json
 
 # Todo: 检查train/val_image_id.json生成的正确性
-train_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/nuswide/train_image_id.json"
-val_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/nuswide/val_image_id.json"
+train_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/coco2017/train_image_id.json"
+val_image_id_path = "/home/klaus125/research/fate/my_practice/dataset/coco2017/val_image_id.json"
 
 train_file = open(train_image_id_path, 'r')
 train_images = json.load(train_file)
@@ -37,27 +37,27 @@ else:
 #
 #
 # # Todo: 输出一下聚类后每个客户端的数据集大小
-num_clients = 10
-clustered_dir = "/home/klaus125/research/dataset/NUS-WIDE/images/nuswide_clustered"
-for i in range(1, num_clients + 1):
-    client_path = os.path.join(clustered_dir, f'client{i}')
-    client_train_path = os.path.join(client_path, 'train')
-    client_val_path = os.path.join(client_path, 'val')
-    # 读取json文件
-    train_json_path = os.path.join(client_train_path, 'anno.json')
-    val_json_path = os.path.join(client_val_path, 'anno.json')
-    
-    # train_json = json.load(open(train_json_path, 'r'))
-    # if len(train_json) != len(os.listdir(client_train_path)) - 2:
-    #     print('ERROR')
-    # else:
-    #     print('匹配')   
-    # val_json = json.load(open(val_json_path, 'r'))
-    # if len(val_json) != len(os.listdir(client_val_path)) - 2:
-    #     print('ERROR')
-    # else:
-    #     print('匹配')
-
-    print(f"===============客户端{i}=================")
-    print("训练集大小", len(os.listdir(client_train_path)))
-    print("验证集大小", len(os.listdir(client_val_path)))
+# num_clients = 10
+# clustered_dir = "/home/klaus125/research/dataset/NUS-WIDE/images/nuswide_clustered"
+# for i in range(1, num_clients + 1):
+#     client_path = os.path.join(clustered_dir, f'client{i}')
+#     client_train_path = os.path.join(client_path, 'train')
+#     client_val_path = os.path.join(client_path, 'val')
+#     # 读取json文件
+#     train_json_path = os.path.join(client_train_path, 'anno.json')
+#     val_json_path = os.path.join(client_val_path, 'anno.json')
+#     
+#     # train_json = json.load(open(train_json_path, 'r'))
+#     # if len(train_json) != len(os.listdir(client_train_path)) - 2:
+#     #     print('ERROR')
+#     # else:
+#     #     print('匹配')   
+#     # val_json = json.load(open(val_json_path, 'r'))
+#     # if len(val_json) != len(os.listdir(client_val_path)) - 2:
+#     #     print('ERROR')
+#     # else:
+#     #     print('匹配')
+# 
+#     print(f"===============客户端{i}=================")
+#     print("训练集大小", len(os.listdir(client_train_path)))
+#     print("验证集大小", len(os.listdir(client_val_path)))
