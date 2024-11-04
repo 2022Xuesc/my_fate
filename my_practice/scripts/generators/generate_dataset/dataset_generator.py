@@ -184,7 +184,7 @@ def generate_anno(data, images_dir, dataset="COCO", phase='val'):
 
 def generate_img_id(data, phase):
     anno_dir_path = os.path.join(data, 'annotations')
-    annotations_file = json.load(open(os.path.join(anno_dir_path, 'instances_{}2014.json'.format(phase))))
+    annotations_file = json.load(open(os.path.join(anno_dir_path, 'instances_{}2017.json'.format(phase))))
     annotations = annotations_file['annotations']
     # 类别的整体数据对于训练集和测试集来说是一样的
     category = annotations_file['categories']
@@ -233,25 +233,26 @@ def category_to_idx(category):
     return cat2idx
 
 
-coco2017_dir = '/data/projects/dataset/coco2017'
+# coco2017_dir = '/data/projects/dataset/coco2017'
 
-generate_img_id(coco2017_dir, 'train')
-generate_img_id(coco2017_dir, 'val')
+# generate_img_id(coco2017_dir, 'train')
+# generate_img_id('/home/klaus125/research/fate/my_practice/dataset/coco2017', 'val')
 
 # coco_dir = '../../../dataset/coco'
 # voc_dir = '../../../dataset/voc_expanded'
 # nuswide_dir = '../../../dataset/nuswide'
-# coco2017_dir = '/data/projects/dataset/coco2017'
-# 
+
+coco2017_dir = '/data/projects/fate/my_practice/dataset/coco2017'
+# coco2017_dir = '/home/klaus125/research/fate/my_practice/dataset/coco2017'
 # # Todo: 服务器端的未执行代码
-# client_nums = 10
-# image_dir = "/data/projects/dataset/coco2017/clustered_dataset"
-# for i in range(client_nums):
-#     client_id = i + 1
-#     generate_anno(coco2017_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
-#     generate_anno(coco2017_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
-#     generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
-#     generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
+client_nums = 10
+image_dir = "/data/projects/dataset/coco2017/clustered_dataset"
+for i in range(client_nums):
+    client_id = i + 1
+    generate_anno(coco2017_dir, os.path.join(image_dir, f'client{client_id}/train'), phase='train')
+    generate_anno(coco2017_dir, os.path.join(image_dir, f'client{client_id}/val'), phase='val')
+    generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
+    generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
 
 # Todo: 客户端待执行代码
 # client_nums = 10
@@ -265,3 +266,4 @@ generate_img_id(coco2017_dir, 'val')
 #     generate_anno(nuswide_dir, os.path.join(image_dir, f'client{client_id}/val'), dataset=dataset, phase='val')
 #     generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
 #     generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
+
