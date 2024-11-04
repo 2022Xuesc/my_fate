@@ -233,20 +233,25 @@ def category_to_idx(category):
     return cat2idx
 
 
-coco_dir = '../../../dataset/coco'
-voc_dir = '../../../dataset/voc_expanded'
-nuswide_dir = '../../../dataset/nuswide'
+coco2017_dir = '/data/projects/dataset/coco2017'
 
-# Todo: 服务器端的未执行代码
+generate_img_id(coco2017_dir, 'train')
+generate_img_id(coco2017_dir, 'val')
+
+# coco_dir = '../../../dataset/coco'
+# voc_dir = '../../../dataset/voc_expanded'
+# nuswide_dir = '../../../dataset/nuswide'
+# coco2017_dir = '/data/projects/dataset/coco2017'
+# 
+# # Todo: 服务器端的未执行代码
 # client_nums = 10
-# image_dir = "/data/projects/clustered_dataset"
-# # /data/projects/voc2007/clustered_voc
+# image_dir = "/data/projects/dataset/coco2017/clustered_dataset"
 # for i in range(client_nums):
 #     client_id = i + 1
-# generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
-# generate_anno(coco_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
-# generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
-# generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
+#     generate_anno(coco2017_dir, os.path.join(image_dir, f'client{client_id}/train'), 'train')
+#     generate_anno(coco2017_dir, os.path.join(image_dir, f'client{client_id}/val'), 'val')
+#     generate_configs(os.path.join(image_dir, f'client{client_id}/val'))
+#     generate_configs(os.path.join(image_dir, f'client{client_id}/train'))
 
 # Todo: 客户端待执行代码
 # client_nums = 10

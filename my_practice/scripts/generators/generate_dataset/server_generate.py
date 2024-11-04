@@ -2,9 +2,9 @@ import os
 
 from dataset_generator import *
 
-train_path = "/data/projects/dataset/train2014"
-val_path = "/data/projects/dataset/val2014"
-test_path = "/data/projects/dataset/test2014"
+train_path = "/data/projects/dataset/train2017"
+val_path = "/data/projects/dataset/val2017"
+test_path = "/data/projects/dataset/test2017"
 
 
 # train_path = "../../my_data/imagenet/guest/train/images"
@@ -21,7 +21,7 @@ def generate_dataset(n):
         # client_test_path = os.path.join(client_path, 'test')
         generate_2014(train_path, (i - 1) / n, i / n, client_train_path)
         generate_2014(val_path, (i - 1) / n, i / n, client_val_path)
-        # generate_2014(test_path, (i - 1) / n, i / n, client_test_path)
+        # generate_2017(test_path, (i - 1) / n, i / n, client_test_path)
         # 生成标签
         generate_anno(coco_dir,client_train_path,'train')
         generate_anno(coco_dir,client_val_path,'val')
@@ -50,13 +50,13 @@ def generate_embedding_labels_for_clusters(dir_path, client_num):
 
 
 # 生成全局的标注数据
-annotations_dir = "/data/projects/dataset/annotations"
-train_annotation_file = os.path.join(annotations_dir, 'instances_train2014.json')
-val_annotation_file = os.path.join(annotations_dir, 'instances_val2014.json')
-test_annotation_file = os.path.join(annotations_dir, 'image_info_test2014.json')
+annotations_dir = "/data/projects/dataset/coco2017/annotations"
+train_annotation_file = os.path.join(annotations_dir, 'instances_train2017.json')
+val_annotation_file = os.path.join(annotations_dir, 'instances_val2017.json')
+# test_annotation_file = os.path.join(annotations_dir, 'image_info_test2017.json')
 
-# save_image2labels(train_annotation_file, 'train')
-# save_image2labels(val_annotation_file, 'val')
+save_image2labels(train_annotation_file, 'train')
+save_image2labels(val_annotation_file, 'val')
 # Todo: 先跳过对测试集的处理
 # save_image2labels(test_annotation_file, 'test')
 
