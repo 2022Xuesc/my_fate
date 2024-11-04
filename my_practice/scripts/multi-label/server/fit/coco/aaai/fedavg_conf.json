@@ -47,7 +47,7 @@
           "multi_label_0": {
             "device": "cuda:7",
             "batch_size": 8,
-            "adj_file": "/data/projects/dataset/clustered_dataset/client1/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client1/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -67,7 +67,7 @@
         "0": {
           "multi_label_0": {
             "device": "cuda:7",
-            "adj_file": "/data/projects/dataset/clustered_dataset/client2/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client2/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -85,7 +85,7 @@
         "1": {
           "multi_label_0": {
             "device": "cuda:7",
-            "adj_file": "/data/projects/dataset/clustered_dataset/client3/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client3/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -103,7 +103,7 @@
         "2": {
           "multi_label_0": {
             "device": "cuda:7",
-            "adj_file": "/data/projects/dataset/clustered_dataset/client4/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client4/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -121,7 +121,7 @@
         "3": {
           "multi_label_0": {
             "device": "cuda:6",
-            "adj_file": "/data/projects/dataset/clustered_dataset/client5/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client5/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -139,7 +139,7 @@
         "4": {
           "multi_label_0": {
             "device": "cuda:6",
-            "adj_file": "/data/projects/dataset/clustered_dataset/client6/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client6/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -157,7 +157,7 @@
         "5": {
           "multi_label_0": {
             "device": "cuda:6",
-            "adj_file": "/data/projects/dataset/clustered_dataset/client7/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client7/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -175,7 +175,7 @@
         "6": {
           "multi_label_0": {
             "device": "cuda:6",
-            "adj_file": "/data/projects/dataset/clustered_dataset/client8/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client8/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -193,7 +193,7 @@
         "7": {
           "multi_label_0": {
             "device": "cuda:5",
-            "adj_file": "/data/projects/dataset/clustered_dataset/client9/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client9/train/anno.json"
           },
           "reader_0": {
             "table": {
@@ -211,7 +211,7 @@
         "8": {
           "multi_label_0": {
             "device": "cuda:5",
-            "adj_file": "/data/projects/dataset/clustered_dataset/client10/train/anno.json"
+            "json_file": "/data/projects/dataset/clustered_dataset/client10/train/anno.json"
           },
           "reader_0": {
             "table": {
