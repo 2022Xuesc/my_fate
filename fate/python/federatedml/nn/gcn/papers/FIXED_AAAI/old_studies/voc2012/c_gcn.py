@@ -11,7 +11,7 @@ import typing
 from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
-from federatedml.nn.backend.gcn.models import *
+from federatedml.nn.backend.gcn.models import resnet_c_gcn
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -262,15 +262,15 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 1000
-    param.num_labels = 20
-    param.device = 'cuda:0'
-    param.lr = 0.0001
-    param.aggregate_every_n_epoch = 1
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # param.aggregate_every_n_epoch = 1
 
-    # category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
+    category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -595,10 +595,9 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
     #  不同部分使用不同的学习率
 
-
-    in_channel = 2048  # in_channel是标签嵌入向量的初始（输入）维度
-    model = p_gcn_resnet101(param.pretrained, adjList=adjList,
-                            device=param.device, num_classes=param.num_labels, in_channel=in_channel)
+    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
+    model = resnet_c_gcn(param.pretrained, dataset=param.dataset, t=param.t, adjList=adjList,
+                         device=param.device, num_classes=param.num_labels, in_channel=in_channel)
     gcn_optimizer = None
 
     # 注意，这里的lrp设置为0.1
