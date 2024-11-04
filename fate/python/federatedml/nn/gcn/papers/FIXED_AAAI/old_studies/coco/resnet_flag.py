@@ -176,7 +176,6 @@ class FedServerContext(_FedBaseContext):
 
     # 发送模型
     def send_model(self, aggregated_arrs):
-
         self.aggregator.send_aggregated_model(aggregated_arrs, suffix=self._suffix())
 
     # 接收客户端模型
@@ -357,10 +356,14 @@ class MultiLabelFitter(object):
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         if self.context.should_aggregate_on_epoch(epoch):
-            self.aggregate_model(epoch)
+
+            weight = 0
+            alpha = 0.3
+            for num in self._num_per_labels:
+                weight += num ** alpha
+            self.aggregate_model(epoch, weight)
 
             self._all_consumed_data_aggregated = True
-
             # 将相关指标重置为0
             self._num_data_consumed = 0
             self._num_label_consumed = 0
@@ -392,7 +395,7 @@ class MultiLabelFitter(object):
                 bn_data.append(layer.running_var)
 
         # FedAvg聚合策略
-        agg_bn_data = self.context.do_aggregation(weight=self._num_data_consumed, bn_data=bn_data,
+        agg_bn_data = self.context.do_aggregation(weight=weight, bn_data=bn_data,
                                                   device=self.param.device)
 
         # Flag聚合策略
