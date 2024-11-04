@@ -1,11 +1,11 @@
 VOC 2007
 主要实验
 
-FedAvg : 重跑
-FLAG   : 重跑
-FPSL   : 重跑
-C-GCN: 重跑
-P-GCN: 重跑
+FedAvg : 重跑，记录GmAP
+FLAG   : 重跑，记录GmAP
+FPSL   : 重跑，记录GmAP
+C-GCN: 重跑，记录GmAP
+P-GCN: 重跑，记录GmAP
 Ours   : 91.84
 
 消融实验
@@ -20,8 +20,8 @@ VOC 2012
 FedAvg : 82.64
 FLAG   : 87.58
 FPSL   : 81.49
-C-GCN: 立即跑
-P-GCN: 立即跑
+C-GCN: 重跑，记录所有指标
+P-GCN: 重跑，记录所有指标
 Ours   : 90.18
 
 消融实验
@@ -33,18 +33,18 @@ w/o prob  : 89.97
 
 MS-COCO
 
-FedAvg : 重跑
+FedAvg : 重跑，记录GmAP
 FLAG   : 54.8
-FPSL   : 重跑
-C-GCN: 重跑
-P-GCN: 重跑
-Ours   : 立即跑
+FPSL   : 重跑，记录GmAP
+C-GCN: 重跑，记录GmAP
+P-GCN: 重跑，记录GmAP
+Ours   : 80.13
 
 消融实验
-w/o stand : 立即跑
-w/o fix   : 立即跑
-w/o connect : 立即跑
-w/o prob  : 立即跑
+w/o stand : 80.43
+w/o fix   : 80.22
+w/o connect : 80.02
+w/o prob  : 80.33
 
 
 check一下每种方法的正确性：如果adjList不作为参数优化，则应该初始化给定
@@ -53,4 +53,4 @@ FedAvg : ok
 FLAG   : ok
 FPSL   : ok
 C-GCN  : 
-P-GCN  : ok
+P-GCN  : 
