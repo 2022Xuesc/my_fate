@@ -38,8 +38,7 @@
         "num_labels": 80,
         "pretrained": true,
         "dataset": "ms-coco",
-        "arch": "resnet",
-        "t": 0.4
+        "arch": "resnet"
       }
     },
     "role": {
