@@ -26,10 +26,10 @@ jobid_map = {
     # FED_AVG: '202410220416373841590',
     # FLAG: '202410220442101237570',
     # FPSL: '202410220819086555390',
-    # C_GCN: '202410220904548901360',
-    # P_GCN: '202410221551230972550',
+    C_GCN: '202411040306089134600',
+    P_GCN: '202411040308244428370',
     # WITHOUT_FIX: '202410250218416948480',
-    WITHOUT_CONNECT: '202410250650256294940',
+    # WITHOUT_CONNECT: '202410250650256294940',
 }
 model_map = {
     FED_AVG: create_resnet101_model,
@@ -142,7 +142,8 @@ for task_name in jobid_map:
         print(f"dump数据的维度: {agg_len}")
         model_len = len(list(model.parameters()))
         print(f"模型的维度: {model_len}")
-        if agg_len != model_len:
+        if ((task_name == C_GCN or task_name == P_GCN) and agg_len != model_len - 1) \
+                or (agg_len != model_len):
             print("不匹配")
             continue
 
@@ -177,6 +178,11 @@ for task_name in jobid_map:
                 idx += 1
                 layer.running_var.data.copy_(bn_tensors[idx])
                 idx += 1
+        # Todo: 装载adjList
+        adj_path = os.path.join(cur_path, f'relation_matrix_{i}.npy')
+        if os.path.exists(adj_path):
+            model.updateA(np.load(adj_path, allow_pickle=True))
+
         # Todo: 模型加载完毕，开始进行训练
         print(f"{task_name}的模型 {i} 加载成功")
         dataset_loader = DatasetLoader(category_dir, train_path=valid_path, valid_path=valid_path, inp_name=inp_name)
@@ -236,4 +242,3 @@ for task_name in jobid_map:
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         valid_writer.writerow([i, mAP.item(), loss])
         valid_aps_writer.writerow(ap)
-
