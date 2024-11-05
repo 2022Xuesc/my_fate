@@ -142,11 +142,15 @@ for task_name in jobid_map:
         print(f"dump数据的维度: {agg_len}")
         model_len = len(list(model.parameters()))
         print(f"模型的维度: {model_len}")
-        if ((task_name == C_GCN or task_name == P_GCN) and agg_len != model_len - 1) \
-                or (agg_len != model_len):
+
+        with_relation = task_name == C_GCN or task_name == P_GCN
+        if with_relation:
+            if agg_len != model_len - 1:
+                print("不匹配")
+                continue
+        elif agg_len != model_len:
             print("不匹配")
             continue
-
         lr = 0.1
         lrp = 0.1
         if not is_multi_label:
