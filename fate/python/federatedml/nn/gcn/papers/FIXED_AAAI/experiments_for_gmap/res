@@ -20,8 +20,8 @@ VOC 2012
 FedAvg : 82.64
 FLAG   : 87.58
 FPSL   : 81.49
-C-GCN: 重跑，记录所有指标 Done
-P-GCN: 重跑，记录所有指标 Done
+C-GCN: Running
+P-GCN: Running
 Ours   : 90.18
 
 消融实验
@@ -33,9 +33,9 @@ w/o prob  : 89.97
 
 MS-COCO
 
-FedAvg : 重跑，记录GmAP
+FedAvg : Do this
 FLAG   : 54.8
-FPSL   : 重跑，记录GmAP
+FPSL   : Do this
 C-GCN: 重跑，记录GmAP
 P-GCN: 重跑，记录GmAP
 Ours   : 80.13

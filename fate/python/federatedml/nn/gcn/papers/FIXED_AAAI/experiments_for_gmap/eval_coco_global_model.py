@@ -12,6 +12,7 @@ from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.gcn.models import *
+from federatedml.nn.backend.multi_label.models import *
 
 FED_AVG = 'fed_avg'
 FLAG = 'flag'
@@ -25,21 +26,21 @@ WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 WITHOUT_PROB = 'fixed_connect_standard_gcn'
 
 jobid_map = {
-    # FED_AVG: '',
+    FED_AVG: '202411040840086450230',
     # FLAG: '',
-    # FPSL: '',
+    FPSL: '202411040849131620180',
     # C_GCN: '',
     # P_GCN: '',
-    #OURS: '202410260433398215450',
-    #WITHOUT_STAND: '202410260435009642020',
-    #WITHOUT_FIX: '202410271049537642420',
-    #WITHOUT_CONNECT: '202410271047101038990',
-    WITHOUT_PROB: '202410240603464585480'
+    # OURS: '202410260433398215450',
+    # WITHOUT_STAND: '202410260435009642020',
+    # WITHOUT_FIX: '202410271049537642420',
+    # WITHOUT_CONNECT: '202410271047101038990',
+    # WITHOUT_PROB: '202410240603464585480'
 }
 model_map = {
-    # FED_AVG: create_resnet101_model,
+    FED_AVG: create_resnet101_model,
     # FLAG: create_resnet101_model,
-    # FPSL: create_resnet101_model,
+    FPSL: create_resnet101_model,
     # C_GCN: resnet_c_gcn,
     # P_GCN: p_gcn_resnet101,
     OURS: aaai_fixed_connect_prob_standard_gcn,
@@ -101,7 +102,7 @@ config_map = {
 
 dir_prefix = "/data/projects/fate/fateflow/jobs"
 pretrained = False
-device = 'cuda:7'
+device = 'cuda:0'
 num_labels = 80
 adjList = np.ndarray((80, 80))
 # Todo: adjList是否优化，会导致不同的结果
@@ -236,22 +237,18 @@ for task_name in jobid_map:
                     losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
             else:
                 # Todo: 有问题，之后查看
-                pass
-                # for validate_step, ((inputs, inp), target) in enumerate(valid_loader):
-                #     print("progress, validate_step: ", validate_step)
-                #     inputs = inputs.to(device)
-                #     prev_target = target.clone()
-                #     target[target == 0] = 1
-                #     target[target == -1] = 0
-                #     target = target.to(device)
-                # 
-                #     output = model(inputs)
-                #     loss = criterion(sigmoid_func(output), target)
-                #     losses[OBJECTIVE_LOSS_KEY].add(loss.item())
-                #     ap_meter.add(output.data, prev_target)
+                for validate_step, ((inputs, inp), target) in enumerate(valid_loader):
+                    print("progress, validate_step: ", validate_step)
+                    inputs = inputs.to(device)
+                    target = target.to(device)
+
+                    output = model(inputs)
+                    loss = criterion(sigmoid_func(output), target)
+                    losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+                    ap_meter.add(output.data, target)
+
         mAP, ap = ap_meter.value()
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         valid_writer.writerow([i, mAP.item(), loss])
         valid_aps_writer.writerow(ap)
-
