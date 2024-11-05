@@ -1,8 +1,8 @@
 VOC 2007
 主要实验
 
-FedAvg : 重跑，记录GmAP
-FLAG   : 重跑，记录GmAP
+FedAvg : 重跑，记录GmAP，换成voc2007即可
+FLAG   : 重跑，记录GmAP，这个确实需要跑
 FPSL   : 重跑，记录GmAP
 C-GCN: 重跑，记录GmAP
 P-GCN: 重跑，记录GmAP
