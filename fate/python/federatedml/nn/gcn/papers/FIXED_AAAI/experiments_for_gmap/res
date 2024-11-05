@@ -22,7 +22,7 @@ FLAG   : 87.58
 FPSL   : 81.49
 C-GCN: Running
 P-GCN: Running
-Ours   : 90.18
+Ours   : 90.18（要计算曲线的话还得跑一下）
 
 消融实验
 w/o stand : 89.98
@@ -33,9 +33,9 @@ w/o prob  : 89.97
 
 MS-COCO
 
-FedAvg : Do this
+FedAvg : Running
 FLAG   : 54.8
-FPSL   : Do this
+FPSL   : Running
 C-GCN: 重跑，记录GmAP
 P-GCN: 重跑，记录GmAP
 Ours   : 80.13
