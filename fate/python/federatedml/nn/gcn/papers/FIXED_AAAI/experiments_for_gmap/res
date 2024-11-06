@@ -1,9 +1,9 @@
 VOC 2007
 主要实验
 
-FedAvg : 重跑，记录GmAP，换成voc2007即可
-FLAG   : 重跑，记录GmAP，这个确实需要跑
-FPSL   : 重跑，记录GmAP
+FedAvg : Running
+FLAG   : Running
+FPSL   : Running
 C-GCN: 重跑，记录GmAP
 P-GCN: 重跑，记录GmAP
 Ours   : 91.84（重跑一下，需要全局模型，画GmAP变化的图）
@@ -45,6 +45,22 @@ w/o stand : 80.43
 w/o fix   : 80.22
 w/o connect : 80.02
 w/o prob  : 80.33
+
+COCO 2017
+
+FedAvg : 
+FLAG   : 
+FPSL   : 
+C-GCN: 
+P-GCN: 
+Ours   : 
+
+消融实验
+w/o stand : 
+w/o fix   : 
+w/o connect : 
+w/o prob  : 
+
 
 
 check一下每种方法的正确性：如果adjList不作为参数优化，则应该初始化给定
