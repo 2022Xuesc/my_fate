@@ -1,9 +1,9 @@
 VOC 2007
 主要实验
 
-FedAvg : Running
-FLAG   : Running
-FPSL   : Running
+FedAvg : 85.61
+FLAG   : 85.61
+FPSL   : 85.79
 C-GCN: 重跑，记录GmAP
 P-GCN: 重跑，记录GmAP
 Ours   : 91.84（重跑一下，需要全局模型，画GmAP变化的图）
