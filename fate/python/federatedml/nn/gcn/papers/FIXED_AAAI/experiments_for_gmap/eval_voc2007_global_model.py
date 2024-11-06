@@ -11,21 +11,30 @@ from federatedml.nn.backend.utils.mylogger.mywriter import MyWriter
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
 from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import *
 from federatedml.nn.backend.utils.VOC_APMeter import AveragePrecisionMeter
-
+from federatedml.nn.backend.multi_label.models import *
 from federatedml.nn.backend.gcn.models import *
 
+FED_AVG = 'fed_avg'
+FLAG = 'flag'
+FPSL = 'fpsl'
 C_GCN = 'c_gcn'
 P_GCN = 'p_gcn'
 WITHOUT_FIX = 'connect_prob_standard_gcn'
 WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 
 jobid_map = {
+    FED_AVG: '202411051206141543990',
+    FLAG: '202411051207290795640',
+    FPSL: '202411051208101340590',
     # C_GCN: '',
     # P_GCN: '',
-    WITHOUT_FIX: '202410250223224453960',
-    WITHOUT_CONNECT: '202410250652186486160',
+    # WITHOUT_FIX: '202410250223224453960',
+    # WITHOUT_CONNECT: '202410250652186486160',
 }
 model_map = {
+    FED_AVG: create_resnet101_model,
+    FLAG: create_resnet101_model,
+    FPSL: create_resnet101_model,
     # C_GCN: resnet_c_gcn,
     # P_GCN: p_gcn_resnet101,
     WITHOUT_FIX: aaai_connect_prob_standard_gcn,
@@ -38,6 +47,18 @@ model_map = {
 # 2个入参，三个返回值：4
 
 config_map = {
+    FED_AVG: {
+        "in_channels": 0,
+        "argument_and_return_type": 0
+    },
+    FPSL: {
+        "in_channels": 0,
+        "argument_and_return_type": 0
+    },
+    FLAG: {
+        "in_channels": 0,
+        "argument_and_return_type": 0
+    },
     # C_GCN: {
     #     "in_channels": 1024,
     #     "argument_and_return_type": 1
@@ -59,7 +80,7 @@ config_map = {
 
 dir_prefix = "/data/projects/fate/fateflow/jobs"
 pretrained = False
-device = 'cuda:1'
+device = 'cuda:0'
 num_labels = 20
 adjList = np.ndarray((20, 20))
 
@@ -78,11 +99,17 @@ criterion = AsymmetricLossOptimized().to(device)
 cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name, stats_name="voc2007_stats")
 
+bound_epochs = 50
+
 for task_name in jobid_map:
+    is_multi_label = task_name.startswith('f') and not task_name.startswith('fixed')
     jobid = jobid_map[task_name]
     if len(jobid) == 0:
         continue
-    cur_path = os.path.join(dir_prefix, jobid, f'arbiter/999/gcn_0/{jobid}_gcn_0/0/task_executor')
+    if not is_multi_label:
+        cur_path = os.path.join(dir_prefix, jobid, f'arbiter/999/gcn_0/{jobid}_gcn_0/0/task_executor')
+    else:
+        cur_path = os.path.join(dir_prefix, jobid, f'arbiter/999/multi_label_0/{jobid}_multi_label_0/0/task_executor')
     cur_path = os.path.join(cur_path, os.listdir(cur_path)[0])
     # Todo: 记录数据的信息
 
@@ -97,10 +124,15 @@ for task_name in jobid_map:
         if file.startswith(file_prefix):
             cnt += 1
     in_channel = config_map[task_name]["in_channels"]
-    model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel)
+    if is_multi_label:
+        model = model_map[task_name](pretrained, device, num_labels)
+    else:
+        model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel)
     print("------------------------")
     print(f"enter task: {task_name}")
     for i in range(cnt):
+        if i > bound_epochs:
+            break
         file_name = f'{file_prefix}_{i}.npy'
         global_model = np.load(os.path.join(cur_path, file_name), allow_pickle=True)
         agg_tensors = []
@@ -111,16 +143,24 @@ for task_name in jobid_map:
         print(f"dump数据的维度: {agg_len}")
         model_len = len(list(model.parameters()))
         print(f"模型的维度: {model_len}")
-        if agg_len != model_len:
+
+        with_relation = task_name == C_GCN or task_name == P_GCN
+        if with_relation:
+            if agg_len != model_len - 1:
+                print("不匹配")
+                continue
+        elif agg_len != model_len:
             print("不匹配")
             continue
-
         lr = 0.1
         lrp = 0.1
-        optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp),
-                                      lr=lr,
-                                      weight_decay=1e-4)
-
+        if not is_multi_label:
+            optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp),
+                                          lr=lr,
+                                          weight_decay=1e-4)
+        else:
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr,
+                                         weight_decay=1e-4)
         _params = [
             param
             # 不是完全倒序，对于嵌套for循环，先声明的在前面
@@ -143,6 +183,11 @@ for task_name in jobid_map:
                 idx += 1
                 layer.running_var.data.copy_(bn_tensors[idx])
                 idx += 1
+
+        adj_path = os.path.join(cur_path, f'relation_matrix_{i}.npy')
+        if os.path.exists(adj_path):
+            model.updateA(np.load(adj_path, allow_pickle=True))
+
         # Todo: 模型加载完毕，开始进行训练
         print(f"{task_name}的模型 {i} 加载成功")
         dataset_loader = DatasetLoader(category_dir, train_path=valid_path, valid_path=valid_path, inp_name=inp_name)
@@ -156,31 +201,47 @@ for task_name in jobid_map:
         ap_meter.reset()
 
         with torch.no_grad():
-            for validate_step, ((features, inp), target) in enumerate(valid_loader):
-                print("progress, validate_step: ", validate_step)
-                features = features.to(device)
-                inp = inp.to(device)
-                prev_target = target.clone()
-                target[target == 0] = 1
-                target[target == -1] = 0
-                target = target.to(device)
+            if not is_multi_label:
+                for validate_step, ((features, inp), target) in enumerate(valid_loader):
+                    print("progress, validate_step: ", validate_step)
+                    features = features.to(device)
+                    inp = inp.to(device)
+                    prev_target = target.clone()
+                    target[target == 0] = 1
+                    target[target == -1] = 0
+                    target = target.to(device)
 
-                type = config_map[task_name]["argument_and_return_type"]
-                if type == 1:
-                    cnn_predicts, gcn_predicts = model(features)
-                elif type == 2:
-                    cnn_predicts, gcn_predicts = model(features, inp)
-                elif type == 3:
-                    cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features)
-                else:
-                    cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features, inp)
-                predicts = (cnn_predicts + gcn_predicts) / 2
-                # Todo: 将计算结果添加到ap_meter中
-                ap_meter.add(predicts.data, prev_target)
+                    type = config_map[task_name]["argument_and_return_type"]
+                    if type == 1:
+                        cnn_predicts, gcn_predicts = model(features)
+                    elif type == 2:
+                        cnn_predicts, gcn_predicts = model(features, inp)
+                    elif type == 3:
+                        cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features)
+                    elif type == 4:
+                        cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features, inp)
+                    else:
+                        gcn_predicts = model(features, inp)
+                    predicts = gcn_predicts if type == 5 else (cnn_predicts + gcn_predicts) / 2
+                    # Todo: 将计算结果添加到ap_meter中
+                    ap_meter.add(predicts.data, prev_target)
 
-                objective_loss = criterion(sigmoid_func(predicts), target)
+                    objective_loss = criterion(sigmoid_func(predicts), target)
 
-                losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
+                    losses[OBJECTIVE_LOSS_KEY].add(objective_loss.item())
+            else:
+                for validate_step, ((inputs, inp), target) in enumerate(valid_loader):
+                    print("progress, validate_step: ", validate_step)
+                    inputs = inputs.to(device)
+                    prev_target = target.clone()
+                    target[target == 0] = 1
+                    target[target == -1] = 0
+                    target = target.to(device)
+
+                    output = model(inputs)
+                    loss = criterion(sigmoid_func(output), target)
+                    losses[OBJECTIVE_LOSS_KEY].add(loss.item())
+                    ap_meter.add(output.data, prev_target)
         mAP, ap = ap_meter.value()
         mAP *= 100
         loss = losses[OBJECTIVE_LOSS_KEY].mean
