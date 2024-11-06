@@ -6,7 +6,7 @@ FLAG   : 重跑，记录GmAP，这个确实需要跑
 FPSL   : 重跑，记录GmAP
 C-GCN: 重跑，记录GmAP
 P-GCN: 重跑，记录GmAP
-Ours   : 91.84
+Ours   : 91.84（重跑一下，需要全局模型，画GmAP变化的图）
 
 消融实验
 w/o stand : 91.9
