@@ -4,9 +4,9 @@ VOC 2007
 FedAvg : 85.61
 FLAG   : 85.61
 FPSL   : 85.79
-C-GCN: Running
-P-GCN: Running
-Ours   : 91.84，在重跑
+C-GCN: 86.76
+P-GCN: 81.88
+Ours   : 91.84，获取结果
 
 消融实验
 w/o stand : 91.9
@@ -22,7 +22,7 @@ FLAG   : 87.58
 FPSL   : 81.49
 C-GCN: 84.93
 P-GCN: 78.19
-Ours   : 90.18，在重跑
+Ours   : 90.18，获取结果
 
 消融实验
 w/o stand : 89.98
