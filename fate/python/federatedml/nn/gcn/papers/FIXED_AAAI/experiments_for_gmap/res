@@ -6,7 +6,7 @@ FLAG   : 85.61
 FPSL   : 85.79
 C-GCN: Running
 P-GCN: Running
-Ours   : 91.84（重跑一下，需要全局模型，画GmAP变化的图）
+Ours   : 91.84，在重跑
 
 消融实验
 w/o stand : 91.9
@@ -22,7 +22,7 @@ FLAG   : 87.58
 FPSL   : 81.49
 C-GCN: 84.93
 P-GCN: 78.19
-Ours   : 90.18（要计算曲线的话还得跑一下）
+Ours   : 90.18，在重跑
 
 消融实验
 w/o stand : 89.98
