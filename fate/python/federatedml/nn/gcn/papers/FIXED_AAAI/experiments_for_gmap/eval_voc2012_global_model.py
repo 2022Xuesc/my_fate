@@ -19,6 +19,7 @@ FLAG = 'flag'
 FPSL = 'fpsl'
 C_GCN = 'c_gcn'
 P_GCN = 'p_gcn'
+OURS = 'fixed_connect_prob_standard_gcn'
 WITHOUT_FIX = 'connect_prob_standard_gcn'
 WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 
@@ -26,8 +27,9 @@ jobid_map = {
     # FED_AVG: '202410220416373841590',
     # FLAG: '202410220442101237570',
     # FPSL: '202410220819086555390',
-    C_GCN: '202411040306089134600',
-    P_GCN: '202411040308244428370',
+    # C_GCN: '202411040306089134600',
+    # P_GCN: '202411040308244428370',
+    OURS: '202411070357178860740',
     # WITHOUT_FIX: '202410250218416948480',
     # WITHOUT_CONNECT: '202410250650256294940',
 }
@@ -37,6 +39,7 @@ model_map = {
     FPSL: create_resnet101_model,
     C_GCN: resnet_c_gcn,
     P_GCN: p_gcn_resnet101,
+    OURS: aaai_fixed_connect_prob_standard_gcn,
     WITHOUT_FIX: aaai_connect_prob_standard_gcn,
     WITHOUT_CONNECT: aaai_fixed_prob_standard_gcn
 }
@@ -67,6 +70,10 @@ config_map = {
     P_GCN: {
         "in_channels": 2048,
         "argument_and_return_type": 5
+    },
+    OURS: {
+        "in_channels": 300,
+        "argument_and_return_type": 4
     },
     WITHOUT_FIX: {
         "in_channels": 300,
