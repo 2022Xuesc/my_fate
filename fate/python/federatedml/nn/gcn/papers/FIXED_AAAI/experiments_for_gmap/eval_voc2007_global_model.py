@@ -23,11 +23,11 @@ WITHOUT_FIX = 'connect_prob_standard_gcn'
 WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 
 jobid_map = {
-    FED_AVG: '202411051206141543990',
-    FLAG: '202411051207290795640',
-    FPSL: '202411051208101340590',
-    # C_GCN: '',
-    # P_GCN: '',
+    # FED_AVG: '202411051206141543990',
+    # FLAG: '202411051207290795640',
+    # FPSL: '202411051208101340590',
+    C_GCN: '202411060634215561600',
+    P_GCN: '202411060637242350020',
     # WITHOUT_FIX: '202410250223224453960',
     # WITHOUT_CONNECT: '202410250652186486160',
 }
@@ -35,8 +35,8 @@ model_map = {
     FED_AVG: create_resnet101_model,
     FLAG: create_resnet101_model,
     FPSL: create_resnet101_model,
-    # C_GCN: resnet_c_gcn,
-    # P_GCN: p_gcn_resnet101,
+    C_GCN: resnet_c_gcn,
+    P_GCN: p_gcn_resnet101,
     WITHOUT_FIX: aaai_connect_prob_standard_gcn,
     WITHOUT_CONNECT: aaai_fixed_prob_standard_gcn
 }
@@ -59,14 +59,14 @@ config_map = {
         "in_channels": 0,
         "argument_and_return_type": 0
     },
-    # C_GCN: {
-    #     "in_channels": 1024,
-    #     "argument_and_return_type": 1
-    # },
-    # P_GCN: {
-    #     "in_channels": 1024,
-    #     "argument_and_return_type": 1
-    # },
+    C_GCN: {
+        "in_channels": 300,
+        "argument_and_return_type": 5
+    },
+    P_GCN: {
+        "in_channels": 2048,
+        "argument_and_return_type": 5
+    },
     WITHOUT_FIX: {
         "in_channels": 300,
         "argument_and_return_type": 4
@@ -99,7 +99,7 @@ criterion = AsymmetricLossOptimized().to(device)
 cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name, stats_name="voc2007_stats")
 
-bound_epochs = 50
+bound_epochs = 100
 
 for task_name in jobid_map:
     is_multi_label = task_name.startswith('f') and not task_name.startswith('fixed')

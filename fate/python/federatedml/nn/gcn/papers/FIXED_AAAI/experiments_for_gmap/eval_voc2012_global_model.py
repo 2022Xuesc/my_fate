@@ -98,7 +98,7 @@ valid_path = '/data/projects/dataset/clustered_voc2012/global_val'
 ap_meter = AveragePrecisionMeter(difficult_examples=True)
 criterion = AsymmetricLossOptimized().to(device)
 
-model = model_map[C_GCN](pretrained, adjList, device, num_labels, 300)
+# model = model_map[C_GCN](pretrained, adjList, device, num_labels, 300)
 cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name, stats_name='voc2012_stats')
 
