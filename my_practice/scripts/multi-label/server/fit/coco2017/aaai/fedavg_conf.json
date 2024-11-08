@@ -1,0 +1,233 @@
+{
+  "dsl_version": 2,
+  "job_parameters": {
+    "common": {
+      "job_type": "train"
+    }
+  },
+  "initiator": {
+    "role": "guest",
+    "party_id": 10
+  },
+  "role": {
+    "arbiter": [
+      999
+    ],
+    "host": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "guest": [
+      10
+    ]
+  },
+  "component_parameters": {
+    "common": {
+      "multi_label_0": {
+        "max_iter": 100,
+        "batch_size": 4,
+        "aggregate_every_n_epoch": 4,
+        "lr": 0.0001,
+        "num_labels": 80,
+        "pretrained": true,
+        "dataset": "ms-coco",
+        "arch": "resnet"
+      }
+    },
+    "role": {
+      "guest": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:7",
+            "batch_size": 8,
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client1/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client1_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client1_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        }
+      },
+      "host": {
+        "0": {
+          "multi_label_0": {
+            "device": "cuda:7",
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client2/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client2_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client2_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        },
+        "1": {
+          "multi_label_0": {
+            "device": "cuda:7",
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client3/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client3_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client3_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        },
+        "2": {
+          "multi_label_0": {
+            "device": "cuda:7",
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client4/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client4_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client4_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        },
+        "3": {
+          "multi_label_0": {
+            "device": "cuda:6",
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client5/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client5_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client5_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        },
+        "4": {
+          "multi_label_0": {
+            "device": "cuda:6",
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client6/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client6_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client6_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        },
+        "5": {
+          "multi_label_0": {
+            "device": "cuda:6",
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client7/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client7_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client7_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        },
+        "6": {
+          "multi_label_0": {
+            "device": "cuda:6",
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client8/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client8_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client8_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        },
+        "7": {
+          "multi_label_0": {
+            "device": "cuda:5",
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client9/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client9_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client9_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        },
+        "8": {
+          "multi_label_0": {
+            "device": "cuda:5",
+            "json_file": "/data/projects/dataset/coco2017/clustered_dataset/client10/train/anno.json"
+          },
+          "reader_0": {
+            "table": {
+              "name": "client10_train",
+              "namespace": "coco2017-clients10"
+            }
+          },
+          "reader_1": {
+            "table": {
+              "name": "client10_val",
+              "namespace": "coco2017-clients10"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
