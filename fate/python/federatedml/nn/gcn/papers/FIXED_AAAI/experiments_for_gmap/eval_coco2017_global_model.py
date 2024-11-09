@@ -114,7 +114,7 @@ category_dir = f'/data/projects/fate/my_practice/dataset/{dataset}'
 inp_name = 'coco2017_glove_word2vec.pkl'
 
 # Todo: 全局验证集的目录
-valid_path = '/data/projects/dataset/clustered_dataset/global_val'
+valid_path = '/data/projects/dataset/coco2017/clustered_dataset/global_val'
 
 ap_meter = AveragePrecisionMeter(difficult_examples=False)
 criterion = AsymmetricLossOptimized().to(device)
