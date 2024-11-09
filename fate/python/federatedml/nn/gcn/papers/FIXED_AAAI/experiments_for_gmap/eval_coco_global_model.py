@@ -26,11 +26,11 @@ WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 WITHOUT_PROB = 'fixed_connect_standard_gcn'
 
 jobid_map = {
-    FED_AVG: '202411040840086450230',
+    # FED_AVG: '202411040840086450230',
     # FLAG: '',
-    FPSL: '202411040849131620180',
-    # C_GCN: '',
-    # P_GCN: '',
+    # FPSL: '202411040849131620180',
+    C_GCN: '202411070633238811500',
+    P_GCN: '202411070634329189850',
     # OURS: '202410260433398215450',
     # WITHOUT_STAND: '202410260435009642020',
     # WITHOUT_FIX: '202410271049537642420',
@@ -41,8 +41,8 @@ model_map = {
     FED_AVG: create_resnet101_model,
     # FLAG: create_resnet101_model,
     FPSL: create_resnet101_model,
-    # C_GCN: resnet_c_gcn,
-    # P_GCN: p_gcn_resnet101,
+    C_GCN: resnet_c_gcn,
+    P_GCN: p_gcn_resnet101,
     OURS: aaai_fixed_connect_prob_standard_gcn,
     WITHOUT_STAND: aaai_fixed_connect_prob_gcn,
     WITHOUT_FIX: aaai_connect_prob_standard_gcn,
@@ -162,9 +162,16 @@ for task_name in jobid_map:
         print(f"dump数据的维度: {agg_len}")
         model_len = len(list(model.parameters()))
         print(f"模型的维度: {model_len}")
-        if agg_len != model_len:
+        
+        with_relation = task_name == C_GCN or task_name == P_GCN
+        if with_relation:
+            if agg_len != model_len - 1:
+                print("不匹配")
+                continue
+        elif agg_len != model_len:
             print("不匹配")
             continue
+    
 
         lr = 0.1
         lrp = 0.1
@@ -197,6 +204,11 @@ for task_name in jobid_map:
                 idx += 1
                 layer.running_var.data.copy_(bn_tensors[idx])
                 idx += 1
+        
+        adj_path = os.path.join(cur_path, f'relation_matrix_{i}.npy')
+        if os.path.exists(adj_path):
+            model.updateA(np.load(adj_path, allow_pickle=True))
+        
         # Todo: 模型加载完毕，开始进行训练
         print(f"{task_name}的模型 {i} 加载成功")
         dataset_loader = DatasetLoader(category_dir, train_path=valid_path, valid_path=valid_path, inp_name=inp_name)
