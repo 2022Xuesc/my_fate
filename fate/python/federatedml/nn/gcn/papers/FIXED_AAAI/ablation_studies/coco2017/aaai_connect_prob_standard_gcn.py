@@ -1,6 +1,5 @@
 # 服务器与客户端的通用逻辑
 import math
-import torch
 import torch.nn
 import torchnet.meter as tnt
 
@@ -381,7 +380,7 @@ class GCNFitter(object):
                                                                                            self.adjList)
 
         # 使用非对称损失
-        self.criterion = AsymmetricLossOptimized(mean=True).to(self.param.device)
+        self.criterion = AsymmetricLossOptimized().to(self.param.device)
         self.start_epoch, self.end_epoch = 0, epochs
 
         # 聚合策略的相关参数
@@ -509,7 +508,7 @@ class GCNFitter(object):
             self._num_label_consumed += target.sum().item()
 
             # 计算模型输出
-            cnn_predicts, gcn_predicts = model(features, inp)
+            cnn_predicts, gcn_predicts, dynamic_adj_loss = model(features, inp)
 
             predicts = (cnn_predicts + gcn_predicts) / 2
             # Todo: 将计算结果添加到ap_meter中
@@ -517,11 +516,11 @@ class GCNFitter(object):
 
             lambda_dynamic = 1
             asym_loss = criterion(sigmoid_func(predicts), target)
-            overall_loss = asym_loss 
+            overall_loss = asym_loss + lambda_dynamic * dynamic_adj_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[ASYM_LOSS].add(asym_loss.item())
-            # losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
+            losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
 
             optimizer.zero_grad()
 
@@ -559,7 +558,7 @@ class GCNFitter(object):
                 inp = inp.to(device)
                 target = target.to(device)
 
-                cnn_predicts, gcn_predicts = model(features, inp)
+                cnn_predicts, gcn_predicts, _ = model(features, inp)
                 predicts = (cnn_predicts + gcn_predicts) / 2
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(predicts.data, target)
@@ -583,9 +582,9 @@ def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     # Todo: 对于static_graph优化变量形式，输入通道设置为1024
     in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
-    model = aaai_fixed_connect_standard_gcn(param.pretrained, adjList,
+    model = aaai_connect_prob_standard_gcn(param.pretrained, adjList,
                                                  device=param.device, num_classes=param.num_labels,
-                                                 in_channels=in_channel)
+                                                 in_channels=in_channel, isVOC=False)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

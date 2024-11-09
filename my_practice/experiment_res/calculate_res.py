@@ -45,11 +45,12 @@ paths = [
     # 'AAAI/coco/fixed_connect_prob_add_gcn',
     # 'AAAI/coco/connect_prob_standard_gcn',
     # 'AAAI/coco/fixed_prob_standard_gcn',
-    
+
     # 'gcn/c_gcn',
     # 'gcn/p_gcn_fedavg'
-    
-    'AAAI/coco2017/ours'
+
+    'AAAI/coco2017/ours',
+    'AAAI/coco2017/fed_avg'
 ]
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]

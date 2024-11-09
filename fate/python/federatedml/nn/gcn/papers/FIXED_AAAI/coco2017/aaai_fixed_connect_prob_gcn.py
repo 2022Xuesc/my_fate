@@ -254,8 +254,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
 
-    # category_dir = '/data/projects/fate/my_practice/dataset/coco2017/'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco2017'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco2017/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco2017'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
