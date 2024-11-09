@@ -176,7 +176,6 @@ class FedServerContext(_FedBaseContext):
 
     # 发送模型
     def send_model(self, aggregated_arrs):
-
         self.aggregator.send_aggregated_model(aggregated_arrs, suffix=self._suffix())
 
     # 接收客户端模型
@@ -234,7 +233,8 @@ def build_fitter(param: MultiLabelParam, train_data, valid_data):
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path)
 
     # Todo: 图像规模减小
-    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset='COCO')
+    train_loader, valid_loader = dataset_loader.get_loaders(batch_size, dataset='COCO',
+                                                            drop_last=True, num_workers=4)
 
     fitter = MultiLabelFitter(param, epochs, context=context)
     return fitter, train_loader, valid_loader
@@ -262,7 +262,7 @@ class SyncAggregator(object):
             degrees = [party_tuple[2] for party_tuple in recv_elements]
             self.bn_data = aggregate_bn_data(bn_tensors, degrees)
             # 聚合整个模型，flag论文也是这种聚合方式，只是degrees的生成方式变化
-            self.model = aggregate_by_labels(tensors, degrees)
+            self.model = aggregate_whole_model(tensors, degrees)
 
             LOGGER.warn(f'当前聚合轮次为:{cur_iteration}，聚合完成，准备向客户端分发模型')
 
@@ -357,10 +357,14 @@ class MultiLabelFitter(object):
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         if self.context.should_aggregate_on_epoch(epoch):
-            self.aggregate_model(epoch)
+
+            weight = 0
+            alpha = 0.3
+            for num in self._num_per_labels:
+                weight += num ** alpha
+            self.aggregate_model(epoch, weight)
 
             self._all_consumed_data_aggregated = True
-
             # 将相关指标重置为0
             self._num_data_consumed = 0
             self._num_label_consumed = 0
@@ -391,12 +395,8 @@ class MultiLabelFitter(object):
                 bn_data.append(layer.running_mean)
                 bn_data.append(layer.running_var)
 
-
-        weight_list = list(self._num_per_labels)
-        weight_list.append(self._num_data_consumed)
-
         # FedAvg聚合策略
-        agg_bn_data = self.context.do_aggregation(weight=weight_list, bn_data=bn_data,
+        agg_bn_data = self.context.do_aggregation(weight=weight, bn_data=bn_data,
                                                   device=self.param.device)
 
         # Flag聚合策略
@@ -512,4 +512,3 @@ def _init_learner(param, device='cpu'):
     scheduler = None
     # 配置自定义的调度器
     return model, scheduler, optimizer
-
