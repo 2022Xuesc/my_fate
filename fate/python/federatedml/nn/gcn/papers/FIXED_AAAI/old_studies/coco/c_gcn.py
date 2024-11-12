@@ -386,8 +386,8 @@ class GCNFitter(object):
                                                                                            adjList)
 
         # 使用非对称损失
-        self.criterion = AsymmetricLossOptimized().to(self.param.device)
-        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
+        # self.criterion = AsymmetricLossOptimized().to(self.param.device)
+        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
 
         self.start_epoch, self.end_epoch = 0, epochs
 
@@ -522,7 +522,7 @@ class GCNFitter(object):
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(output.data, target)
 
-            loss = criterion(sigmoid_func(output), target)
+            loss = criterion(output, target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
@@ -565,7 +565,7 @@ class GCNFitter(object):
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(output.data, target)
 
-                loss = criterion(sigmoid_func(output), target)
+                loss = criterion(output, target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
         mAP, _ = self.ap_meter.value()
@@ -593,11 +593,11 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     lr, lrp = param.lr, 0.1
 
     # 使用AdamW优化器
-    optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
-    # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
-    #                             lr=lr,
-    #                             momentum=0.9,
-    #                             weight_decay=1e-4)
+    # optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
+    optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
+                                lr=lr,
+                                momentum=0.9,
+                                weight_decay=1e-4)
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
