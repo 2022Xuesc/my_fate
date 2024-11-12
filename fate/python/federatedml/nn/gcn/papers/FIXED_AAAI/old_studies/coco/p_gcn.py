@@ -425,12 +425,7 @@ class GCNFitter(object):
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         if self.context.should_aggregate_on_epoch(epoch):
-            weight = 0
-            alpha = 0.3
-            for num in self._num_per_labels:
-                weight += num ** alpha
-
-            self.aggregate_model(epoch, weight)
+            self.aggregate_model(epoch)
 
             self._all_consumed_data_aggregated = True
 
@@ -455,7 +450,7 @@ class GCNFitter(object):
         metrics = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device, scheduler)
         return metrics
 
-    def aggregate_model(self, epoch, weight):
+    def aggregate_model(self, epoch, weight=None):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
         # 调用上下文执行聚合

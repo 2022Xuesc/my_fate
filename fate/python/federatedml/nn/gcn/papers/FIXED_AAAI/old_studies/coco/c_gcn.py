@@ -11,6 +11,7 @@ from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.gcn.models import *
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import AsymmetricLossOptimized
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -385,7 +386,8 @@ class GCNFitter(object):
                                                                                            adjList)
 
         # 使用非对称损失
-        self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
+        self.criterion = AsymmetricLossOptimized().to(self.param.device)
+        # self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
 
         self.start_epoch, self.end_epoch = 0, epochs
 
@@ -425,12 +427,12 @@ class GCNFitter(object):
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         if self.context.should_aggregate_on_epoch(epoch):
-            weight = 0
-            alpha = 0.3
-            for num in self._num_per_labels:
-                weight += num ** alpha
+            # weight = 0
+            # alpha = 0.3
+            # for num in self._num_per_labels:
+            #     weight += num ** alpha
 
-            self.aggregate_model(epoch, weight)
+            self.aggregate_model(epoch)
 
             self._all_consumed_data_aggregated = True
 
@@ -455,7 +457,7 @@ class GCNFitter(object):
         metrics = self.validate(valid_loader, self.model, self.criterion, epoch, self.param.device, scheduler)
         return metrics
 
-    def aggregate_model(self, epoch, weight):
+    def aggregate_model(self, epoch, weight=None):
         # 配置参数，将优化器optimizer中的参数写入到list中
         self.context.configure_aggregation_params(self.optimizer)
         # 调用上下文执行聚合
@@ -501,7 +503,7 @@ class GCNFitter(object):
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-        # sigmoid_func = torch.nn.Sigmoid()
+        sigmoid_func = torch.nn.Sigmoid()
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
@@ -520,7 +522,7 @@ class GCNFitter(object):
             # Todo: 将计算结果添加到ap_meter中
             self.ap_meter.add(output.data, target)
 
-            loss = criterion(output, target)
+            loss = criterion(sigmoid_func(output), target)
             losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 
             optimizer.zero_grad()
@@ -549,7 +551,7 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # sigmoid_func = torch.nn.Sigmoid()
+        sigmoid_func = torch.nn.Sigmoid()
         model.eval()
         self.ap_meter.reset()
 
@@ -563,7 +565,7 @@ class GCNFitter(object):
                 # Todo: 将计算结果添加到ap_meter中
                 self.ap_meter.add(output.data, target)
 
-                loss = criterion(output, target)
+                loss = criterion(sigmoid_func(output), target)
 
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
         mAP, _ = self.ap_meter.value()
@@ -581,7 +583,7 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     #  不同部分使用不同的学习率
 
     in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
-    # def resnet_c_gcn(pretrained, adjList=None, device='cpu', num_classes=80, in_channel=300, dataset='coco', t=0.4):
+
     model = resnet_c_gcn(param.pretrained, adjList=adjList,
                          device=param.device, num_classes=param.num_labels, in_channel=in_channel,
                          dataset=param.dataset, t=param.t)
@@ -591,11 +593,11 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
     lr, lrp = param.lr, 0.1
 
     # 使用AdamW优化器
-    # optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
-    optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
-                                lr=lr,
-                                momentum=0.9,
-                                weight_decay=1e-4)
+    optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp), lr=param.lr, weight_decay=1e-4)
+    # optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp),
+    #                             lr=lr,
+    #                             momentum=0.9,
+    #                             weight_decay=1e-4)
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
