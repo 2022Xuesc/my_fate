@@ -54,7 +54,8 @@ paths = [
     'AAAI/coco2017/ours',
     'AAAI/coco2017/connect_prob_standard_gcn',
     'AAAI/coco2017/fixed_prob_standard_gcn',
-    'AAAI/coco2017/fixed_connect_standard_gcn'
+    'AAAI/coco2017/fixed_connect_standard_gcn',
+    'AAAI/coco2017/fixed_connect_prob_gcn'
     # 'AAAI/coco/c_gcn_with_gloabl',
     # 'AAAI/coco/p_gcn_with_gloabl'
 ]
