@@ -26,12 +26,12 @@ WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 WITHOUT_PROB = 'fixed_connect_standard_gcn'
 
 jobid_map = {
-    # FED_AVG: '202411040840086450230',
-    # FLAG: '',
-    # FPSL: '202411040849131620180',
+    FED_AVG: '202411081213231969310',
+    FLAG: '202411091101497420520',
+    FPSL: '202411091102538632940',
     # C_GCN: '',
     # P_GCN: '',
-    OURS: '202411070650066368740',
+    # OURS: '202411070650066368740',
     # WITHOUT_STAND: '202410260435009642020',
     # WITHOUT_FIX: '202410271049537642420',
     # WITHOUT_CONNECT: '202410271047101038990',
@@ -39,7 +39,7 @@ jobid_map = {
 }
 model_map = {
     FED_AVG: create_resnet101_model,
-    # FLAG: create_resnet101_model,
+    FLAG: create_resnet101_model,
     FPSL: create_resnet101_model,
     # C_GCN: resnet_c_gcn,
     # P_GCN: p_gcn_resnet101,
@@ -162,7 +162,13 @@ for task_name in jobid_map:
         print(f"dump数据的维度: {agg_len}")
         model_len = len(list(model.parameters()))
         print(f"模型的维度: {model_len}")
-        if agg_len != model_len:
+
+        with_relation = task_name == C_GCN or task_name == P_GCN
+        if with_relation:
+            if agg_len != model_len - 1:
+                print("不匹配")
+                continue
+        elif agg_len != model_len:
             print("不匹配")
             continue
 
@@ -197,6 +203,11 @@ for task_name in jobid_map:
                 idx += 1
                 layer.running_var.data.copy_(bn_tensors[idx])
                 idx += 1
+
+        adj_path = os.path.join(cur_path, f'relation_matrix_{i}.npy')
+        if os.path.exists(adj_path):
+            model.updateA(np.load(adj_path, allow_pickle=True))
+
         # Todo: 模型加载完毕，开始进行训练
         print(f"{task_name}的模型 {i} 加载成功")
         dataset_loader = DatasetLoader(category_dir, train_path=valid_path, valid_path=valid_path, inp_name=inp_name)
@@ -252,3 +263,4 @@ for task_name in jobid_map:
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         valid_writer.writerow([i, mAP.item(), loss])
         valid_aps_writer.writerow(ap)
+

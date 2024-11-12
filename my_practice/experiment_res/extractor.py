@@ -4,10 +4,10 @@
 import os
 import shutil
 
-dir_id = "202411091102538632940"
-job_id = "202411091102538632940"
-module_name = 'multi_label_0'
-target_dir = 'AAAI/coco2017/fpsl'
+dir_id = "202411110729150240520"
+job_id = "202411110729150240520"
+module_name = 'gcn_0'
+target_dir = 'AAAI/coco2017/fixed_connect_standard_gcn'
 client_num = 10
 
 
