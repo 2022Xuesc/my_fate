@@ -594,3 +594,4 @@ def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
+
