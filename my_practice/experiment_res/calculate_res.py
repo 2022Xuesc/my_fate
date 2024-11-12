@@ -50,7 +50,9 @@ paths = [
     # 'gcn/p_gcn_fedavg'
 
     'AAAI/coco2017/ours',
-    'AAAI/coco2017/fed_avg'
+    'AAAI/coco2017/fed_avg',
+    'AAAI/coco/c_gcn_with_gloabl',
+    'AAAI/coco/p_gcn_with_gloabl'
 ]
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]

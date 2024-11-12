@@ -1,6 +1,5 @@
 # 服务器与客户端的通用逻辑
 import math
-import torch
 import torch.nn
 import torchnet.meter as tnt
 
@@ -517,7 +516,7 @@ class GCNFitter(object):
 
             lambda_dynamic = 1
             asym_loss = criterion(sigmoid_func(predicts), target)
-            overall_loss = asym_loss 
+            overall_loss = asym_loss
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[ASYM_LOSS].add(asym_loss.item())
@@ -584,8 +583,8 @@ def _init_gcn_learner(param, device='cpu', adjList=None, label_prob_vec=None):
     in_channel = 300
     # 仅仅使用初始化权重，仍要进行学习
     model = aaai_fixed_connect_standard_gcn(param.pretrained, adjList,
-                                                 device=param.device, num_classes=param.num_labels,
-                                                 in_channels=in_channel)
+                                            device=param.device, num_classes=param.num_labels,
+                                            in_channels=in_channel, needOptimize=False)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1

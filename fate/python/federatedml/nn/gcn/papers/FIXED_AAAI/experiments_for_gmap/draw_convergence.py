@@ -4,15 +4,34 @@ from pandas import Series
 import csv
 import os
 
-dataset = 'coco'
+
+def gen_legends(legends):
+    res = []
+    for legend in legends:
+        if legend == 'fed_avg':
+            res.append('FedAvg')
+        elif legend == 'fpsl':
+            res.append('FPSL')
+        elif legend == 'flag':
+            res.append('FLAG')
+        elif legend == 'c_gcn':
+            res.append('C-GCN')
+        elif legend == 'p_gcn':
+            res.append('P-GCN')
+        else:
+            res.append('Ours')
+    return res
+
+
+dataset = 'voc2012'
 base_dir = f'{dataset}_stats'
 methods = [
     'fed_avg',
     'flag',
     'fpsl',
-    # 'c_gcn',
-    # 'p_gcn',
-    # 'fixed_connect_prob_standard_gcn'
+    'c_gcn',
+    'p_gcn',
+    'fixed_connect_prob_standard_gcn'
 ]
 
 # colors = ['g', 'b', 'r', 'palegreen', 'purple', 'gold']
@@ -35,6 +54,7 @@ for method in methods:
         GmAP_list[method] = mAPs
     show_epochs = min(show_epochs, min_epoch)
 
+# show_epochs = 10
 x_series = Series(range(show_epochs))
 x_axis = 'epoch'
 
@@ -46,7 +66,8 @@ for i in range(len(methods)):
         plt.plot(x_series, Series(GmAP_list[method][0:show_epochs]))
 plt.xlabel(x_axis)
 plt.ylabel('GmAP')
-plt.legend(methods)
+
+plt.legend(gen_legends(methods))
 # plt.legend(methods[0:5] + ['ours'])
 plt.title('The relation between GmAP and total epochs.')
 
