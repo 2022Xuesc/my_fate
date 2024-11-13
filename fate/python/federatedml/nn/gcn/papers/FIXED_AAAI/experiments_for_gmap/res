@@ -48,15 +48,15 @@ w/o prob  : 80.33
 
 COCO 2017
 
-FedAvg : 
-FLAG   : 
-FPSL   : 
-C-GCN: 
-P-GCN: 
-Ours   : 
+FedAvg : 77.13
+FLAG   : 78.25
+FPSL   : 77.84
+C-GCN: 71.47
+P-GCN: 64.63
+Ours   : 82.13
 
 消融实验
-w/o stand : 
+w/o stand : 81.84
 w/o fix   : 
 w/o connect : 
 w/o prob  : 
