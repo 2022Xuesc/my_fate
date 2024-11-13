@@ -29,20 +29,20 @@ jobid_map = {
     # FED_AVG: '202411081213231969310',
     # FLAG: '202411091101497420520',
     # FPSL: '202411091102538632940',
-    # C_GCN: '',
-    # P_GCN: '',
+    C_GCN: '202411121211038188860',
+    P_GCN: '202411121149146778910',
     # OURS: '202411070650066368740',
-    WITHOUT_STAND: '202411091141333596090',
-    WITHOUT_FIX: '202411110712493709870',
-    WITHOUT_CONNECT: '202411110713346649900',
-    WITHOUT_PROB: '202411110729150240520'
+    # WITHOUT_STAND: '202411091141333596090',
+    # WITHOUT_FIX: '202411110712493709870',
+    # WITHOUT_CONNECT: '202411110713346649900',
+    # WITHOUT_PROB: '202411110729150240520'
 }
 model_map = {
     FED_AVG: create_resnet101_model,
     FLAG: create_resnet101_model,
     FPSL: create_resnet101_model,
-    # C_GCN: resnet_c_gcn,
-    # P_GCN: p_gcn_resnet101,
+    C_GCN: resnet_c_gcn,
+    P_GCN: p_gcn_resnet101,
     OURS: aaai_fixed_connect_prob_standard_gcn,
     WITHOUT_STAND: aaai_fixed_connect_prob_gcn,
     WITHOUT_FIX: aaai_connect_prob_standard_gcn,
