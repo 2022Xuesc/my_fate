@@ -8,7 +8,7 @@ import os
 def gen_legends(legends):
     res = []
     for legend in legends:
-        if legend == 'fed_avg':
+        if legend == 'fed_avg' or legend == 'fedavg':
             res.append('FedAvg')
         elif legend == 'fpsl':
             res.append('FPSL')
@@ -18,60 +18,85 @@ def gen_legends(legends):
             res.append('C-GCN')
         elif legend == 'p_gcn':
             res.append('P-GCN')
+        elif legend == 'fixed_connect_prob_gcn':
+            res.append('Ours w/o standardization')
+        elif legend == 'connect_prob_standard_gcn':
+            res.append('Ours w/o self-connectivity')
+        elif legend == 'fixed_prob_standard_gcn':
+            res.append('Ours w/o bridge module')
+        elif legend == 'fixed_connect_standard_gcn':
+            res.append('Ours w/o dynamic loss')
         else:
             res.append('Ours')
     return res
 
 
-dataset = 'coco2017'
-base_dir = f'{dataset}_stats'
-methods = [
-    'fed_avg',
-    'flag',
-    'fpsl',
-    'c_gcn',
-    'p_gcn',
-    'fixed_connect_prob_standard_gcn',
-    # 'fixed_prob_standard_gcn',
-    # 'fixed_connect_standard_gcn'
-]
-
-# colors = ['g', 'b', 'r', 'palegreen', 'purple', 'gold']
-
-GmAP_list = dict()
-
-show_epochs = 100000
-for method in methods:
-    csv_file_path = os.path.join(base_dir, f'{method}_valid.csv')
-    if not os.path.exists(csv_file_path):
-        continue
-    min_epoch = 100000
-    with open(csv_file_path, 'r') as csv_file:
-        reader_list = list(csv.DictReader(csv_file))
-        min_epoch = min(min_epoch, len(reader_list))
-        mAPs = []
-        for j in range(len(reader_list)):
-            cur_mAP = float(reader_list[j].get('mAP'))
-            mAPs.append(cur_mAP)
-        GmAP_list[method] = mAPs
-    show_epochs = min(show_epochs, min_epoch)
-
-# show_epochs = 10
-x_series = Series(range(show_epochs))
-x_axis = 'epoch'
-
-for i in range(len(methods)):
-    method = methods[i]
-    if i == len(methods) - 1:
-        plt.plot(x_series, Series(GmAP_list[method][0:show_epochs]), color='b')
+datasets = [
+    # 'voc2007',
+    # 'voc2012',
+    # 'coco',
+    'coco2017']
+for dataset in datasets:
+    base_dir = f'{dataset}_stats'
+    type = 'ablations'
+    if type == 'main':
+        # 主体实验
+        methods = [
+            'fed_avg',
+            'flag',
+            'fpsl',
+            'c_gcn',
+            'p_gcn',
+            'fixed_connect_prob_standard_gcn'
+        ] if dataset != 'coco' else [
+            'fed_avg',
+            'fpsl',
+            'c_gcn',
+            'p_gcn',
+            'fixed_connect_prob_standard_gcn'
+        ]
     else:
-        plt.plot(x_series, Series(GmAP_list[method][0:show_epochs]))
-plt.xlabel(x_axis)
-plt.ylabel('GmAP')
+        methods = [
+            'fixed_connect_prob_gcn',
+            # 'connect_prob_standard_gcn',
+            'fixed_prob_standard_gcn',
+            'fixed_connect_standard_gcn',
+            'fixed_connect_prob_standard_gcn'
+        ]
 
-plt.legend(gen_legends(methods))
-# plt.legend(methods[0:5] + ['ours'])
-plt.title('The relation between GmAP and total epochs.')
+    GmAP_list = dict()
 
-save_path = os.path.join('convergence_res', f'res_on_{dataset}.svg')
-plt.savefig(save_path, dpi=600, format='svg')
+    show_epochs = 100000
+    for method in methods:
+        csv_file_path = os.path.join(base_dir, f'{method}_valid.csv')
+
+        min_epoch = 100000
+        with open(csv_file_path, 'r') as csv_file:
+            reader_list = list(csv.DictReader(csv_file))
+            min_epoch = min(min_epoch, len(reader_list))
+            mAPs = []
+            for j in range(len(reader_list)):
+                cur_mAP = float(reader_list[j].get('mAP'))
+                mAPs.append(cur_mAP)
+            GmAP_list[method] = mAPs
+        show_epochs = min(show_epochs, min_epoch)
+
+    # show_epochs = 10
+    x_series = Series(range(show_epochs))
+    x_axis = 'epoch'
+
+    for i in range(len(methods)):
+        method = methods[i]
+        if i == len(methods) - 1:
+            plt.plot(x_series, Series(GmAP_list[method][0:show_epochs]), color='b')
+        else:
+            plt.plot(x_series, Series(GmAP_list[method][0:show_epochs]))
+    plt.xlabel(x_axis)
+    plt.ylabel('GmAP')
+
+    plt.legend(gen_legends(methods))
+    # plt.title('The relation between GmAP and total epochs.')
+
+    save_path = os.path.join(f'gmAP_convergence_res/{type}', f'res_on_{dataset}.svg')
+    plt.savefig(save_path, dpi=600, format='svg')
+    plt.close()
