@@ -11,6 +11,7 @@ from collections import OrderedDict
 from federatedml.framework.homo.blocks import aggregator, random_padding_cipher
 from federatedml.framework.homo.blocks.secure_aggregator import SecureAggregatorTransVar
 from federatedml.nn.backend.gcn.models import *
+from federatedml.nn.backend.multi_label.losses.AsymmetricLoss import AsymmetricLossOptimized
 from federatedml.nn.backend.utils.APMeter import AveragePrecisionMeter
 from federatedml.nn.backend.utils.aggregators.aggregator import *
 from federatedml.nn.backend.utils.loader.dataset_loader import DatasetLoader
@@ -253,8 +254,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/coco2017/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco2017'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -264,7 +265,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # 与服务器进行握手
     context.init()
     # 构建数据集
-    inp_name = 'coco2017_glove_word2vec.pkl'
+    inp_name = 'coco_glove_word2vec.pkl'
     batch_size = param.batch_size
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
@@ -426,6 +427,11 @@ class GCNFitter(object):
 
     def on_fit_epoch_end(self, epoch, valid_loader, valid_metrics):
         if self.context.should_aggregate_on_epoch(epoch):
+            # weight = 0
+            # alpha = 0.3
+            # for num in self._num_per_labels:
+            #     weight += num ** alpha
+
             self.aggregate_model(epoch)
 
             self._all_consumed_data_aggregated = True
@@ -595,3 +601,4 @@ def _init_gcn_learner(param, device='cpu', adjList=None):
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
+
