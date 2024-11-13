@@ -36,8 +36,8 @@ MS-COCO
 FedAvg : 75.79
 FLAG   : 54.8
 FPSL   : 76.01
-C-GCN: 重跑，记录GmAP，效果不好，感觉还是有点问题
-P-GCN: 重跑，记录GmAP，效果不好，感觉还是有点问题
+C-GCN: 71.86
+P-GCN: 57.84
 Ours   : 80.13
 
 消融实验
@@ -58,8 +58,8 @@ Ours   : 82.13
 消融实验
 w/o stand : 81.84
 w/o fix   : 
-w/o connect : 
-w/o prob  : 
+w/o connect : 81.83
+w/o prob  : 82.36
 
 
 

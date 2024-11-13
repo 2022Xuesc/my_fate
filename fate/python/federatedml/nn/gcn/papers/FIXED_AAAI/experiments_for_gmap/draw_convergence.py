@@ -23,7 +23,7 @@ def gen_legends(legends):
     return res
 
 
-dataset = 'voc2012'
+dataset = 'coco2017'
 base_dir = f'{dataset}_stats'
 methods = [
     'fed_avg',
@@ -31,7 +31,9 @@ methods = [
     'fpsl',
     'c_gcn',
     'p_gcn',
-    'fixed_connect_prob_standard_gcn'
+    'fixed_connect_prob_standard_gcn',
+    # 'fixed_prob_standard_gcn',
+    # 'fixed_connect_standard_gcn'
 ]
 
 # colors = ['g', 'b', 'r', 'palegreen', 'purple', 'gold']

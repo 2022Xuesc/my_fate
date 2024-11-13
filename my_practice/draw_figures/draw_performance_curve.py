@@ -4,15 +4,15 @@ from pandas import Series
 import csv
 import os
 
-dataset = 'coco'
+dataset = 'coco2017'
 base_dir = f'../experiment_res/AAAI/{dataset}'
 methods = [
-    'fedavg',
-    # 'flag',
+    'fed_avg',
+    'flag',
     'fpsl',
     'c_gcn',
     'p_gcn',
-    'fixed_connect_prob_standard_gcn']
+    'ours']
 
 # colors = ['g', 'b', 'r', 'palegreen', 'purple', 'gold']
 
