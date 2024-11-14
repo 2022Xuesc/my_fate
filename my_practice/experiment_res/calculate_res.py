@@ -58,8 +58,8 @@ paths = [
     # 'AAAI/coco2017/fixed_connect_prob_gcn',
     # 'AAAI/coco2017/c_gcn',
     # 'AAAI/coco2017/p_gcn',
-    'AAAI/coco/c_gcn_with_gloabl',
-    'AAAI/coco/p_gcn_with_gloabl'
+    'AAAI/coco/c_gcn',
+    'AAAI/coco/p_gcn'
 ]
 
 for path in paths:
