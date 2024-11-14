@@ -4,10 +4,10 @@
 import os
 import shutil
 
-dir_id = "202411121149146778910"
-job_id = "202411121149146778910"
+dir_id = "202411131022299079090"
+job_id = "202411131022299079090"
 module_name = 'gcn_0'
-target_dir = 'AAAI/coco2017/p_gcn'
+target_dir = 'AAAI/coco2017/connect_prob_standard_gcn'
 client_num = 10
 
 
