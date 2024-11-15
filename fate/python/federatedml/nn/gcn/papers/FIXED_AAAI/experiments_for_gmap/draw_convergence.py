@@ -32,13 +32,14 @@ def gen_legends(legends):
 
 
 datasets = [
-    # 'voc2007',
-    # 'voc2012',
-    # 'coco',
+    'voc2007',
+    'voc2012',
+    'coco',
     'coco2017']
 for dataset in datasets:
     base_dir = f'{dataset}_stats'
-    type = 'ablations'
+    # type = 'ablations'
+    type = 'main'
     if type == 'main':
         # 主体实验
         methods = [
@@ -58,7 +59,7 @@ for dataset in datasets:
     else:
         methods = [
             'fixed_connect_prob_gcn',
-            # 'connect_prob_standard_gcn',
+            'connect_prob_standard_gcn',
             'fixed_prob_standard_gcn',
             'fixed_connect_standard_gcn',
             'fixed_connect_prob_standard_gcn'
@@ -83,7 +84,7 @@ for dataset in datasets:
 
     # show_epochs = 10
     x_series = Series(range(show_epochs))
-    x_axis = 'epoch'
+    x_axis = 'agg_iter'
 
     for i in range(len(methods)):
         method = methods[i]
