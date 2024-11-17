@@ -30,10 +30,10 @@ jobid_map = {
     # FLAG: '202411091101497420520',
     # FPSL: '202411091102538632940',
     #C_GCN: '202411121211038188860',
-    #P_GCN: '202411121149146778910',
+    P_GCN: '202411161045471466580',
     # OURS: '202411070650066368740',
     # WITHOUT_STAND: '202411091141333596090',
-    WITHOUT_FIX: '202411131022299079090',
+    # WITHOUT_FIX: '202411131022299079090',
     # WITHOUT_CONNECT: '202411110713346649900',
     # WITHOUT_PROB: '202411110729150240520'
 }
@@ -121,7 +121,7 @@ criterion = AsymmetricLossOptimized().to(device)
 
 cur_dir_name = os.getcwd()
 my_writer = MyWriter(dir_name=cur_dir_name, stats_name='coco2017_stats')
-
+print('hello')
 for task_name in jobid_map:
     is_multi_label = task_name.startswith('f') and not task_name.startswith("fixed")
     jobid = jobid_map[task_name]
@@ -263,4 +263,5 @@ for task_name in jobid_map:
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         valid_writer.writerow([i, mAP.item(), loss])
         valid_aps_writer.writerow(ap)
+
 
