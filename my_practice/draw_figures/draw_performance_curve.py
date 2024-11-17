@@ -34,7 +34,7 @@ def gen_legends(legends):
 datasets = ['voc2007', 'voc2012', 'coco', 'coco2017']
 for dataset in datasets:
     base_dir = f'../experiment_res/AAAI/{dataset}'
-    type = 'ablations'
+    type = 'main'
     if type == 'main':
         # 主体实验
         methods = [
@@ -105,7 +105,7 @@ for dataset in datasets:
             plt.plot(x_series, Series(AmAP_list[method][0:show_epochs]))
     plt.xlabel(x_axis)
     plt.ylabel('AmAP')
-    plt.ylim(largest - 10,largest)
+    # plt.ylim(largest - 10,largest)
     plt.legend(gen_legends(methods))
     # plt.title('The relation between AmAP and total epochs.')
 
