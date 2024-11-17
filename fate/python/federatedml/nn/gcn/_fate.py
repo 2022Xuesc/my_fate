@@ -253,8 +253,8 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # param.lr = 0.0001
     # param.aggregate_every_n_epoch = 1
 
-    category_dir = '/data/projects/fate/my_practice/dataset/coco/'
-    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco'
+    category_dir = '/data/projects/fate/my_practice/dataset/coco2017/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/coco2017'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -264,7 +264,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     # 与服务器进行握手
     context.init()
     # 构建数据集
-    inp_name = 'coco_glove_word2vec.pkl'
+    inp_name = 'coco2017_glove_word2vec.pkl'
     batch_size = param.batch_size
     dataset_loader = DatasetLoader(category_dir, train_data.path, valid_data.path, inp_name=inp_name)
 
@@ -385,6 +385,7 @@ class GCNFitter(object):
                                                                                            adjList)
 
         # 使用非对称损失
+        # self.criterion = AsymmetricLossOptimized().to(self.param.device)
         self.criterion = torch.nn.MultiLabelSoftMarginLoss().to(self.param.device)
 
         self.start_epoch, self.end_epoch = 0, epochs
@@ -496,7 +497,7 @@ class GCNFitter(object):
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-        # sigmoid_func = torch.nn.Sigmoid()
+        sigmoid_func = torch.nn.Sigmoid()
 
         for train_step, ((features, inp), target) in enumerate(train_loader):
             # features是图像特征，inp是输入的标签相关性矩阵
@@ -544,7 +545,7 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # sigmoid_func = torch.nn.Sigmoid()
+        sigmoid_func = torch.nn.Sigmoid()
         model.eval()
         self.ap_meter.reset()
 
@@ -574,10 +575,12 @@ class GCNFitter(object):
 def _init_gcn_learner(param, device='cpu', adjList=None):
     # Todo: 关于这里的超参数设定以及GCN的内部实现，遵循原论文
     #  不同部分使用不同的学习率
-    in_channel = 2048  # in_channel是标签嵌入向量的初始（输入）维度
 
-    model = p_gcn_resnet101(param.pretrained, adjList=adjList,
-                            device=param.device, num_classes=param.num_labels, in_channel=in_channel)
+    in_channel = 300  # in_channel是标签嵌入向量的初始（输入）维度
+
+    model = resnet_c_gcn(param.pretrained, adjList=adjList,
+                         device=param.device, num_classes=param.num_labels, in_channel=in_channel,
+                         dataset=param.dataset, t=param.t)
     gcn_optimizer = None
 
     # 注意，这里的lrp设置为0.1
