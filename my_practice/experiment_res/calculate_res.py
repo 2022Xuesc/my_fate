@@ -51,15 +51,15 @@ paths = [
     # 'AAAI/coco2017/fed_avg',
     # 'AAAI/coco2017/flag',
     # 'AAAI/coco2017/fpsl',
-    # 'AAAI/coco2017/ours',
+    'AAAI/coco2017/fixed_connect_prob_standard_gcn',
     # 'AAAI/coco2017/connect_prob_standard_gcn',
     # 'AAAI/coco2017/fixed_prob_standard_gcn',
     # 'AAAI/coco2017/fixed_connect_standard_gcn',
     # 'AAAI/coco2017/fixed_connect_prob_gcn',
     'AAAI/coco2017/connect_prob_standard_gcn',
-    # 'AAAI/coco2017/p_gcn',
-    'AAAI/coco/c_gcn',
-    'AAAI/coco/p_gcn'
+    'AAAI/coco2017/p_gcn_new',
+    # 'AAAI/coco/c_gcn',
+    # 'AAAI/coco/p_gcn'
 ]
 
 for path in paths:
