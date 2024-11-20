@@ -36,8 +36,8 @@ MS-COCO
 FedAvg : 75.79
 FLAG   : 54.8
 FPSL   : 76.01
-C-GCN: 71.86
-P-GCN: 57.84
+C-GCN: 80.99
+P-GCN: 81.06
 Ours   : 80.13
 
 消融实验
@@ -51,8 +51,8 @@ COCO 2017
 FedAvg : 77.13
 FLAG   : 78.25
 FPSL   : 77.84
-C-GCN: 71.47
-P-GCN: 64.63
+C-GCN: 77.69
+P-GCN: 82.13
 Ours   : 82.13
 
 消融实验
