@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np
 
 import json
@@ -12,6 +13,7 @@ def get_sample_size(data_dir):
 
 
 client_nums = 10
+mpl.rcParams['font.family'] = 'SimHei'
 
 dataset = "VOC 2012"
 # client_path = '/home/klaus125/research/fate/my_practice/dataset/coco/data/guest/train'
@@ -60,3 +62,4 @@ for dataset in datasets:
     
     plt.savefig(f'{save_dir}/{dataset}_dataset_distribution.svg', dpi=600, format='svg')
     plt.close()
+
