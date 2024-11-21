@@ -59,3 +59,4 @@ for dataset in datasets:
     plt.ylabel('客户端数据集大小（log10）')
     
     plt.savefig(f'{save_dir}/{dataset}_dataset_distribution.svg', dpi=600, format='svg')
+    plt.close()
