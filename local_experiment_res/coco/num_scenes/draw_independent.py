@@ -18,7 +18,7 @@ def gen_legends(legends):
 num_scenes = [5, 10, 15, 20]
 for num_scene in num_scenes:
     base_dir = '.'
-    methods = ['.', 'kmeans']
+    methods = ['.','kmeans']
     mAP_list = dict()
 
     show_epochs = 100000
@@ -48,10 +48,10 @@ for num_scene in num_scenes:
         path = os.path.join(base_dir, method)
         if not os.path.exists(path):
             continue
-        if i == len(methods) - 1:
-            plt.plot(x_series, Series(mAP_list[method][0][0:show_epochs]), color='b')
-        else:
-            plt.plot(x_series, Series(mAP_list[method][0][0:show_epochs]))
+        # if i == len(methods) - 1:
+        #     plt.plot(x_series, Series(mAP_list[method][0][0:show_epochs]), color='b')
+        # else:
+        plt.plot(x_series, Series(mAP_list[method][0][0:show_epochs]))
     plt.xlabel(x_axis)
     plt.ylabel('mAP')
     # plt.ylim(largest - 10,largest)
