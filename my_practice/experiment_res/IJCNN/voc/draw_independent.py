@@ -15,7 +15,12 @@ def gen_legends(basic, legends):
     return res
 
 
-experiments = ['c_gcn', 'p_gcn', 'salgl', 'kmeans']
+experiments = [
+    # 'c_gcn',
+    'p_gcn',
+    # 'salgl',
+    # 'kmeans'
+]
 for experiment in experiments:
     base_dir = '.'
     methods = ['', '_without_agg']
