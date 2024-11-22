@@ -6,7 +6,7 @@ import shutil
 
 dir_id = "202411200631503733840"
 job_id = "202411200631503733840"
-module_name = 'gcn_0'
+module_name = 'multi_label_0'
 target_dir = 'AAAI/coco2017/fed_avg_new'
 client_num = 10
 
@@ -96,6 +96,7 @@ def mv_stats(role, role_ids, target_dir):
 mv_stats('arbiter', 999, target_dir)
 mv_stats('guest', 10, target_dir)
 mv_stats('host', list(range(1, client_num)), target_dir)
+
 
 
 
