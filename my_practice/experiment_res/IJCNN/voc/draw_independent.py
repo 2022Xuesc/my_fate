@@ -9,10 +9,9 @@ def gen_legends(basic, legends):
     res = []
     for legend in legends:
         if legend == '':
-            
-            res.append(f'{basic} w/o co-occurrence')
-        else:
             res.append(basic)
+        else:
+            res.append(f'{basic} w/o co-occurrence')
     return res
 
 
@@ -24,7 +23,7 @@ experiments = [
 ]
 for experiment in experiments:
     base_dir = '.'
-    methods = [ '_without_agg','']
+    methods = ['', '_without_agg']
     AmAP_list = dict()
 
     show_epochs = 100000
