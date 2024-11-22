@@ -17,7 +17,7 @@ def calculate_stats(float_list):
 # for path in all_paths:
 #     if os.path.isdir(path):
 #         paths.append(path)
-paths = ['c_gcn_without_agg', 'p_gcn_without_agg', 'salgl']
+paths = ['p_gcn', 'p_gcn_without_agg', 'salgl']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):
