@@ -34,7 +34,7 @@ def gen_legends(legends):
 datasets = ['voc2007', 'voc2012', 'coco', 'coco2017']
 for dataset in datasets:
     base_dir = f'../experiment_res/AAAI/{dataset}'
-    type = 'main'
+    type = 'ablations'
     if type == 'main':
         # 主体实验
         methods = [
@@ -94,6 +94,13 @@ for dataset in datasets:
     x_series = Series(range(show_epochs))
     x_axis = 'epoch'
 
+    fig, ax = plt.subplots()
+
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.xaxis.set_major_formatter(plt.FormatStrFormatter('%d'))
+
+    plt.tick_params(labelsize=12)
+
     for i in range(len(methods)):
         method = methods[i]
         path = os.path.join(base_dir, method)
@@ -103,10 +110,10 @@ for dataset in datasets:
             plt.plot(x_series, Series(AmAP_list[method][0:show_epochs]), color='b')
         else:
             plt.plot(x_series, Series(AmAP_list[method][0:show_epochs]))
-    plt.xlabel(x_axis)
-    plt.ylabel('AmAP')
+    plt.xlabel(x_axis,fontsize=13)
+    plt.ylabel('amAP',fontsize=13)
     # plt.ylim(largest - 10,largest)
-    plt.legend(gen_legends(methods))
+    plt.legend(gen_legends(methods),fontsize=12)
     # plt.title('The relation between AmAP and total epochs.')
 
     save_path = os.path.join(f'amap_convergence_res/{type}', f'res_on_{dataset}.svg')

@@ -48,7 +48,8 @@ paths = [
 
     # 'gcn/c_gcn',
     # 'gcn/p_gcn_fedavg'
-    # 'AAAI/coco2017/fed_avg',
+    'AAAI/coco2017/fed_avg',
+    'AAAI/coco2017/fed_avg_new',
     # 'AAAI/coco2017/flag',
     # 'AAAI/coco2017/fpsl',
     # 'AAAI/coco2017/fixed_connect_prob_standard_gcn',
@@ -62,8 +63,8 @@ paths = [
     # 'AAAI/coco/c_gcn',
     # 'AAAI/coco/p_gcn'
     
-    'IJCNN/voc/p_gcn',
-    'IJCNN/voc/p_gcn_without_agg'
+    # 'IJCNN/voc/p_gcn',
+    # 'IJCNN/voc/p_gcn_without_agg'
     
     
     

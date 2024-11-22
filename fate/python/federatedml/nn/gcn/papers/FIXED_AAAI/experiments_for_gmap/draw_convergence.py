@@ -19,15 +19,15 @@ def gen_legends(legends):
         elif legend == 'p_gcn':
             res.append('P-GCN')
         elif legend == 'fixed_connect_prob_gcn':
-            res.append('Ours w/o standardization')
+            res.append('FML-DGCN w/o standardization')
         elif legend == 'connect_prob_standard_gcn':
-            res.append('Ours w/o self-connectivity')
+            res.append('FML-DGCN w/o self-connectivity')
         elif legend == 'fixed_prob_standard_gcn':
-            res.append('Ours w/o bridge module')
+            res.append('FML-DGCN w/o bridge module')
         elif legend == 'fixed_connect_standard_gcn':
-            res.append('Ours w/o dynamic loss')
+            res.append('FML-DGCN w/o dynamic loss')
         else:
-            res.append('Ours')
+            res.append('FML-DGCN')
     return res
 
 
@@ -35,11 +35,12 @@ datasets = [
     'voc2007',
     'voc2012',
     'coco',
-    'coco2017']
+    'coco2017'
+]
 for dataset in datasets:
     base_dir = f'{dataset}_stats'
-    # type = 'ablations'
-    type = 'main'
+    type = 'ablations'
+    # type = 'main'
     if type == 'main':
         # 主体实验
         methods = [
@@ -86,16 +87,23 @@ for dataset in datasets:
     x_series = Series(range(show_epochs))
     x_axis = 'agg_iter'
 
+    fig, ax = plt.subplots()
+
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.xaxis.set_major_formatter(plt.FormatStrFormatter('%d'))
+
+    plt.tick_params(labelsize=12)
+
     for i in range(len(methods)):
         method = methods[i]
         if i == len(methods) - 1:
             plt.plot(x_series, Series(GmAP_list[method][0:show_epochs]), color='b')
         else:
             plt.plot(x_series, Series(GmAP_list[method][0:show_epochs]))
-    plt.xlabel(x_axis)
-    plt.ylabel('GmAP')
+    plt.xlabel(x_axis, fontsize=13)
+    plt.ylabel('GmAP', fontsize=13)
 
-    plt.legend(gen_legends(methods))
+    plt.legend(gen_legends(methods), fontsize=12)
     # plt.title('The relation between GmAP and total epochs.')
 
     save_path = os.path.join(f'gmAP_convergence_res/{type}', f'res_on_{dataset}.svg')
