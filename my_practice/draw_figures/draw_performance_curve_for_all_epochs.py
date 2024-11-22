@@ -19,15 +19,15 @@ def gen_legends(legends):
         elif legend == 'p_gcn':
             res.append('P-GCN')
         elif legend == 'fixed_connect_prob_gcn':
-            res.append('Ours w/o standardization')
+            res.append('FML-DGCN w/o standardization')
         elif legend == 'connect_prob_standard_gcn':
-            res.append('Ours w/o self-connectivity')
+            res.append('FML-DGCN w/o self-connectivity')
         elif legend == 'fixed_prob_standard_gcn':
-            res.append('Ours w/o bridge module')
+            res.append('FML-DGCN w/o bridge module')
         elif legend == 'fixed_connect_standard_gcn':
-            res.append('Ours w/o dynamic loss')
+            res.append('FML-DGCN w/o dynamic loss')
         else:
-            res.append('Ours')
+            res.append('FML-DGCN')
     return res
 
 
@@ -96,6 +96,13 @@ for dataset in datasets:
     # x_series = Series(range(show_epochs))
     x_axis = 'epoch'
 
+    fig, ax = plt.subplots()
+
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.xaxis.set_major_formatter(plt.FormatStrFormatter('%d'))
+
+    plt.tick_params(labelsize=12)
+
     for i in range(len(methods)):
         method = methods[i]
         path = os.path.join(base_dir, method)
@@ -106,9 +113,9 @@ for dataset in datasets:
             plt.plot(x_series, Series(AmAP_list[method]), color='b')
         else:
             plt.plot(x_series, Series(AmAP_list[method]))
-    plt.xlabel(x_axis)
-    plt.ylabel('AmAP')
-    plt.legend(gen_legends(methods))
+    plt.xlabel(x_axis,fontsize=13)
+    plt.ylabel('amAP',fontsize=13)
+    plt.legend(gen_legends(methods),fontsize=12)
     # plt.title('The relation between AmAP and total epochs.')
 
     save_path = os.path.join(f'amap_convergence_res/{type}_for_all_epochs', f'res_on_{dataset}.svg')
