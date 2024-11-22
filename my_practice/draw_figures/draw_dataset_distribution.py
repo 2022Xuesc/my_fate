@@ -22,7 +22,7 @@ datasets = ['VOC 2007', 'VOC 2012', 'COCO 2014', 'COCO 2017']
 all_samples = [[4500, 107, 27, 19, 226, 21, 55, 10, 40, 6],
                [4853, 30, 62, 16, 292, 152, 81, 16, 52, 163],
                [76469, 630, 949, 759, 500, 1051, 601, 658, 178, 286],
-               [76469, 630, 949, 759, 500, 1051, 601, 658, 178, 286]]
+               [109186, 415, 2294, 1048, 1198, 1501, 154, 768, 182, 520]]
 
 idx = 0
 for dataset in datasets:
@@ -34,7 +34,7 @@ for dataset in datasets:
         server_path = '/data/projects/dataset/clustered_voc2012'
     else:
         server_path = '/data/projects/dataset/coco2017/clustered_dataset'
-    save_dir = 'clusters_distribution'
+    save_dir = 'new_distribution'
 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -65,8 +65,8 @@ for dataset in datasets:
         plt.text(i, v + 0.03, str(samples[i]), ha='center')
 
     # plt.title(f'Distribution of {dataset} datasets among clients')
-    # plt.ylabel('客户端数据集大小（log10）', fontproperties=font)
-    plt.ylabel('The size of the client dataset(log10)')
+    plt.ylabel('客户端数据集大小（log10）', fontproperties=font)
+    # plt.ylabel('The size of the client dataset(log10)')
 
     plt.savefig(f'{save_dir}/{dataset}_dataset_distribution.svg', dpi=600, format='svg')
     plt.close()
