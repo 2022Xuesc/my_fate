@@ -39,8 +39,8 @@ datasets = [
 ]
 for dataset in datasets:
     base_dir = f'{dataset}_stats'
-    type = 'ablations'
-    # type = 'main'
+    # type = 'ablations'
+    type = 'main'
     if type == 'main':
         # 主体实验
         methods = [
