@@ -19,15 +19,15 @@ def gen_legends(legends):
         elif legend == 'p_gcn':
             res.append('P-GCN')
         elif legend == 'fixed_connect_prob_gcn':
-            res.append('Ours w/o standardization')
+            res.append('FML-DGCN w/o standardization')
         elif legend == 'connect_prob_standard_gcn':
-            res.append('Ours w/o self-connectivity')
+            res.append('FML-DGCN w/o self-connectivity')
         elif legend == 'fixed_prob_standard_gcn':
-            res.append('Ours w/o bridge module')
+            res.append('FML-DGCN w/o bridge module')
         elif legend == 'fixed_connect_standard_gcn':
-            res.append('Ours w/o dynamic loss')
+            res.append('FML-DGCN w/o dynamic loss')
         else:
-            res.append('Ours')
+            res.append('FML-DGCN')
     return res
 
 

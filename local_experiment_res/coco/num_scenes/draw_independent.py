@@ -9,9 +9,9 @@ def gen_legends(legends):
     res = []
     for legend in legends:
         if legend == '.':
-            res.append('entropy')
+            res.append('Entropy')
         else:
-            res.append('mini-batch k-means')
+            res.append('Mini-batch k-means')
     return res
 
 
@@ -43,6 +43,13 @@ for num_scene in num_scenes:
     x_series = Series(range(show_epochs))
     x_axis = 'epoch'
 
+    fig, ax = plt.subplots()
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.xaxis.set_major_formatter(plt.FormatStrFormatter('%d'))
+
+    plt.tick_params(labelsize=12)
+
+
     for i in range(len(methods)):
         method = methods[i]
         path = os.path.join(base_dir, method)
@@ -52,10 +59,10 @@ for num_scene in num_scenes:
         #     plt.plot(x_series, Series(mAP_list[method][0][0:show_epochs]), color='b')
         # else:
         plt.plot(x_series, Series(mAP_list[method][0][0:show_epochs]))
-    plt.xlabel(x_axis)
-    plt.ylabel('mAP')
+    plt.xlabel(x_axis,fontsize=13)
+    plt.ylabel('mAP',fontsize=13)
     # plt.ylim(largest - 10,largest)
-    plt.legend(gen_legends(methods))
+    plt.legend(gen_legends(methods),fontsize=12)
     # plt.title('The relation between AmAP and total epochs.')
 
     save_path = os.path.join(f'map_convergence_res', f'res_{num_scene}.svg')
