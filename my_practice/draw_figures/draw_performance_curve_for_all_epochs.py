@@ -31,7 +31,11 @@ def gen_legends(legends):
     return res
 
 
-datasets = ['voc2007', 'voc2012', 'coco', 'coco2017']
+datasets = [
+    'voc2007', 'voc2012',
+    'coco', 
+    'coco2017'
+]
 for dataset in datasets:
     base_dir = f'../experiment_res/AAAI/{dataset}'
     type = 'main'

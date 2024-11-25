@@ -62,8 +62,8 @@ paths = [
     # 'AAAI/coco2017/p_gcn',
     'AAAI/coco/c_gcn',
     'AAAI/coco/p_gcn',
-    # 'AAAI/coco/c_gcn_bk',
-    # 'AAAI/coco/p_gcn_bk',
+    'AAAI/coco/c_gcn_new',
+    'AAAI/coco/p_gcn_new',
     
     # 'IJCNN/voc/p_gcn',
     # 'IJCNN/voc/p_gcn_without_agg'
