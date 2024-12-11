@@ -112,7 +112,9 @@ def add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_chan
 
 
 def origin_add_gcn(pretrained, device='cpu', num_classes=80):
-    model = torch_models.resnet101(pretrained)
+    # model = torch_models.resnet101(pretrained)
+    model = torch_models.resnet101(False)
+    model.load_state_dict(torch.load('/data/projects/models/resnet101-init.pth'))
     model = ORIGIN_ADD_GCN(model, num_classes=num_classes)
     return model.to(device)
 
