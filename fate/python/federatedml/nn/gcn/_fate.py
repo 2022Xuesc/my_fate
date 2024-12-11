@@ -559,3 +559,4 @@ def _init_gcn_learner(param):
 
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer
+
