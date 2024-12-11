@@ -39,6 +39,7 @@ from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.fixed_connect_standard_
 from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.fixed_connect_standard_gcn_for_coco import \
     AAAI_FIXED_CONNECT_STANDARD_GCN_FOR_COCO
 from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.fixed_prob_standard_gcn import AAAI_FIXED_PROB_STANDARD_GCN
+from federatedml.nn.backend.gcn.models.papers.AAAI_FIXED.origin_add_gcn import ORIGIN_ADD_GCN
 from federatedml.nn.backend.gcn.models.papers.IJCNN.Agg_SALGL.resnet_agg_salgl import ResnetAggSalgl
 from federatedml.nn.backend.gcn.models.papers.IJCNN.GCN.c_gcn import ResnetCGCN
 from federatedml.nn.backend.gcn.models.papers.IJCNN.GCN.p_gcn import ResnetPGCN
@@ -107,6 +108,12 @@ def add_gcn_resnet101(pretrained, adjList, device='cpu', num_classes=80, in_chan
                       out_channels=1024, needOptimize=True):
     model = torch_models.resnet101(pretrained)
     model = ADD_GCN(model, num_classes, in_channels, out_channels, adjList, needOptimize)
+    return model.to(device)
+
+
+def origin_add_gcn(pretrained, device='cpu', num_classes=80):
+    model = torch_models.resnet101(pretrained)
+    model = ORIGIN_ADD_GCN(model, num_classes=num_classes)
     return model.to(device)
 
 
@@ -411,4 +418,3 @@ def aaai_connect_prob_standard_gcn(pretrained, adjList, device='cpu', num_classe
     model = AAAI_CONNECT_PROB_STANDARD_GCN(model, num_classes, in_channels, out_channels, adjList,
                                            isVOC)
     return model.to(device)
-

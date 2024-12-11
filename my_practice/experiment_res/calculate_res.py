@@ -41,7 +41,7 @@ paths = [
     # 'AAAI/coco/add_standard_residual_keep_static_gcn',
     # 'AAAI/coco/add_residual_keep_static_gcn',
     # 'AAAI/coco/fixed_connect_standard_gcn',
-    # 'AAAI/coco/fixed_connect_prob_standard_gcn',
+    'AAAI/coco/fixed_connect_prob_standard_gcn',
     # 'AAAI/coco/fixed_connect_prob_add_gcn',
     # 'AAAI/coco/connect_prob_standard_gcn',
     # 'AAAI/coco/fixed_prob_standard_gcn',
@@ -64,6 +64,7 @@ paths = [
     'AAAI/coco/p_gcn',
     'AAAI/coco/c_gcn_new',
     'AAAI/coco/p_gcn_new',
+    'AAAI/coco/latest_ours'
     
     # 'IJCNN/voc/p_gcn',
     # 'IJCNN/voc/p_gcn_without_agg'

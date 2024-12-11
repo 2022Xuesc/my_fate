@@ -248,15 +248,15 @@ def build_aggregator(param: GCNParam, init_iteration=0):
 
 def build_fitter(param: GCNParam, train_data, valid_data):
     # Todo: [WARN]
-    param.batch_size = 2
-    param.max_iter = 1000
-    param.num_labels = 20
-    param.device = 'cuda:0'
-    param.lr = 0.0001
-    param.aggregate_every_n_epoch = 1
+    # param.batch_size = 2
+    # param.max_iter = 1000
+    # param.num_labels = 20
+    # param.device = 'cuda:0'
+    # param.lr = 0.0001
+    # param.aggregate_every_n_epoch = 1
 
-    # category_dir = '/data/projects/fate/my_practice/dataset/voc_expanded/'
-    category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc_expanded'
+    category_dir = '/data/projects/fate/my_practice/dataset/voc2012/'
+    # category_dir = '/home/klaus125/research/fate/my_practice/dataset/voc2012'
 
     epochs = param.aggregate_every_n_epoch * param.max_iter
     context = FedClientContext(
@@ -265,7 +265,7 @@ def build_fitter(param: GCNParam, train_data, valid_data):
     )
     # 与服务器进行握手
     context.init()
-    inp_name = 'voc_expanded_glove_word2vec.pkl'
+    inp_name = 'voc2012_glove_word2vec.pkl'
     # 构建数据集
 
     batch_size = param.batch_size
@@ -346,7 +346,6 @@ class GCNFitter(object):
         self.context = context
         self.label_mapping = label_mapping
 
-        # Todo: add_gcn不需要adjList
         self.model, self.scheduler, self.optimizer, self.gcn_optimizer = _init_gcn_learner(self.param)
 
         # 使用非对称损失
@@ -496,6 +495,7 @@ class GCNFitter(object):
 
             losses[OVERALL_LOSS_KEY].add(overall_loss.item())
             losses[ASYM_LOSS].add(asym_loss.item())
+            # losses[DYNAMIC_ADJ_LOSS].add(dynamic_adj_loss.item())
 
             optimizer.zero_grad()
 
@@ -518,7 +518,7 @@ class GCNFitter(object):
         OBJECTIVE_LOSS_KEY = 'Objective Loss'
         losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                               (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-        # sigmoid_func = torch.nn.Sigmoid()
+
         model.eval()
         self.ap_meter.reset()
 
@@ -548,14 +548,11 @@ class GCNFitter(object):
 # Todo: 相关性矩阵初始化 + 优化
 def _init_gcn_learner(param):
     # 仅仅使用初始化权重，仍要进行学习
-    model = origin_add_gcn(param.pretrained, device=param.device, num_classes=param.num_labels)
+    model = origin_add_gcn(param.pretrained,
+                           device=param.device, num_classes=param.num_labels)
     gcn_optimizer = None
 
     lr, lrp = param.lr, 0.1
-    # optimizer = torch.optim.AdamW(model.get_config_optim(lr=lr, lrp=lrp),
-    #                               lr=lr,
-    #                               weight_decay=1e-4)
     optimizer = torch.optim.SGD(model.get_config_optim(lr=lr, lrp=lrp), lr=lr, momentum=0.9, weight_decay=1e-4)
-
     scheduler = None
     return model, scheduler, optimizer, gcn_optimizer

@@ -29,7 +29,7 @@ dataset_dir = '/home/klaus125/research/dataset/VOCdevkit/VOC2012/ImageSets/Main'
 types = ['train', 'val']
 categories = None
 with open(category_dir, 'r', encoding='utf-8') as file:
-    categories = json.load(file)
+    categories = json.load(file)    
 
 for type in types:
     # 读取训练集/验证集中的每个图像，存储到map中，对应一个长度为20的标签向量
@@ -55,5 +55,5 @@ for type in types:
                 print("Found you!")
     # Todo: 将该类型的image_ids进行持久化
     target_image_id_file = os.path.join('.', f"{type}_full_image_id.json")
-    with open(target_image_id_file, 'w') as json_file:
-        json.dump(image_ids, json_file)
+    # with open(target_image_id_file, 'w') as json_file:
+    #     json.dump(image_ids, json_file)
