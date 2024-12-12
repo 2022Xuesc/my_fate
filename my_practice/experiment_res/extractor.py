@@ -4,10 +4,10 @@
 import os
 import shutil
 
-dir_id = "202412110819260283040"
-job_id = "202412110819260283040"
+dir_id = "202412111432134137130"
+job_id = "202412111432134137130"
 module_name = 'gcn_0'
-target_dir = 'AAAI/voc2012/add_gcn_new'
+target_dir = 'AAAI/voc2007/add_gcn_large_lr'
 client_num = 10
 
 
