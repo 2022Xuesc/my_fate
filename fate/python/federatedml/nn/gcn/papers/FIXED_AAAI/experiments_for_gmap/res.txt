@@ -62,11 +62,8 @@ w/o connect : 81.83
 w/o prob  : 82.36
 
 
-
-check一下每种方法的正确性：如果adjList不作为参数优化，则应该初始化给定
-不论是否优化，相关性矩阵都在的
-FedAvg : ok
-FLAG   : ok
-FPSL   : ok
-C-GCN  : 
-P-GCN  : 
+ADD_GCN
+voc2007: 90.66
+voc2012: 90.13
+coco2014: 
+coco2017: 
