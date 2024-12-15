@@ -24,18 +24,20 @@ WITHOUT_STAND = 'fixed_connect_prob_gcn'
 WITHOUT_FIX = 'connect_prob_standard_gcn'
 WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 WITHOUT_PROB = 'fixed_connect_standard_gcn'
+ADD_GCN = 'add_gcn'
 
 jobid_map = {
     # FED_AVG: '202411040840086450230',
     # FLAG: '',
     # FPSL: '202411040849131620180',
-    C_GCN: '202411150402228891010',
-    P_GCN: '202411150838445755770',
+    # C_GCN: '202411150402228891010',
+    # P_GCN: '202411150838445755770',
     # OURS: '202410260433398215450',
     # WITHOUT_STAND: '202410260435009642020',
     # WITHOUT_FIX: '202410271049537642420',
     # WITHOUT_CONNECT: '202410271047101038990',
     # WITHOUT_PROB: '202410240603464585480'
+    ADD_GCN: '202412120602515916690'
 }
 model_map = {
     FED_AVG: create_resnet101_model,
@@ -47,7 +49,8 @@ model_map = {
     WITHOUT_STAND: aaai_fixed_connect_prob_gcn,
     WITHOUT_FIX: aaai_connect_prob_standard_gcn,
     WITHOUT_CONNECT: aaai_fixed_prob_standard_gcn,
-    WITHOUT_PROB: aaai_fixed_connect_standard_gcn
+    WITHOUT_PROB: aaai_fixed_connect_standard_gcn,
+    ADD_GCN: origin_add_gcn
 }
 
 # 1个入参，两个返回值：1
@@ -97,6 +100,10 @@ config_map = {
         "in_channels": 300,
         "argument_and_return_type": 2
     },
+    ADD_GCN: {
+        "in_channels": -1,
+        "argument_and_return_type": 1
+    }
 }
 # Todo: 创建一个模型骨架，然后替换其参数
 
@@ -145,7 +152,7 @@ for task_name in jobid_map:
         if file.startswith(file_prefix):
             cnt += 1
     in_channel = config_map[task_name]["in_channels"]
-    if is_multi_label:
+    if is_multi_label or task_name == ADD_GCN:
         model = model_map[task_name](pretrained, device, num_labels)
     else:
         model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel)

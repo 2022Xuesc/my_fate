@@ -41,7 +41,7 @@ paths = [
     # 'AAAI/coco/add_standard_residual_keep_static_gcn',
     # 'AAAI/coco/add_residual_keep_static_gcn',
     # 'AAAI/coco/fixed_connect_standard_gcn',
-    'AAAI/coco/fixed_connect_prob_standard_gcn',
+    # 'AAAI/coco/fixed_connect_prob_standard_gcn',
     # 'AAAI/coco/fixed_connect_prob_add_gcn',
     # 'AAAI/coco/connect_prob_standard_gcn',
     # 'AAAI/coco/fixed_prob_standard_gcn',
@@ -52,7 +52,8 @@ paths = [
     # 'AAAI/coco2017/fed_avg_new',
     # 'AAAI/coco2017/flag',
     # 'AAAI/coco2017/fpsl',
-    # 'AAAI/coco2017/fixed_connect_prob_standard_gcn',
+    'AAAI/coco2017/fixed_connect_prob_standard_gcn',
+    'AAAI/coco2017/add_gcn_origin'
     # 'AAAI/coco2017/connect_prob_standard_gcn',
     # 'AAAI/coco2017/fixed_prob_standard_gcn',
     # 'AAAI/coco2017/fixed_connect_standard_gcn',
@@ -60,12 +61,13 @@ paths = [
     # 'AAAI/coco2017/connect_prob_standard_gcn',
     # 'AAAI/coco2017/c_gcn',
     # 'AAAI/coco2017/p_gcn',
-    'AAAI/coco/c_gcn',
-    'AAAI/coco/p_gcn',
-    'AAAI/coco/c_gcn_new',
-    'AAAI/coco/p_gcn_new',
-    'AAAI/coco/latest_ours',
-    'AAAI/coco/add_gcn_origin',
+    # 'AAAI/coco/c_gcn',
+    # 'AAAI/coco/p_gcn',
+    # 'AAAI/coco/c_gcn_new',
+    # 'AAAI/coco/p_gcn_new',
+    # 'AAAI/coco/latest_ours',
+    # 'AAAI/coco/add_gcn_origin',
+    # 'AAAI/coco/add_gcn_large_lr'
     
     # 'IJCNN/voc/p_gcn',
     # 'IJCNN/voc/p_gcn_without_agg'

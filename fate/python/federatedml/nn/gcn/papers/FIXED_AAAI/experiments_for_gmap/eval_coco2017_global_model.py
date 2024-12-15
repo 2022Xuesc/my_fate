@@ -24,9 +24,10 @@ WITHOUT_STAND = 'fixed_connect_prob_gcn'
 WITHOUT_FIX = 'connect_prob_standard_gcn'
 WITHOUT_CONNECT = 'fixed_prob_standard_gcn'
 WITHOUT_PROB = 'fixed_connect_standard_gcn'
+ADD_GCN = 'add_gcn'
 
 jobid_map = {
-    FED_AVG: '202411200631503733840',
+    # FED_AVG: '202411200631503733840',
     # FLAG: '202411091101497420520',
     # FPSL: '202411091102538632940',
     # C_GCN: '202411161322167998130',
@@ -36,6 +37,7 @@ jobid_map = {
     # WITHOUT_FIX: '202411131022299079090',
     # WITHOUT_CONNECT: '202411110713346649900',
     # WITHOUT_PROB: '202411110729150240520'
+    ADD_GCN: '202412120615288786880'
 }
 model_map = {
     FED_AVG: create_resnet101_model,
@@ -47,7 +49,8 @@ model_map = {
     WITHOUT_STAND: aaai_fixed_connect_prob_gcn,
     WITHOUT_FIX: aaai_connect_prob_standard_gcn,
     WITHOUT_CONNECT: aaai_fixed_prob_standard_gcn,
-    WITHOUT_PROB: aaai_fixed_connect_standard_gcn
+    WITHOUT_PROB: aaai_fixed_connect_standard_gcn,
+    ADD_GCN: origin_add_gcn
 }
 
 # 1个入参，两个返回值：1
@@ -97,12 +100,16 @@ config_map = {
         "in_channels": 300,
         "argument_and_return_type": 2
     },
+    ADD_GCN: {
+        "in_channels": -1,
+        "argument_and_return_type": 1
+    }
 }
 # Todo: 创建一个模型骨架，然后替换其参数
 
 dir_prefix = "/data/projects/fate/fateflow/jobs"
 pretrained = False
-device = 'cuda:0'
+device = 'cuda:1'
 num_labels = 80
 adjList = np.ndarray((80, 80))
 # Todo: adjList是否优化，会导致不同的结果
@@ -145,7 +152,7 @@ for task_name in jobid_map:
         if file.startswith(file_prefix):
             cnt += 1
     in_channel = config_map[task_name]["in_channels"]
-    if is_multi_label:
+    if is_multi_label or task_name == ADD_GCN:
         model = model_map[task_name](pretrained, device, num_labels)
     else:
         model = model_map[task_name](pretrained, adjList, device, num_labels, in_channel)
