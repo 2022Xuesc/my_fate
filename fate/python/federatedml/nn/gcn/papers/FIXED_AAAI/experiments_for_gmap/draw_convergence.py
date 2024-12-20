@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from pandas import Series
 
 import csv
 import os
-import numpy as np
 
 
 def gen_legends(legends):
@@ -107,7 +107,7 @@ for dataset in datasets:
             plt.plot(x_series, Series(GmAP_list[method][0:show_epochs]))
     plt.xlabel(x_axis, fontsize=13)
     plt.ylabel('GmAP', fontsize=13)
-    plt.xticks(np.arange(1,show_epochs))
+    plt.xticks(np.arange(1, show_epochs))
     plt.legend(gen_legends(methods), fontsize=12)
     # plt.title('The relation between GmAP and total epochs.')
 
