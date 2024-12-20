@@ -52,8 +52,8 @@ paths = [
     # 'AAAI/coco2017/fed_avg_new',
     # 'AAAI/coco2017/flag',
     # 'AAAI/coco2017/fpsl',
-    'AAAI/coco2017/fixed_connect_prob_standard_gcn',
-    'AAAI/coco2017/add_gcn_origin'
+    # 'AAAI/coco2017/fixed_connect_prob_standard_gcn',
+    # 'AAAI/coco2017/add_gcn_origin'
     # 'AAAI/coco2017/connect_prob_standard_gcn',
     # 'AAAI/coco2017/fixed_prob_standard_gcn',
     # 'AAAI/coco2017/fixed_connect_standard_gcn',
@@ -72,8 +72,16 @@ paths = [
     # 'IJCNN/voc/p_gcn',
     # 'IJCNN/voc/p_gcn_without_agg'
     
-    
-    
+    'IJCNN/coco/fed_avg',
+    'IJCNN/coco/fpsl',
+    'IJCNN/coco/c_gcn',
+    'IJCNN/coco/c_gcn_no_agg',
+    'IJCNN/coco/p_gcn',
+    'IJCNN/coco/p_gcn_no_agg',
+    'IJCNN/coco/salgl',
+    'IJCNN/coco/salgl_no_agg',
+    'IJCNN/coco/kmeans',
+    'IJCNN/coco/kmeans_no_agg'
 ]
 
 for path in paths:
