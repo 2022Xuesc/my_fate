@@ -48,7 +48,7 @@ w/o prob  : 80.33
 
 COCO 2017
 
-FedAvg : 78.16
+FedAvg : 78.16   修正（论文中的数字）
 FLAG   : 78.25
 FPSL   : 77.84
 C-GCN: 77.69

@@ -84,13 +84,13 @@ paths = [
     'IJCNN/coco/kmeans_no_agg'
 ]
 
-# paths = [
-#     'AAAI/coco2017/fed_avg',
-#     'AAAI/coco2017/flag',
-#     'AAAI/coco2017/fpsl',
-#     'AAAI/coco2017/c_gcn',
-#     'AAAI/coco2017/p_gcn',
-#     ]
+paths = [
+    'AAAI/coco2017/fed_avg',
+    'AAAI/coco2017/flag',
+    'AAAI/coco2017/fpsl',
+    'AAAI/coco2017/c_gcn',
+    'AAAI/coco2017/p_gcn',
+    ]
 
 # # coco2014消融实验
 # 
@@ -101,11 +101,11 @@ paths = [
 #          'AAAI/coco/fixed_connect_standard_gcn']
 # 
 # # coco2017消融实验
-# paths = ['AAAI/coco2017/fixed_connect_prob_standard_gcn',
-#          'AAAI/coco2017/fixed_connect_prob_gcn',
-#          'AAAI/coco2017/connect_prob_standard_gcn',
-#          'AAAI/coco2017/fixed_prob_standard_gcn',
-#          'AAAI/coco2017/fixed_connect_standard_gcn']
+paths = ['AAAI/coco2017/fixed_connect_prob_standard_gcn',
+         'AAAI/coco2017/fixed_connect_prob_gcn',
+         'AAAI/coco2017/connect_prob_standard_gcn',
+         'AAAI/coco2017/fixed_prob_standard_gcn',
+         'AAAI/coco2017/fixed_connect_standard_gcn']
 
 
 for path in paths:
