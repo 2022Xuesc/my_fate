@@ -84,20 +84,20 @@ paths = [
     'IJCNN/coco/kmeans_no_agg'
 ]
 
-# coco2014消融实验
-
-paths = ['AAAI/coco/fixed_connect_prob_standard_gcn',
-         'AAAI/coco/fixed_connect_prob_gcn',
-         'AAAI/coco/connect_prob_standard_gcn',
-         'AAAI/coco/fixed_prob_standard_gcn',
-         'AAAI/coco/fixed_connect_standard_gcn']
-
-# coco2017消融实验
-paths = ['AAAI/coco2017/fixed_connect_prob_standard_gcn',
-         'AAAI/coco2017/fixed_connect_prob_gcn',
-         'AAAI/coco2017/connect_prob_standard_gcn',
-         'AAAI/coco2017/fixed_prob_standard_gcn',
-         'AAAI/coco2017/fixed_connect_standard_gcn']
+# # coco2014消融实验
+# 
+# paths = ['AAAI/coco/fixed_connect_prob_standard_gcn',
+#          'AAAI/coco/fixed_connect_prob_gcn',
+#          'AAAI/coco/connect_prob_standard_gcn',
+#          'AAAI/coco/fixed_prob_standard_gcn',
+#          'AAAI/coco/fixed_connect_standard_gcn']
+# 
+# # coco2017消融实验
+# paths = ['AAAI/coco2017/fixed_connect_prob_standard_gcn',
+#          'AAAI/coco2017/fixed_connect_prob_gcn',
+#          'AAAI/coco2017/connect_prob_standard_gcn',
+#          'AAAI/coco2017/fixed_prob_standard_gcn',
+#          'AAAI/coco2017/fixed_connect_standard_gcn']
 
 
 for path in paths:
@@ -128,9 +128,10 @@ for path in paths:
     WOF1, BOF1, AOF1 = calculate_stats(OF1s)
     print('————————————————————————————————————')
     print(path)
-    print(f"mAP: AmAP, WmAP, BmAP = {AmAP:.1f}, {WmAP:.1f}, {BmAP:.1f}")
-    print(f"CF1: ACF1, WCF1, BCF1 = {ACF1:.1f}, {WCF1:.1f}, {BCF1:.1f}")
-    print(f"OF1: AOF1, WOF1, BOF1 = {AOF1:.1f}, {WOF1:.1f}, {BOF1:.1f}")
-    print(
-        f"{AmAP:.1f} & {WmAP:.1f} & {BmAP:.1f} & {ACF1:.1f} & {WCF1:.1f} & {BCF1:.1f} & {AOF1:.1f} & {WOF1:.1f}& {BOF1:.1f}")
+    
+    print(f"CF1: WCF1, BCF1, ACF1 = {WCF1:.1f}, {BCF1:.1f}, {ACF1:.1f}")
+    print(f"OF1: WOF1, BOF1, AOF1 = {WOF1:.1f}, {BOF1:.1f}, {AOF1:.1f}")
+    print(f"mAP: WmAP, BmAP, AmAP = {WmAP:.1f}, {BmAP:.1f}, {AmAP:.1f}")
+    # print(
+    #     f"{AmAP:.1f} & {WmAP:.1f} & {BmAP:.1f} & {ACF1:.1f} & {WCF1:.1f} & {BCF1:.1f} & {AOF1:.1f} & {WOF1:.1f}& {BOF1:.1f}")
     print('————————————————————————————————————')
