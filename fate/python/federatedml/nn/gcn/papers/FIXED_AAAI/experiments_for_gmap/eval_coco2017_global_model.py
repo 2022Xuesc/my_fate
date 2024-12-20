@@ -127,7 +127,7 @@ ap_meter = AveragePrecisionMeter(difficult_examples=False)
 criterion = AsymmetricLossOptimized().to(device)
 
 cur_dir_name = os.getcwd()
-my_writer = MyWriter(dir_name=cur_dir_name, stats_name='coco2017_stats')
+my_writer = MyWriter(dir_name=cur_dir_name, stats_name='new_coco2017_stats')
 print('hello')
 for task_name in jobid_map:
     is_multi_label = task_name.startswith('f') and not task_name.startswith("fixed")
