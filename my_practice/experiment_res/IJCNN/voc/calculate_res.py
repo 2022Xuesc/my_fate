@@ -17,7 +17,8 @@ def calculate_stats(float_list):
 # for path in all_paths:
 #     if os.path.isdir(path):
 #         paths.append(path)
-paths = ['p_gcn', 'p_gcn_without_agg', 'salgl']
+paths = ['fed_avg', 'flag', 'fpsl', 'c_gcn', 'c_gcn_without_agg', 'p_gcn', 'p_gcn_without_agg', 'salgl','salgl_without_agg',
+         'kmeans','kmeans_without_agg']
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
     for i in range(1, 10):
@@ -36,7 +37,7 @@ for path in paths:
     WmAP, BmAP, AmAP = calculate_stats(mAPs)
     print(path)
     print(f"mAP: AmAP, WmAP, BmAP = {AmAP:.1f}, {WmAP:.1f}, {BmAP:.1f}")
-    
+
     print('————————————————————————————————————')
 
 # 计算每个标签的平均精度

@@ -52,8 +52,8 @@ paths = [
     # 'AAAI/coco2017/fed_avg_new',
     # 'AAAI/coco2017/flag',
     # 'AAAI/coco2017/fpsl',
-    'AAAI/coco2017/fixed_connect_prob_standard_gcn',
-    'AAAI/coco2017/add_gcn_origin'
+    # 'AAAI/coco2017/fixed_connect_prob_standard_gcn',
+    # 'AAAI/coco2017/add_gcn_origin'
     # 'AAAI/coco2017/connect_prob_standard_gcn',
     # 'AAAI/coco2017/fixed_prob_standard_gcn',
     # 'AAAI/coco2017/fixed_connect_standard_gcn',
@@ -68,13 +68,45 @@ paths = [
     # 'AAAI/coco/latest_ours',
     # 'AAAI/coco/add_gcn_origin',
     # 'AAAI/coco/add_gcn_large_lr'
-    
+
     # 'IJCNN/voc/p_gcn',
     # 'IJCNN/voc/p_gcn_without_agg'
-    
-    
-    
+
+    'IJCNN/coco/fed_avg',
+    'IJCNN/coco/fpsl',
+    'IJCNN/coco/c_gcn',
+    'IJCNN/coco/c_gcn_no_agg',
+    'IJCNN/coco/p_gcn',
+    'IJCNN/coco/p_gcn_no_agg',
+    'IJCNN/coco/salgl',
+    'IJCNN/coco/salgl_no_agg',
+    'IJCNN/coco/kmeans',
+    'IJCNN/coco/kmeans_no_agg'
 ]
+
+# paths = [
+#     'AAAI/coco2017/fed_avg',
+#     'AAAI/coco2017/flag',
+#     'AAAI/coco2017/fpsl',
+#     'AAAI/coco2017/c_gcn',
+#     'AAAI/coco2017/p_gcn',
+#     ]
+
+# # coco2014消融实验
+# 
+# paths = ['AAAI/coco/fixed_connect_prob_standard_gcn',
+#          'AAAI/coco/fixed_connect_prob_gcn',
+#          'AAAI/coco/connect_prob_standard_gcn',
+#          'AAAI/coco/fixed_prob_standard_gcn',
+#          'AAAI/coco/fixed_connect_standard_gcn']
+# 
+# # coco2017消融实验
+# paths = ['AAAI/coco2017/fixed_connect_prob_standard_gcn',
+#          'AAAI/coco2017/fixed_connect_prob_gcn',
+#          'AAAI/coco2017/connect_prob_standard_gcn',
+#          'AAAI/coco2017/fixed_prob_standard_gcn',
+#          'AAAI/coco2017/fixed_connect_standard_gcn']
+
 
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
@@ -104,9 +136,10 @@ for path in paths:
     WOF1, BOF1, AOF1 = calculate_stats(OF1s)
     print('————————————————————————————————————')
     print(path)
-    print(f"mAP: AmAP, WmAP, BmAP = {AmAP:.1f}, {WmAP:.1f}, {BmAP:.1f}")
-    print(f"CF1: ACF1, WCF1, BCF1 = {ACF1:.1f}, {WCF1:.1f}, {BCF1:.1f}")
-    print(f"OF1: AOF1, WOF1, BOF1 = {AOF1:.1f}, {WOF1:.1f}, {BOF1:.1f}")
-    print(
-        f"{AmAP:.1f} & {WmAP:.1f} & {BmAP:.1f} & {ACF1:.1f} & {WCF1:.1f} & {BCF1:.1f} & {AOF1:.1f} & {WOF1:.1f}& {BOF1:.1f}")
+    
+    print(f"CF1: WCF1, BCF1, ACF1 = {WCF1:.1f}, {BCF1:.1f}, {ACF1:.1f}")
+    print(f"OF1: WOF1, BOF1, AOF1 = {WOF1:.1f}, {BOF1:.1f}, {AOF1:.1f}")
+    print(f"mAP: WmAP, BmAP, AmAP = {WmAP:.1f}, {BmAP:.1f}, {AmAP:.1f}")
+    # print(
+    #     f"{AmAP:.1f} & {WmAP:.1f} & {BmAP:.1f} & {ACF1:.1f} & {WCF1:.1f} & {BCF1:.1f} & {AOF1:.1f} & {WOF1:.1f}& {BOF1:.1f}")
     print('————————————————————————————————————')

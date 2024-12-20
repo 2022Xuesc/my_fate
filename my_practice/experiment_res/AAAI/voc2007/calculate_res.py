@@ -11,14 +11,17 @@ def calculate_stats(float_list):
     return minimum, maximum, mean
 
 
-# paths = ['agg_salgl', 'kmeans', 'salgl', 'c_gcn_with_agg', 'c_gcn_without_agg', 'p_gcn_with_agg', 'p_gcn_without_agg']
 # paths = ['fixed_add_standard_gcn', 'fixed_connect_add_gcn', 'fixed_connect_add_standard_gcn']
 # paths = []
 # for path in all_paths:
 #     if os.path.isdir(f'stats/{path}') and not path.startswith('compare'):
 #         paths.append(f'stats/{path}')
 
-paths = [ 'add_gcn_origin', 'fixed_connect_prob_standard_gcn']
+paths = ['fixed_connect_prob_standard_gcn',
+         'fixed_connect_prob_gcn',
+         'connect_prob_standard_gcn',
+         'fixed_prob_standard_gcn',
+         'fixed_connect_standard_gcn']
 for path in paths:
     if not os.path.isdir(path):
         continue
