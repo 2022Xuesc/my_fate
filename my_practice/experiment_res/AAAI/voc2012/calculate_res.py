@@ -11,13 +11,14 @@ def calculate_stats(float_list):
     return minimum, maximum, mean
 
 
-# paths = ['agg_salgl', 'kmeans', 'salgl', 'c_gcn_with_agg', 'c_gcn_without_agg', 'p_gcn_with_agg', 'p_gcn_without_agg']
-# all_paths = os.listdir('stats')
-# paths = []
-# for path in all_paths:
-#     if os.path.isdir(f'stats/{path}') and not path.startswith('compare'):
-#         paths.append(f'stats/{path}')
-paths = ['add_gcn', 'add_gcn_large_lr', 'add_gcn_new', 'fixed_connect_prob_standard_gcn']
+# paths = ['fed_avg','flag','fpsl','c_gcn','p_gcn','fixed_connect_prob_standard_gcn']
+
+# 消融实验
+paths = ['fixed_connect_prob_standard_gcn',
+         'fixed_connect_prob_gcn',
+         'connect_prob_standard_gcn',
+         'fixed_prob_standard_gcn',
+         'fixed_connect_standard_gcn']
 
 for path in paths:
     if not os.path.isdir(path):
@@ -43,7 +44,7 @@ for path in paths:
     # 计算列表中的最小值、最大值、均值和方差
     WmAP, BmAP, AmAP = calculate_stats(mAPs)
     print(path)
-    print(f"mAP: AmAP, WmAP, BmAP = {AmAP:.2f}, {WmAP:.2f}, {BmAP:.2f}")
+    print(f"mAP: AmAP, WmAP, BmAP = {AmAP:.1f}, {WmAP:.1f}, {BmAP:.1f}")
 
     num_labels = 20
     # 维护ap值之和
@@ -60,7 +61,7 @@ for path in paths:
                 if float(max_ap[label_id]) != -1:
                     ap_list[label_id] += float(max_ap[label_id])
                     ap_cnt[label_id] += 1
-    avg_ap_list = [round((ap_list[i] / ap_cnt[i]) * 100, 2) for i in range(num_labels)]
+    avg_ap_list = [round((ap_list[i] / ap_cnt[i]) * 100, 1) for i in range(num_labels)]
     print(f'ap_list: {avg_ap_list}')
 
     print('————————————————————————————————————')

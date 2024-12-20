@@ -68,10 +68,10 @@ paths = [
     # 'AAAI/coco/latest_ours',
     # 'AAAI/coco/add_gcn_origin',
     # 'AAAI/coco/add_gcn_large_lr'
-    
+
     # 'IJCNN/voc/p_gcn',
     # 'IJCNN/voc/p_gcn_without_agg'
-    
+
     'IJCNN/coco/fed_avg',
     'IJCNN/coco/fpsl',
     'IJCNN/coco/c_gcn',
@@ -83,6 +83,22 @@ paths = [
     'IJCNN/coco/kmeans',
     'IJCNN/coco/kmeans_no_agg'
 ]
+
+# coco2014消融实验
+
+paths = ['AAAI/coco/fixed_connect_prob_standard_gcn',
+         'AAAI/coco/fixed_connect_prob_gcn',
+         'AAAI/coco/connect_prob_standard_gcn',
+         'AAAI/coco/fixed_prob_standard_gcn',
+         'AAAI/coco/fixed_connect_standard_gcn']
+
+# coco2017消融实验
+paths = ['AAAI/coco2017/fixed_connect_prob_standard_gcn',
+         'AAAI/coco2017/fixed_connect_prob_gcn',
+         'AAAI/coco2017/connect_prob_standard_gcn',
+         'AAAI/coco2017/fixed_prob_standard_gcn',
+         'AAAI/coco2017/fixed_connect_standard_gcn']
+
 
 for path in paths:
     clients_path = [os.path.join(path, 'guest/10')]
