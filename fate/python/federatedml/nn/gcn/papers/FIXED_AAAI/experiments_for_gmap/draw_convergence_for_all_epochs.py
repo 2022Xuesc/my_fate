@@ -18,6 +18,8 @@ def gen_legends(legends):
             res.append('C-GCN')
         elif legend == 'p_gcn':
             res.append('P-GCN')
+        elif legend == 'add_gcn':
+            res.append('ADD-GCN')
         elif legend == 'fixed_connect_prob_gcn':
             res.append('Ours w/o standardization')
         elif legend == 'connect_prob_standard_gcn':
@@ -43,12 +45,14 @@ for dataset in datasets:
             'fpsl',
             'c_gcn',
             'p_gcn',
+            'add_gcn',
             'fixed_connect_prob_standard_gcn'
         ] if dataset != 'coco' else [
             'fed_avg',
             'fpsl',
             'c_gcn',
             'p_gcn',
+            'add_gcn',
             'fixed_connect_prob_standard_gcn'
         ]
     else:
