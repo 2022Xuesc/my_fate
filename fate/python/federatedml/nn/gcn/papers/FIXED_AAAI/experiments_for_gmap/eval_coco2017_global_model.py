@@ -32,12 +32,12 @@ jobid_map = {
     # FPSL: '202411091102538632940',
     # C_GCN: '202411161322167998130',
     #P_GCN: '202411161045471466580',
-    # OURS: '202411070650066368740',
+    OURS: '202411070650066368740',
     # WITHOUT_STAND: '202411091141333596090',
     # WITHOUT_FIX: '202411131022299079090',
     # WITHOUT_CONNECT: '202411110713346649900',
     # WITHOUT_PROB: '202411110729150240520'
-    ADD_GCN: '202412120615288786880'
+    # ADD_GCN: '202412120615288786880'
 }
 model_map = {
     FED_AVG: create_resnet101_model,
@@ -127,7 +127,7 @@ ap_meter = AveragePrecisionMeter(difficult_examples=False)
 criterion = AsymmetricLossOptimized().to(device)
 
 cur_dir_name = os.getcwd()
-my_writer = MyWriter(dir_name=cur_dir_name, stats_name='coco2017_stats')
+my_writer = MyWriter(dir_name=cur_dir_name, stats_name='new_coco2017_stats')
 print('hello')
 for task_name in jobid_map:
     is_multi_label = task_name.startswith('f') and not task_name.startswith("fixed")
