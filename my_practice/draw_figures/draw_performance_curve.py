@@ -3,6 +3,7 @@ from pandas import Series
 
 import csv
 import os
+import numpy as np
 
 
 def gen_legends(legends):
@@ -18,6 +19,8 @@ def gen_legends(legends):
             res.append('C-GCN')
         elif legend == 'p_gcn':
             res.append('P-GCN')
+        elif legend == 'add_gcn_origin':
+            res.append('ADD-GCN')
         elif legend == 'fixed_connect_prob_gcn':
             res.append('FML-DGCN w/o standardization')
         elif legend == 'connect_prob_standard_gcn':
@@ -34,7 +37,7 @@ def gen_legends(legends):
 datasets = ['voc2007', 'voc2012', 'coco', 'coco2017']
 for dataset in datasets:
     base_dir = f'../experiment_res/AAAI/{dataset}'
-    type = 'main'
+    type = 'ablations'
     if type == 'main':
         # 主体实验
         methods = [
@@ -43,12 +46,14 @@ for dataset in datasets:
             'fpsl',
             'c_gcn',
             'p_gcn',
+            'add_gcn_origin',
             'fixed_connect_prob_standard_gcn'
         ] if dataset != 'coco' else [
             'fed_avg',
             'fpsl',
             'c_gcn',
             'p_gcn',
+            'add_gcn_origin',
             'fixed_connect_prob_standard_gcn'
         ]
     else:
@@ -91,7 +96,7 @@ for dataset in datasets:
             largest = max(largest, mAP_sum[i])
         AmAP_list[f'{method}'] = mAP_sum
 
-    x_series = Series(range(show_epochs))
+    x_series = Series(range(1, show_epochs + 1))
     x_axis = 'epoch'
 
     fig, ax = plt.subplots()
@@ -110,10 +115,11 @@ for dataset in datasets:
             plt.plot(x_series, Series(AmAP_list[method][0:show_epochs]), color='b')
         else:
             plt.plot(x_series, Series(AmAP_list[method][0:show_epochs]))
-    plt.xlabel(x_axis,fontsize=13)
-    plt.ylabel('amAP',fontsize=13)
+    plt.xlabel(x_axis, fontsize=13)
+    plt.ylabel('amAP', fontsize=13)
     # plt.ylim(largest - 10,largest)
-    plt.legend(gen_legends(methods),fontsize=12)
+    plt.xticks(np.arange(1,show_epochs,4))
+    plt.legend(gen_legends(methods), fontsize=12)
     # plt.title('The relation between AmAP and total epochs.')
 
     save_path = os.path.join(f'amap_convergence_res/{type}', f'res_on_{dataset}.svg')

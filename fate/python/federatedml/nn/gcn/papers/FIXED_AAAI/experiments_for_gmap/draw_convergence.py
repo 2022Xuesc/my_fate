@@ -3,6 +3,7 @@ from pandas import Series
 
 import csv
 import os
+import numpy as np
 
 
 def gen_legends(legends):
@@ -18,6 +19,8 @@ def gen_legends(legends):
             res.append('C-GCN')
         elif legend == 'p_gcn':
             res.append('P-GCN')
+        elif legend == 'add_gcn_origin':
+            res.append('ADD-GCN')
         elif legend == 'fixed_connect_prob_gcn':
             res.append('FML-DGCN w/o standardization')
         elif legend == 'connect_prob_standard_gcn':
@@ -49,12 +52,14 @@ for dataset in datasets:
             'fpsl',
             'c_gcn',
             'p_gcn',
+            'add_gcn',
             'fixed_connect_prob_standard_gcn'
         ] if dataset != 'coco' else [
             'fed_avg',
             'fpsl',
             'c_gcn',
             'p_gcn',
+            'add_gcn',
             'fixed_connect_prob_standard_gcn'
         ]
     else:
@@ -84,7 +89,7 @@ for dataset in datasets:
         show_epochs = min(show_epochs, min_epoch)
 
     # show_epochs = 10
-    x_series = Series(range(show_epochs))
+    x_series = Series(range(1, show_epochs + 1))
     x_axis = 'agg_iter'
 
     fig, ax = plt.subplots()
@@ -102,7 +107,7 @@ for dataset in datasets:
             plt.plot(x_series, Series(GmAP_list[method][0:show_epochs]))
     plt.xlabel(x_axis, fontsize=13)
     plt.ylabel('GmAP', fontsize=13)
-
+    plt.xticks(np.arange(1,show_epochs,4))
     plt.legend(gen_legends(methods), fontsize=12)
     # plt.title('The relation between GmAP and total epochs.')
 
