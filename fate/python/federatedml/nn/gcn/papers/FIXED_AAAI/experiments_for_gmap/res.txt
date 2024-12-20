@@ -36,7 +36,7 @@ MS-COCO
 FedAvg : 75.79
 FLAG   : 54.8
 FPSL   : 76.01
-C-GCN: 80.99
+C-GCN: 80.99      修正为81.0
 P-GCN: 81.06
 Ours   : 80.13
 
@@ -65,5 +65,5 @@ w/o prob  : 82.36
 ADD_GCN
 voc2007: 90.66
 voc2012: 90.13
-coco2014: 
-coco2017: 
+coco2014: 78.94
+coco2017: 79.95
