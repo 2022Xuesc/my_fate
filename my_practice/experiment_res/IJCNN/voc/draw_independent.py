@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from pandas import Series
+import numpy as np 
 
 import csv
 import os
@@ -65,7 +66,7 @@ for experiment in experiments:
         AmAP_list[f'{method}'] = mAP_sum
 
     show_epochs = 30
-    x_series = Series(range(show_epochs))
+    x_series = Series(range(1, show_epochs + 1))
     x_axis = 'epoch'
 
     fig, ax = plt.subplots()
@@ -87,6 +88,7 @@ for experiment in experiments:
     plt.xlabel(x_axis,fontsize=13)
     plt.ylabel('amAP',fontsize=13)
     # plt.ylim(largest - 10,largest)
+    plt.xticks(np.arange(1,show_epochs,4))
     plt.legend(gen_legends(experiment, methods),fontsize=12)
     # plt.title('The relation between AmAP and total epochs.')
 

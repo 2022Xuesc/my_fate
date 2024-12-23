@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from pandas import Series
-
+import numpy as np 
 import csv
 import os
 
@@ -93,7 +93,7 @@ for dataset in datasets:
             largest = max(largest, mAP_sum[i])
         AmAP_list[f'{method}'] = mAP_sum
 
-    x_series = Series(range(show_epochs))
+    x_series = Series(range(1, show_epochs + 1))
     x_axis = 'epoch'
 
     
@@ -116,6 +116,7 @@ for dataset in datasets:
     plt.xlabel(x_axis,fontsize=13)
     plt.ylabel('amAP',fontsize=13)
     # plt.ylim(largest - 10,largest)
+    plt.xticks(np.arange(1, show_epochs,4))
     plt.legend(gen_legends(methods),fontsize=12)
     # plt.title('The relation between AmAP and total epochs.')
 
