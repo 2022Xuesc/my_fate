@@ -62,7 +62,7 @@ for num_scene in num_scenes:
     plt.xlabel(x_axis, fontsize=13)
     plt.ylabel('mAP', fontsize=13)
     # plt.ylim(largest - 10,largest)
-    # plt.xticks(np.arange(1, show_epochs, 4))
+    plt.xticks(np.arange(1, show_epochs + 1,2))
     plt.legend(gen_legends(methods), fontsize=12)
     # plt.title('The relation between AmAP and total epochs.')
 
