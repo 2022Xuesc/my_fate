@@ -31,8 +31,9 @@ jobid_map = {
     # FLAG: '202411091101497420520',
     # FPSL: '202411091102538632940',
     # C_GCN: '202411161322167998130',
-    #P_GCN: '202411161045471466580',
-    OURS: '202411070650066368740',
+    # P_GCN: '202411161045471466580',  // 旧的，训练epoch较少的
+    P_GCN: '202412211225217568540',
+    # OURS: '202411070650066368740',
     # WITHOUT_STAND: '202411091141333596090',
     # WITHOUT_FIX: '202411131022299079090',
     # WITHOUT_CONNECT: '202411110713346649900',
@@ -127,7 +128,7 @@ ap_meter = AveragePrecisionMeter(difficult_examples=False)
 criterion = AsymmetricLossOptimized().to(device)
 
 cur_dir_name = os.getcwd()
-my_writer = MyWriter(dir_name=cur_dir_name, stats_name='new_coco2017_stats')
+my_writer = MyWriter(dir_name=cur_dir_name, stats_name='more_solid_coco2017_stats')
 print('hello')
 for task_name in jobid_map:
     is_multi_label = task_name.startswith('f') and not task_name.startswith("fixed")
@@ -270,5 +271,3 @@ for task_name in jobid_map:
         loss = losses[OBJECTIVE_LOSS_KEY].mean
         valid_writer.writerow([i, mAP.item(), loss])
         valid_aps_writer.writerow(ap)
-
-
