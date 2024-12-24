@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.font_manager import FontProperties
-
+from matplotlib.ticker import MaxNLocator
 import json
 import os
 
@@ -58,15 +58,15 @@ for dataset in datasets:
     print(samples)
     # Todo: 作出关于samples的柱状图
     log_samples = np.log10(samples)
-
+    plt.gca().yaxis.set_major_locator(MaxNLocator(integer=True))
     plt.bar(client_names, log_samples)
 
     for i, v in enumerate(log_samples):
         plt.text(i, v + 0.03, str(samples[i]), ha='center')
 
     # plt.title(f'Distribution of {dataset} datasets among clients')
-    plt.ylabel('客户端数据集大小（log10）', fontproperties=font)
-    # plt.ylabel('The size of the client dataset(log10)')
+    # plt.ylabel('客户端数据集大小（log10）', fontproperties=font)
+    plt.ylabel('The size of the client dataset(log10)')
 
     plt.savefig(f'{save_dir}/{dataset}_dataset_distribution.svg', dpi=600, format='svg')
     plt.close()
