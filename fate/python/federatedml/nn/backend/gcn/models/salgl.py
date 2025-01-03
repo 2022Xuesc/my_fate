@@ -38,10 +38,10 @@ class LowRankBilinearAttention(nn.Module):
         att_dim: 注意力网络的大小
         """
         super().__init__()
-        self.linear1 = nn.Linear(dim1, att_dim, bias=False)
-        self.linear2 = nn.Linear(dim2, att_dim, bias=False)
-        self.hidden_linear = nn.Linear(att_dim, att_dim)
-        self.target_linear = nn.Linear(att_dim, 1)
+        self.linear1 = nn.Linear(dim1, att_dim, bias=False)  # 图像特征映射到潜在空间中
+        self.linear2 = nn.Linear(dim2, att_dim, bias=False)  # 标签向量映射到潜在空间中
+        self.hidden_linear = nn.Linear(att_dim, att_dim)     # 再映射一次
+        self.target_linear = nn.Linear(att_dim, 1)           # 池化
         # 双曲正切函数
         self.tanh = nn.Tanh()
         # 使用softmax层来计算权重

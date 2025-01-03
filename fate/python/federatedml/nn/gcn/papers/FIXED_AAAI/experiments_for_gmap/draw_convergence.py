@@ -111,6 +111,6 @@ for dataset in datasets:
     plt.legend(gen_legends(methods), fontsize=12)
     # plt.title('The relation between GmAP and total epochs.')
 
-    save_path = os.path.join(f'gmAP_convergence_res/{type}', f'res_on_{dataset}.svg')
-    plt.savefig(save_path, dpi=600, format='svg')
+    save_path = os.path.join(f'gmAP_convergence_res/{type}', f'res_on_{dataset}.eps')
+    plt.savefig(save_path, dpi=600, format='eps')
     plt.close()
