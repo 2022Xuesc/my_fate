@@ -66,7 +66,7 @@ for dataset in datasets:
 
     # plt.title(f'Distribution of {dataset} datasets among clients')
     # plt.ylabel('客户端数据集大小（log10）', fontproperties=font)
-    plt.ylabel('The size of the client dataset(log10)')
+    plt.ylabel('The size of the client\'s dataset (log10)')
 
-    plt.savefig(f'{save_dir}/{dataset}_dataset_distribution.eps', dpi=300, format='eps')
+    plt.savefig(f'{save_dir}/{dataset}_dataset_distribution.svg', dpi=600, format='svg')
     plt.close()
