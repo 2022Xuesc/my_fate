@@ -32,7 +32,9 @@ from federatedml.util import LOGGER
 from federatedml.util.homo_label_encoder import HomoLabelEncoderClient
 
 
+
 class DatasetMixIn(Dataset):
+    
     def get_num_features(self):
         raise NotImplementedError()
 
